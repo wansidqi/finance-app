@@ -1,5 +1,5 @@
 import { AddAssetModal } from "@/components/asset/add-asset";
-import { AssetInterface } from "@/interface/asset";
+import { AssetCategory, AssetInterface } from "@/interface/asset";
 import { useGetAssets, useUpdateAsset } from "@/services/asset";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -24,6 +24,61 @@ type DisplayItem =
   | { type: "group"; total: number; group: PlatformGroup }
   | { type: "single"; total: number; asset: AssetInterface };
 
+type CategorySection = {
+  category: AssetCategory;
+  total: number;
+  zakatableTotal: number;
+  items: DisplayItem[];
+};
+
+const CATEGORY_ICON: Record<AssetCategory, keyof typeof Ionicons.glyphMap> = {
+  CASH: "cash",
+  GOLD: "diamond",
+  CRYPTO: "logo-bitcoin",
+  STOCK: "trending-up",
+};
+
+// Groups a set of assets (already scoped to one category) into platform
+// groups (e.g. "TNG eWallet") and standalone cards for assets with no
+// shared platform, sorted biggest total first.
+function groupByPlatform(assets: AssetInterface[]): DisplayItem[] {
+  const platformMap = new Map<string, AssetInterface[]>();
+  const standalone: AssetInterface[] = [];
+
+  for (const asset of assets) {
+    const platform = asset.platform?.trim();
+    if (platform) {
+      if (!platformMap.has(platform)) platformMap.set(platform, []);
+      platformMap.get(platform)!.push(asset);
+    } else {
+      standalone.push(asset);
+    }
+  }
+
+  const groupItems: DisplayItem[] = Array.from(platformMap.entries()).map(
+    ([platform, entries]) => {
+      const walletTotal = entries.reduce((sum, a) => sum + (a.price ?? 0), 0);
+      const zakatableTotal = entries.reduce(
+        (sum, a) => sum + (a.is_calculate ? (a.price ?? 0) : 0),
+        0,
+      );
+      return {
+        type: "group",
+        total: walletTotal,
+        group: { platform, entries, walletTotal, zakatableTotal },
+      };
+    },
+  );
+
+  const singleItems: DisplayItem[] = standalone.map((asset) => ({
+    type: "single",
+    total: asset.price ?? 0,
+    asset,
+  }));
+
+  return [...groupItems, ...singleItems].sort((a, b) => b.total - a.total);
+}
+
 export function Asset() {
   const { data: assets, isLoading } = useGetAssets();
   const [modalVisible, setModalVisible] = useState(false);
@@ -38,49 +93,35 @@ export function Asset() {
     setModalVisible(true);
   };
 
-  const items = useMemo<DisplayItem[]>(() => {
+  const sections = useMemo<CategorySection[]>(() => {
     if (!assets) return [];
 
-    // Only assets that share a real platform name get nested into a group —
-    // assets with no platform stay as their own separate cards.
-    const platformMap = new Map<string, AssetInterface[]>();
-    const standalone: AssetInterface[] = [];
-
+    const categoryMap = new Map<AssetCategory, AssetInterface[]>();
     for (const asset of assets) {
-      const platform = asset.platform?.trim();
-      if (platform) {
-        if (!platformMap.has(platform)) platformMap.set(platform, []);
-        platformMap.get(platform)!.push(asset);
-      } else {
-        standalone.push(asset);
-      }
+      if (!categoryMap.has(asset.category)) categoryMap.set(asset.category, []);
+      categoryMap.get(asset.category)!.push(asset);
     }
 
-    const groupItems: DisplayItem[] = Array.from(platformMap.entries()).map(
-      ([platform, entries]) => {
-        const walletTotal = entries.reduce(
+    const result: CategorySection[] = Array.from(categoryMap.entries()).map(
+      ([category, categoryAssets]) => {
+        const total = categoryAssets.reduce(
           (sum, a) => sum + (a.price ?? 0),
           0,
         );
-        const zakatableTotal = entries.reduce(
+        const zakatableTotal = categoryAssets.reduce(
           (sum, a) => sum + (a.is_calculate ? (a.price ?? 0) : 0),
           0,
         );
         return {
-          type: "group",
-          total: walletTotal,
-          group: { platform, entries, walletTotal, zakatableTotal },
+          category,
+          total,
+          zakatableTotal,
+          items: groupByPlatform(categoryAssets),
         };
       },
     );
 
-    const singleItems: DisplayItem[] = standalone.map((asset) => ({
-      type: "single",
-      total: asset.price ?? 0,
-      asset,
-    }));
-
-    return [...groupItems, ...singleItems].sort((a, b) => b.total - a.total);
+    return result.sort((a, b) => b.total - a.total);
   }, [assets]);
 
   const toggleCalculate = (asset: AssetInterface) => {
@@ -122,29 +163,36 @@ export function Asset() {
         >
           {isLoading ? (
             <AssetSkeletonLoader />
-          ) : items.length > 0 ? (
-            <View className="gap-4">
-              {items.map((item) =>
-                item.type === "group" ? (
-                  <PlatformGroupCard
-                    key={`group-${item.group.platform}`}
-                    group={item.group}
-                    onToggle={toggleCalculate}
-                    onPressEntry={goToDetail}
-                    onAdd={() => openAddModal(item.group.platform)}
-                  />
-                ) : (
-                  <StandaloneAssetCard
-                    key={`single-${item.asset.id}`}
-                    asset={item.asset}
-                    onToggle={() => toggleCalculate(item.asset)}
-                    onPress={() => goToDetail(item.asset.id)}
-                    onAdd={() =>
-                      openAddModal(item.asset.name, item.asset.id)
-                    }
-                  />
-                ),
-              )}
+          ) : sections.length > 0 ? (
+            <View className="gap-6">
+              {sections.map((section) => (
+                <View key={section.category} className="gap-2.5">
+                  <CategorySectionHeader section={section} />
+                  <View className="gap-3">
+                    {section.items.map((item) =>
+                      item.type === "group" ? (
+                        <PlatformGroupCard
+                          key={`group-${item.group.platform}`}
+                          group={item.group}
+                          onToggle={toggleCalculate}
+                          onPressEntry={goToDetail}
+                          onAdd={() => openAddModal(item.group.platform)}
+                        />
+                      ) : (
+                        <StandaloneAssetCard
+                          key={`single-${item.asset.id}`}
+                          asset={item.asset}
+                          onToggle={() => toggleCalculate(item.asset)}
+                          onPress={() => goToDetail(item.asset.id)}
+                          onAdd={() =>
+                            openAddModal(item.asset.name, item.asset.id)
+                          }
+                        />
+                      ),
+                    )}
+                  </View>
+                </View>
+              ))}
             </View>
           ) : (
             <View className="mt-20 items-center justify-center">
@@ -166,6 +214,37 @@ export function Asset() {
         initialPlatform={modalPlatform}
         linkAssetId={modalLinkId}
       />
+    </View>
+  );
+}
+
+function CategorySectionHeader({ section }: { section: CategorySection }) {
+  const hasExcluded = section.zakatableTotal !== section.total;
+
+  return (
+    <View className="flex-row items-center justify-between px-1">
+      <View className="flex-row items-center gap-2">
+        <View className="p-1.5 rounded-full bg-emerald-500/15">
+          <Ionicons
+            name={CATEGORY_ICON[section.category]}
+            size={14}
+            color="#10b981"
+          />
+        </View>
+        <Text className="text-[13px] font-bold text-slate-200 uppercase tracking-wider">
+          {section.category}
+        </Text>
+      </View>
+      <View className="items-end">
+        <Text className="text-[14px] font-bold text-white">
+          RM{section.total.toLocaleString()}
+        </Text>
+        {hasExcluded && (
+          <Text className="text-[10px] font-semibold text-emerald-400">
+            RM{section.zakatableTotal.toLocaleString()} zakatable
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -270,8 +349,7 @@ function AssetRow({
   onPress: () => void;
   onAdd?: () => void;
 }) {
-  const { category, name, quantity, price, unit, note, cost_basis, is_calculate } =
-    asset;
+  const { name, quantity, price, unit, note, cost_basis, is_calculate } = asset;
 
   const profitPercent =
     cost_basis && cost_basis > 0 && price !== null
@@ -290,18 +368,11 @@ function AssetRow({
         className="flex-1 flex-row items-center justify-between pr-3"
       >
         <View className="flex-1 pr-2">
-          <View className="flex-row items-center gap-1.5 mb-1">
-            <View className="bg-emerald-500/20 rounded-full px-2 py-0.5">
-              <Text className="text-[9px] font-bold text-emerald-400">
-                {category}
-              </Text>
-            </View>
-            {quantity !== null && (
-              <Text className="text-[10px] text-slate-400">
-                {quantity} {unit}
-              </Text>
-            )}
-          </View>
+          {quantity !== null && (
+            <Text className="text-[10px] text-slate-400 mb-1">
+              {quantity} {unit}
+            </Text>
+          )}
           <Text className="text-[13px] font-semibold text-white">{name}</Text>
           {note && (
             <Text
