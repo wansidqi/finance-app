@@ -69,6 +69,23 @@ export const useUpdateAssetById = (id: any) => {
   });
 };
 
+export const useUpdateAsset = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: Partial<BaseAsset> & { id: number }) => {
+      const response = await axios.put(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/assets/${data.id}`,
+        data,
+      );
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: [`assets/${variables.id}`] });
+    },
+  });
+};
+
 export const useDeleteAsset = (id: any) => {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -87,28 +104,3 @@ export const useDeleteAsset = (id: any) => {
   });
 };
 
-export const useUpdateValueById = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      value,
-    }: {
-      id: number | string;
-      value: number | null;
-    }) => {
-      try {
-        const response = await axios.put(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/assets/update-value/${id}`,
-          { value },
-        );
-        return response.data;
-      } catch (error) {
-        console.log(error);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-    },
-  });
-};

@@ -1,11 +1,12 @@
-import { useCreateAsset } from "@/services/asset";
+import { useCreateAsset, useUpdateAsset } from "@/services/asset";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,38 +18,72 @@ import { useErrorModal } from "../modal/useErrorModal";
 type Props = {
   visible: boolean;
   onClose: () => void;
+  // Pre-fills Platform when adding a sibling entry to an existing group.
+  initialPlatform?: string;
+  // When set, the platform chosen here is also applied to this existing
+  // asset on save, so it joins the new entry as a nested group.
+  linkAssetId?: number;
 };
 
 export const CATEGORIES = ["CASH", "GOLD", "CRYPTO", "STOCK"] as const;
 
-export function AddAssetModal({ visible, onClose }: Props) {
+export function AddAssetModal({
+  visible,
+  onClose,
+  initialPlatform,
+  linkAssetId,
+}: Props) {
   const [category, setCategory] = useState<
     "CASH" | "GOLD" | "CRYPTO" | "STOCK"
   >("CASH");
   const [name, setName] = useState("");
-  const [valueMode, setValueMode] = useState<"quantity" | "price">("quantity");
+  const [platform, setPlatform] = useState(initialPlatform ?? "");
   const [value, setValue] = useState("");
+  const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [goal, setGoal] = useState("");
+  const [costBasis, setCostBasis] = useState("");
+  const [note, setNote] = useState("");
+  const [isCalculate, setIsCalculate] = useState(true);
   const { error, isVisible, hideError, showError } = useErrorModal();
 
-  const { mutateAsync } = useCreateAsset();
+  const { mutateAsync: createAsset } = useCreateAsset();
+  const { mutateAsync: updateAsset } = useUpdateAsset();
+
+  // Re-seed the form (with the requested platform) every time the modal opens.
+  useEffect(() => {
+    if (!visible) return;
+    setCategory("CASH");
+    setName("");
+    setPlatform(initialPlatform ?? "");
+    setValue("");
+    setQuantity("");
+    setUnit("");
+    setGoal("");
+    setCostBasis("");
+    setNote("");
+    setIsCalculate(true);
+  }, [visible, initialPlatform]);
 
   const handleSave = async () => {
-    const valueNum = value ? Number(value) : null;
-    const goalNum = goal ? Number(goal) : 0;
-
     const data = {
       category,
       name,
-      quantity: valueMode === "quantity" ? valueNum : null,
-      price: valueMode === "price" ? valueNum : null,
+      platform: platform || null,
+      price: value ? Number(value) : null,
+      quantity: quantity ? Number(quantity) : null,
       unit: unit || "",
-      goal: goalNum,
+      goal: goal ? Number(goal) : null,
+      cost_basis: costBasis ? Number(costBasis) : null,
+      note: note || null,
+      is_calculate: isCalculate,
     };
 
     try {
-      await mutateAsync(data);
+      await createAsset(data);
+      if (linkAssetId && platform) {
+        await updateAsset({ id: linkAssetId, platform });
+      }
       onClose();
     } catch (error: any) {
       const apiError = error?.response?.data ?? {
@@ -57,17 +92,9 @@ export function AddAssetModal({ visible, onClose }: Props) {
 
       showError(apiError);
     }
-
-    // Reset form
-    setCategory("CASH");
-    setName("");
-    setValueMode("quantity");
-    setValue("");
-    setUnit("");
-    setGoal("");
   };
 
-  const disabled = !name || !value || !unit;
+  const disabled = !name || !value;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -161,65 +188,50 @@ export function AddAssetModal({ visible, onClose }: Props) {
                 />
               </View>
 
-              {/* Value Mode Selector */}
-              <View className="mb-4">
+              {/* Platform */}
+              <View className="mb-3">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  What are you measuring?
+                  Platform / Account
                 </Text>
-                <View className="flex-row gap-2">
-                  <TouchableOpacity
-                    onPress={() => setValueMode("quantity")}
-                    className={`flex-1 rounded-lg py-2 px-3 border-2 ${
-                      valueMode === "quantity"
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-slate-600 bg-slate-700/30"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center text-[12px] font-semibold ${
-                        valueMode === "quantity"
-                          ? "text-emerald-400"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      Quantity
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setValueMode("price")}
-                    className={`flex-1 rounded-lg py-2 px-3 border-2 ${
-                      valueMode === "price"
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-slate-600 bg-slate-700/30"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center text-[12px] font-semibold ${
-                        valueMode === "price"
-                          ? "text-emerald-400"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      Price
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <TextInput
+                  placeholder="e.g., Maybank, Touch 'n Go, Luno"
+                  value={platform}
+                  onChangeText={setPlatform}
+                  placeholderTextColor="#64748b"
+                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                />
+                <Text className="text-[10px] text-slate-400 mt-1.5">
+                  Where this asset is held — used to break down zakat
+                  withdrawals per platform
+                </Text>
               </View>
 
-              {/* Dynamic Value Input */}
+              {/* Current Value */}
+              <View className="mb-3">
+                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                  Current Value (RM)
+                </Text>
+                <TextInput
+                  placeholder="0.00"
+                  keyboardType="decimal-pad"
+                  value={value}
+                  onChangeText={setValue}
+                  placeholderTextColor="#64748b"
+                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                />
+              </View>
+
+              {/* Quantity & Unit (optional context) */}
               <View className="mb-3 flex-row gap-3">
                 <View className="flex-1">
                   <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                    {valueMode === "quantity" ? "Quantity" : "Price"}
+                    Quantity (Optional)
                   </Text>
                   <TextInput
-                    placeholder={
-                      valueMode === "quantity" ? "e.g., 100" : "0.00"
-                    }
+                    placeholder="e.g., 15"
                     keyboardType="decimal-pad"
-                    value={value}
-                    onChangeText={setValue}
+                    value={quantity}
+                    onChangeText={setQuantity}
                     placeholderTextColor="#64748b"
                     className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
                   />
@@ -229,17 +241,31 @@ export function AddAssetModal({ visible, onClose }: Props) {
                     Unit
                   </Text>
                   <TextInput
-                    placeholder={
-                      valueMode === "quantity"
-                        ? "e.g., shares, gram"
-                        : "e.g., RM, USD"
-                    }
+                    placeholder="e.g., gram, BTC, shares"
                     value={unit}
                     onChangeText={setUnit}
                     placeholderTextColor="#64748b"
                     className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
                   />
                 </View>
+              </View>
+
+              {/* Cost Basis */}
+              <View className="mb-4">
+                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                  Cost Basis (Optional)
+                </Text>
+                <TextInput
+                  placeholder="How much you paid in total (RM)"
+                  keyboardType="decimal-pad"
+                  value={costBasis}
+                  onChangeText={setCostBasis}
+                  placeholderTextColor="#64748b"
+                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                />
+                <Text className="text-[10px] text-slate-400 mt-1.5">
+                  Used to calculate your profit % — leave empty to skip
+                </Text>
               </View>
 
               {/* Goal (Optional) */}
@@ -258,6 +284,42 @@ export function AddAssetModal({ visible, onClose }: Props) {
                 <Text className="text-[10px] text-slate-400 mt-1.5">
                   Leave empty if you don't have a specific goal
                 </Text>
+              </View>
+
+              {/* Note */}
+              <View className="mb-4">
+                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                  Note (Optional)
+                </Text>
+                <TextInput
+                  placeholder="e.g., Holding for Ali, repay by Sept"
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                  numberOfLines={2}
+                  placeholderTextColor="#64748b"
+                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                  style={{ minHeight: 56, textAlignVertical: "top" }}
+                />
+              </View>
+
+              {/* Include in Zakat calculation */}
+              <View className="mb-5 flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/30 px-3 py-3">
+                <View className="flex-1 pr-3">
+                  <Text className="text-[12px] font-bold text-slate-200">
+                    Include in Zakat Calculation
+                  </Text>
+                  <Text className="text-[10px] text-slate-400 mt-0.5">
+                    Turn off if this is money you're holding for someone
+                    else
+                  </Text>
+                </View>
+                <Switch
+                  value={isCalculate}
+                  onValueChange={setIsCalculate}
+                  trackColor={{ false: "#475569", true: "#10b981" }}
+                  thumbColor="#ffffff"
+                />
               </View>
 
               {/* Actions */}

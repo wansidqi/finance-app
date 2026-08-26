@@ -8,11 +8,7 @@ import (
 
 type Config struct {
 	ServerPort string
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
+	DBPath     string
 }
 
 func LoadConfig() (*Config, error) {
@@ -21,11 +17,7 @@ func LoadConfig() (*Config, error) {
 
 	config := &Config{
 		ServerPort: getEnv("SERVER_PORT", ""),
-		DBHost:     getEnv("DB_HOST", ""),
-		DBPort:     getEnv("DB_PORT", ""),
-		DBUser:     getEnv("DB_USER", ""),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", ""),
+		DBPath:     getEnv("DB_PATH", "./sqlite/fiber.sqlite"),
 	}
 
 	return config, nil

@@ -85,7 +85,10 @@ export function LiabilityCard(liability: LiabilityInterface) {
     remaining_month,
   } = liability;
 
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState(
+    monthly_payment?.toString() || "",
+  );
+  const [isPaying, setIsPaying] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const editAnimRef = useRef(new Animated.Value(0)).current;
   const [editLiability, setEditLiability] = useState<
@@ -113,8 +116,31 @@ export function LiabilityCard(liability: LiabilityInterface) {
     }).start();
   }, [isEdit]);
 
-  const handlePay = (amount: number) => {
-    console.log("Paying:", amount);
+  const handlePay = async (amount: number) => {
+    if (!amount || amount <= 0) return;
+
+    const currentBalance = total_balance ?? 0;
+    const newBalance = Math.max(0, currentBalance - amount);
+
+    try {
+      setIsPaying(true);
+      await updateLiability({
+        id,
+        data: {
+          total_balance: newBalance,
+          ...(newBalance === 0 ? { status: "INACTIVE" } : {}),
+        },
+      });
+      setPaymentAmount(monthly_payment?.toString() || "");
+    } catch (error: any) {
+      showError(
+        error?.response?.data ?? {
+          message: error?.message ?? "Payment failed",
+        },
+      );
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const handleSave = async () => {
@@ -355,17 +381,16 @@ export function LiabilityCard(liability: LiabilityInterface) {
                   placeholder="Amount (RM)"
                   placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
+                  editable={!isPaying}
                   className="flex-1 border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
                 />
                 <TouchableOpacity
-                  onPress={() => {
-                    setPaymentAmount(monthly_payment?.toString() || "0");
-                    handlePay(monthly_payment || 0);
-                  }}
-                  className="bg-rose-500/20 border border-rose-500/50 rounded-lg px-3 py-2 justify-center"
+                  onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
+                  disabled={isPaying}
+                  className="bg-slate-600/40 border border-slate-500 rounded-lg px-3 py-2 justify-center"
                 >
-                  <Text className="text-[11px] font-bold text-rose-400">
-                    Auto
+                  <Text className="text-[11px] font-bold text-slate-300">
+                    Reset
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -373,10 +398,13 @@ export function LiabilityCard(liability: LiabilityInterface) {
 
             <TouchableOpacity
               onPress={() => handlePay(Number(paymentAmount))}
-              className="mt-4 bg-linear-to-r from-rose-500 to-rose-600 rounded-lg py-3 shadow-lg"
+              disabled={isPaying || !Number(paymentAmount)}
+              className={`mt-4 bg-linear-to-r from-rose-500 to-rose-600 rounded-lg py-3 shadow-lg ${
+                isPaying || !Number(paymentAmount) ? "opacity-50" : ""
+              }`}
             >
               <Text className="text-center font-semibold text-white text-[13px]">
-                Pay Now
+                {isPaying ? "Paying..." : "Pay Now"}
               </Text>
             </TouchableOpacity>
           </>

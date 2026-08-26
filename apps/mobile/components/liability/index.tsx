@@ -1,8 +1,17 @@
-import { useGetLiabilities } from "@/services/liability";
+import { ErrorModal } from "@/components/modal/error-modal";
+import { useErrorModal } from "@/components/modal/useErrorModal";
+import { LiabilityInterface } from "@/interface/liability";
+import { useGetLiabilities, useUpdateLiabilityById } from "@/services/liability";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { AddDebtModal } from "./add-liability";
 import { LiabilitySkeletonLoader } from "./skeleton-loader";
 
@@ -11,6 +20,7 @@ export function Liability() {
   const router = useRouter();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const { error, isVisible, hideError, showError } = useErrorModal();
 
   const handleAddDebt = (newItem: any) => {
     setModalVisible(false);
@@ -18,6 +28,8 @@ export function Liability() {
 
   return (
     <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+      <ErrorModal visible={isVisible} error={error} onClose={hideError} />
+
       <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
         <View>
           <Text className="text-[14px] font-medium text-slate-400">
@@ -48,55 +60,19 @@ export function Liability() {
             <LiabilitySkeletonLoader />
           ) : data && data.length > 0 ? (
             <View className="gap-3">
-              {data.map((liability) => {
-                const {
-                  category,
-                  name,
-                  total_balance,
-                  monthly_payment,
-                  remaining_month,
-                } = liability;
-                const remainingMonths = remaining_month ?? 0;
-                return (
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push({
-                        pathname: "/liability/[id]",
-                        params: { id: String(liability.id) },
-                      })
-                    }
-                    className="bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-4 flex-row items-center justify-between active:bg-slate-700"
-                  >
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-2 mb-1">
-                        <View className="bg-rose-500/20 rounded-full px-2.5 py-0.5">
-                          <Text className="text-[10px] font-bold text-rose-400">
-                            {category}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text className="text-[16px] font-semibold text-white mb-1">
-                        {name}
-                      </Text>
-                      <Text className="text-[12px] text-slate-400">
-                        RM{monthly_payment?.toLocaleString() || "0"}/month •{" "}
-                        {remainingMonths}{" "}
-                        {remainingMonths === 1 ? "month" : "months"}
-                      </Text>
-                    </View>
-                    <View className="items-end gap-2 ml-4">
-                      <Text className="text-[16px] font-bold text-rose-400">
-                        RM{total_balance?.toLocaleString() || "0"}
-                      </Text>
-                      <View className="bg-rose-500/20 rounded-lg px-2 py-1">
-                        <Text className="text-[11px] font-bold text-rose-300">
-                          {remainingMonths > 0 ? `${remainingMonths}m` : "Due"}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+              {data.map((liability) => (
+                <LiabilityListItem
+                  key={liability.id}
+                  liability={liability}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/liability/[id]",
+                      params: { id: String(liability.id) },
+                    })
+                  }
+                  onError={showError}
+                />
+              ))}
             </View>
           ) : (
             <View className="mt-20 items-center justify-center">
@@ -117,6 +93,129 @@ export function Liability() {
         onClose={() => setModalVisible(false)}
         onSave={handleAddDebt}
       />
+    </View>
+  );
+}
+
+function LiabilityListItem({
+  liability,
+  onPress,
+  onError,
+}: {
+  liability: LiabilityInterface;
+  onPress: () => void;
+  onError: (error: any) => void;
+}) {
+  const { id, category, name, total_balance, monthly_payment, remaining_month } =
+    liability;
+  const remainingMonths = remaining_month ?? 0;
+
+  const [paymentAmount, setPaymentAmount] = useState(
+    monthly_payment?.toString() || "",
+  );
+  const [isPaying, setIsPaying] = useState(false);
+  const { mutateAsync: updateLiability } = useUpdateLiabilityById(id);
+
+  const handlePay = async () => {
+    const amount = Number(paymentAmount);
+    if (!amount || amount <= 0) return;
+
+    const currentBalance = total_balance ?? 0;
+    const newBalance = Math.max(0, currentBalance - amount);
+
+    try {
+      setIsPaying(true);
+      await updateLiability({
+        id,
+        data: {
+          total_balance: newBalance,
+          ...(newBalance === 0 ? { status: "INACTIVE" } : {}),
+        },
+      });
+      setPaymentAmount(monthly_payment?.toString() || "");
+    } catch (err: any) {
+      onError(
+        err?.response?.data ?? { message: err?.message ?? "Payment failed" },
+      );
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  return (
+    <View className="bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-4">
+      <TouchableOpacity
+        onPress={onPress}
+        className="flex-row items-center justify-between active:opacity-70"
+      >
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2 mb-1">
+            <View className="bg-rose-500/20 rounded-full px-2.5 py-0.5">
+              <Text className="text-[10px] font-bold text-rose-400">
+                {category}
+              </Text>
+            </View>
+          </View>
+          <Text className="text-[16px] font-semibold text-white mb-1">
+            {name}
+          </Text>
+          <Text className="text-[12px] text-slate-400">
+            RM{monthly_payment?.toLocaleString() || "0"}/month •{" "}
+            {remainingMonths} {remainingMonths === 1 ? "month" : "months"}
+          </Text>
+        </View>
+        <View className="items-end gap-2 ml-4">
+          <Text className="text-[16px] font-bold text-rose-400">
+            RM{total_balance?.toLocaleString() || "0"}
+          </Text>
+          <View className="bg-rose-500/20 rounded-lg px-2 py-1">
+            <Text className="text-[11px] font-bold text-rose-300">
+              {remainingMonths > 0 ? `${remainingMonths}m` : "Due"}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {remainingMonths > 0 && (
+        <View className="mt-3 pt-3 border-t border-slate-600/50">
+          <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+            Make Payment
+          </Text>
+          <View className="flex-row gap-2.5">
+            <TextInput
+              value={paymentAmount}
+              onChangeText={setPaymentAmount}
+              placeholder="Amount (RM)"
+              placeholderTextColor="#94a3b8"
+              keyboardType="numeric"
+              editable={!isPaying}
+              className="flex-1 border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+            />
+            <TouchableOpacity
+              onPress={() =>
+                setPaymentAmount(monthly_payment?.toString() || "0")
+              }
+              disabled={isPaying}
+              className="bg-slate-600/40 border border-slate-500 rounded-lg px-3 py-2 justify-center"
+            >
+              <Text className="text-[11px] font-bold text-slate-300">
+                Reset
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            onPress={handlePay}
+            disabled={isPaying || !Number(paymentAmount)}
+            className={`mt-2.5 bg-linear-to-r from-rose-500 to-rose-600 rounded-lg py-2.5 shadow-lg ${
+              isPaying || !Number(paymentAmount) ? "opacity-50" : ""
+            }`}
+          >
+            <Text className="text-center font-semibold text-white text-[13px]">
+              {isPaying ? "Paying..." : "Pay Now"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

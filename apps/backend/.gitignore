@@ -28,6 +28,9 @@ env/
 env/*.env
 .envrc
 
+# ---- Local SQLite database ----
+/sqlite/
+
 # ---- Temporary files ----
 /tmp/
 tmp/

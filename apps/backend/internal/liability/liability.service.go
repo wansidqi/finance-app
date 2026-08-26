@@ -4,6 +4,7 @@ import (
 	"go-fiber-app/pkg/db"
 	"go-fiber-app/pkg/helper"
 	"log"
+	"math"
 	"strings"
 )
 
@@ -85,7 +86,7 @@ func (s *Service) UpdateLiability(id int, req *UpdateLiabilityRequest) (*Liabili
 	}
 
 	args := map[string]any{"id": id}
-	set := []string{"updated_at = NOW()"}
+	set := []string{"updated_at = CURRENT_TIMESTAMP"}
 
 	helper.UpdateField(req.Category, "category", &set, args)
 	helper.UpdateField(req.MonthlyPayment, "monthly_payment", &set, args)
@@ -122,8 +123,8 @@ func liabilityDTO(req *Liability) LiabilityDTO {
 
 	var monthlyBalance float64
 
-	if totalBalance != 0 {
-		monthlyBalance = totalBalance / req.MonthlyPayment
+	if totalBalance != 0 && req.MonthlyPayment != 0 {
+		monthlyBalance = math.Ceil(totalBalance / req.MonthlyPayment)
 	}
 
 	dto := LiabilityDTO{

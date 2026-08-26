@@ -18,6 +18,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -75,25 +76,39 @@ export default function AssetDetailPage() {
 }
 
 export function AssetCard(asset: AssetInterface) {
-  const { category, goal, id, name, quantity, price, unit, status } = asset;
+  const {
+    category,
+    goal,
+    id,
+    name,
+    platform,
+    quantity,
+    price,
+    unit,
+    cost_basis,
+    note,
+    is_calculate,
+    status,
+  } = asset;
 
   const { mutateAsync } = useUpdateAssetById(id);
   const { mutateAsync: deleteAsset } = useDeleteAsset(id);
 
   const [isEdit, setIsEdit] = useState(false);
-  const [editValueMode, setEditValueMode] = useState<"quantity" | "price">(
-    quantity !== null ? "quantity" : "price",
-  );
   const editAnimRef = useRef(new Animated.Value(0)).current;
 
   const [editAsset, setEditAsset] = useState<BaseAsset>({
     id,
     category,
     name,
+    platform,
     unit,
     quantity,
     price,
     goal,
+    cost_basis,
+    note,
+    is_calculate,
   });
 
   const { error, isVisible, hideError, showError } = useErrorModal();
@@ -102,15 +117,13 @@ export function AssetCard(asset: AssetInterface) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Determine which value to display
-  const displayValue = quantity !== null ? quantity : price;
-  const displayMode = quantity !== null ? "quantity" : "price";
-  const displayLabel = quantity !== null ? "Quantity" : "Price";
-  const displayUnit = quantity !== null ? unit : unit || "RM";
-
   // Calculate goal progress if applicable
-  const progress =
-    goal && displayMode === "quantity" ? (displayValue! / goal) * 100 : 0;
+  const progress = goal && price !== null ? (price / goal) * 100 : 0;
+
+  const profitPercent =
+    cost_basis && cost_basis > 0 && price !== null
+      ? ((price - cost_basis) / cost_basis) * 100
+      : null;
 
   useEffect(() => {
     Animated.timing(editAnimRef, {
@@ -121,14 +134,8 @@ export function AssetCard(asset: AssetInterface) {
   }, [isEdit]);
 
   const updateAsset = async () => {
-    const data: BaseAsset = {
-      ...editAsset,
-      quantity: editValueMode === "quantity" ? editAsset.quantity : null,
-      price: editValueMode === "price" ? editAsset.price : null,
-    };
-
     try {
-      await mutateAsync(data);
+      await mutateAsync(editAsset);
       setIsEdit(false);
     } catch (error: any) {
       const apiError = error?.response?.data ?? {
@@ -211,16 +218,30 @@ export function AssetCard(asset: AssetInterface) {
               </View>
             }
             editOff={
-              <View className="flex-row items-center gap-2">
+              <View className="flex-row items-center gap-2 flex-wrap">
                 <View className="bg-emerald-500/20 rounded-full px-3 py-1">
                   <Text className="text-[11px] font-bold text-emerald-400">
                     {category}
                   </Text>
                 </View>
+                {platform && (
+                  <View className="bg-slate-500/20 rounded-full px-3 py-1">
+                    <Text className="text-[10px] font-semibold text-slate-300">
+                      {platform}
+                    </Text>
+                  </View>
+                )}
                 {status && (
                   <View className="bg-slate-500/20 rounded-full px-3 py-1">
                     <Text className="text-[10px] font-semibold text-slate-300">
                       {status}
+                    </Text>
+                  </View>
+                )}
+                {!is_calculate && (
+                  <View className="bg-amber-500/20 rounded-full px-3 py-1">
+                    <Text className="text-[10px] font-semibold text-amber-400">
+                      Excluded from Zakat
                     </Text>
                   </View>
                 )}
@@ -274,90 +295,98 @@ export function AssetCard(asset: AssetInterface) {
           />
         </View>
 
-        {/* Value Mode Selector (Edit Mode Only) */}
-        {isEdit && (
-          <View className="mb-4">
-            <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-              What are you measuring?
-            </Text>
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => setEditValueMode("quantity")}
-                className={`flex-1 rounded-lg py-2 px-3 border-2 ${
-                  editValueMode === "quantity"
-                    ? "border-emerald-500 bg-emerald-500/10"
-                    : "border-slate-600 bg-slate-700/30"
-                }`}
-              >
-                <Text
-                  className={`text-center text-[12px] font-semibold ${
-                    editValueMode === "quantity"
-                      ? "text-emerald-400"
-                      : "text-slate-300"
-                  }`}
-                >
-                  Quantity
-                </Text>
-              </TouchableOpacity>
+        {/* Platform */}
+        <View className="mb-3">
+          <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+            Platform / Account
+          </Text>
+          <BooleanRenderer
+            condition={isEdit}
+            editOff={
+              <Text className="text-[13px] text-slate-200">
+                {platform || "Not set"}
+              </Text>
+            }
+            editOn={
+              <TextInput
+                value={editAsset.platform ?? ""}
+                onChangeText={(text) =>
+                  setEditAsset({ ...editAsset, platform: text || null })
+                }
+                placeholder="e.g., Maybank, Touch 'n Go, Luno"
+                placeholderTextColor="#94a3b8"
+                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              />
+            }
+          />
+        </View>
 
-              <TouchableOpacity
-                onPress={() => setEditValueMode("price")}
-                className={`flex-1 rounded-lg py-2 px-3 border-2 ${
-                  editValueMode === "price"
-                    ? "border-emerald-500 bg-emerald-500/10"
-                    : "border-slate-600 bg-slate-700/30"
-                }`}
-              >
-                <Text
-                  className={`text-center text-[12px] font-semibold ${
-                    editValueMode === "price"
-                      ? "text-emerald-400"
-                      : "text-slate-300"
-                  }`}
-                >
-                  Price
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Display Value & Unit (Non-Edit Mode) */}
-        {!isEdit && displayValue !== null && (
+        {/* Display Value (Non-Edit Mode) */}
+        {!isEdit && price !== null && (
           <View className="mb-4">
             <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-              {displayLabel}
+              Current Value
             </Text>
-            <Text className="text-[20px] font-bold text-emerald-400">
-              {displayValue.toLocaleString()}{" "}
-              <Text className="text-slate-300 text-[14px]">{displayUnit}</Text>
-            </Text>
+            <View className="flex-row items-baseline gap-2">
+              <Text className="text-[20px] font-bold text-emerald-400">
+                RM{price.toLocaleString()}
+              </Text>
+              {profitPercent !== null && (
+                <Text
+                  className={`text-[13px] font-semibold ${
+                    profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {profitPercent >= 0 ? "+" : ""}
+                  {profitPercent.toFixed(1)}%
+                </Text>
+              )}
+            </View>
+            {quantity !== null && (
+              <Text className="text-[12px] text-slate-400 mt-1">
+                {quantity} {unit}
+              </Text>
+            )}
+            {note && (
+              <Text className="text-[12px] text-slate-400 mt-2 italic">
+                {note}
+              </Text>
+            )}
           </View>
         )}
 
-        {/* Edit Mode - Value & Unit Inputs */}
+        {/* Edit Mode - Value, Quantity, Unit, Cost Basis */}
         {isEdit && (
-          <View className="mb-4">
+          <View className="mb-4 gap-3">
+            <View>
+              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                Current Value (RM)
+              </Text>
+              <TextInput
+                value={editAsset.price?.toString() || ""}
+                onChangeText={(text) =>
+                  setEditAsset({ ...editAsset, price: Number(text) || null })
+                }
+                placeholder="0.00"
+                placeholderTextColor="#94a3b8"
+                keyboardType="decimal-pad"
+                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              />
+            </View>
             <View className="flex-row gap-2">
               <View className="flex-1">
                 <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  {editValueMode === "quantity" ? "Quantity" : "Price"}
+                  Quantity (Optional)
                 </Text>
                 <TextInput
-                  value={
-                    editValueMode === "quantity"
-                      ? editAsset.quantity?.toString() || ""
-                      : editAsset.price?.toString() || ""
+                  value={editAsset.quantity?.toString() || ""}
+                  onChangeText={(text) =>
+                    setEditAsset({
+                      ...editAsset,
+                      quantity: text ? Number(text) : null,
+                    })
                   }
-                  onChangeText={(text) => {
-                    const num = Number(text) || null;
-                    if (editValueMode === "quantity") {
-                      setEditAsset({ ...editAsset, quantity: num });
-                    } else {
-                      setEditAsset({ ...editAsset, price: num });
-                    }
-                  }}
-                  placeholder={editValueMode === "quantity" ? "Qty" : "Price"}
+                  placeholder="e.g., 15"
                   placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
                   className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
@@ -372,43 +401,72 @@ export function AssetCard(asset: AssetInterface) {
                   onChangeText={(text) =>
                     setEditAsset({ ...editAsset, unit: text })
                   }
-                  placeholder={
-                    editValueMode === "quantity" ? "e.g., gram" : "e.g., RM"
-                  }
+                  placeholder="e.g., gram, BTC, shares"
                   placeholderTextColor="#94a3b8"
                   className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
                 />
               </View>
             </View>
+            <View>
+              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                Cost Basis (Optional)
+              </Text>
+              <TextInput
+                value={editAsset.cost_basis?.toString() || ""}
+                onChangeText={(text) =>
+                  setEditAsset({
+                    ...editAsset,
+                    cost_basis: text ? Number(text) : null,
+                  })
+                }
+                placeholder="How much you paid in total (RM)"
+                placeholderTextColor="#94a3b8"
+                keyboardType="decimal-pad"
+                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              />
+            </View>
+            <View>
+              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                Note (Optional)
+              </Text>
+              <TextInput
+                value={editAsset.note ?? ""}
+                onChangeText={(text) =>
+                  setEditAsset({ ...editAsset, note: text || null })
+                }
+                placeholder="e.g., Holding for Ali, repay by Sept"
+                placeholderTextColor="#94a3b8"
+                multiline
+                numberOfLines={2}
+                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                style={{ minHeight: 56, textAlignVertical: "top" }}
+              />
+            </View>
           </View>
         )}
 
         {/* Goal Progress (if applicable) */}
-        {!isEdit &&
-          goal &&
-          goal > 0 &&
-          displayMode === "quantity" &&
-          displayValue !== null && (
-            <View className="mt-2 mb-4">
-              <View className="mb-2 flex-row justify-between">
-                <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  GOAL PROGRESS
-                </Text>
-                <Text className="text-[11px] font-bold text-emerald-400">
-                  {Math.round(progress)}%
-                </Text>
-              </View>
-              <View className="h-2.5 w-full rounded-full bg-slate-600 overflow-hidden">
-                <Animated.View
-                  className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
-                  style={{ width: `${Math.min(progress, 100)}%` }}
-                />
-              </View>
-              <Text className="mt-2 text-[10px] text-slate-400">
-                {displayValue.toLocaleString()} / {goal.toLocaleString()} {unit}
+        {!isEdit && goal && goal > 0 && price !== null && (
+          <View className="mt-2 mb-4">
+            <View className="mb-2 flex-row justify-between">
+              <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                GOAL PROGRESS
+              </Text>
+              <Text className="text-[11px] font-bold text-emerald-400">
+                {Math.round(progress)}%
               </Text>
             </View>
-          )}
+            <View className="h-2.5 w-full rounded-full bg-slate-600 overflow-hidden">
+              <Animated.View
+                className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              />
+            </View>
+            <Text className="mt-2 text-[10px] text-slate-400">
+              RM{price.toLocaleString()} / RM{goal.toLocaleString()}
+            </Text>
+          </View>
+        )}
 
         {/* Goal Edit Mode */}
         {isEdit && (
@@ -419,12 +477,37 @@ export function AssetCard(asset: AssetInterface) {
             <TextInput
               value={editAsset.goal?.toString() || ""}
               onChangeText={(text) =>
-                setEditAsset({ ...editAsset, goal: Number(text) || 0 })
+                setEditAsset({
+                  ...editAsset,
+                  goal: text ? Number(text) : null,
+                })
               }
               placeholder="Target amount"
               placeholderTextColor="#94a3b8"
               keyboardType="numeric"
               className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+            />
+          </View>
+        )}
+
+        {/* Include in Zakat Calculation (Edit Mode) */}
+        {isEdit && (
+          <View className="mb-5 flex-row items-center justify-between rounded-lg border border-slate-500 bg-slate-600/40 px-3 py-3">
+            <View className="flex-1 pr-3">
+              <Text className="text-[12px] font-bold text-slate-200">
+                Include in Zakat Calculation
+              </Text>
+              <Text className="text-[10px] text-slate-400 mt-0.5">
+                Turn off if this is money you're holding for someone else
+              </Text>
+            </View>
+            <Switch
+              value={editAsset.is_calculate}
+              onValueChange={(value) =>
+                setEditAsset({ ...editAsset, is_calculate: value })
+              }
+              trackColor={{ false: "#475569", true: "#10b981" }}
+              thumbColor="#ffffff"
             />
           </View>
         )}
@@ -455,12 +538,15 @@ export function AssetCard(asset: AssetInterface) {
                   id,
                   category,
                   name,
+                  platform,
                   unit,
                   quantity,
                   price,
                   goal,
+                  cost_basis,
+                  note,
+                  is_calculate,
                 });
-                setEditValueMode(quantity !== null ? "quantity" : "price");
               }}
               className="flex-1 bg-slate-600/40 rounded-lg py-3"
             >
