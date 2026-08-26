@@ -1,0 +1,58 @@
+# ---- Go / build artifacts ----
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output directories
+/bin/
+/build/
+/dist/
+
+# Test / coverage
+coverage.out
+*.prof
+
+# Go vendor (if you vendor dependencies locally)
+/vendor/
+
+# ---- Environment / secrets ----
+# Local env files and folder (project has an `env` folder)
+.env
+.env.*
+.env.local
+env/
+env/*.env
+.envrc
+
+# ---- Temporary files ----
+/tmp/
+tmp/
+
+# Logs
+*.log
+logs/
+
+# ---- IDE / editors ----
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# JetBrains / GoLand
+out/
+*.iws
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Misc ----
+*.o
+*.obj
+*.exe
+*.log

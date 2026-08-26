@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Go Fiber Telemetry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root {
+            --bg1: #040611;
+            --bg2: #070b16;
+            --glass: rgba(255, 255, 255, .06);
+            --border: rgba(255, 255, 255, .18);
+            --text: #e9ebef;
+            --muted: #9aa0ad;
+            --accent: #7c7cff;
+        }
+
+        /* ---------- GLOBAL ---------- */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: system-ui, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 600px at 50% -20%, #1a1f3c, transparent 60%),
+                radial-gradient(900px 500px at 80% 90%, #1b1b3a, transparent 60%),
+                linear-gradient(180deg, var(--bg1), var(--bg2));
+            overflow: hidden;
+        }
+
+        /* ---------- LIGHT LEAK ---------- */
+        .light-leak {
+            position: fixed;
+            inset: -50%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(124, 124, 255, .08), transparent 60%),
+                radial-gradient(circle at 80% 70%, rgba(180, 140, 255, .06), transparent 60%);
+            animation: leak 18s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes leak {
+
+            0%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            50% {
+                transform: translate(-6%, 4%);
+            }
+        }
+
+        /* ---------- CARD ---------- */
+        .card {
+            position: relative;
+            width: 680px;
+            min-height: 520px;
+            padding: 3.4rem 3.6rem;
+            border-radius: 32px;
+
+            background:
+                radial-gradient(140% 160% at 30% 10%,
+                    rgba(124, 124, 255, .20),
+                    rgba(255, 255, 255, .06) 45%,
+                    rgba(255, 255, 255, .02) 75%),
+                linear-gradient(145deg,
+                    rgba(255, 255, 255, .14),
+                    rgba(255, 255, 255, .03));
+
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, .20);
+
+            box-shadow:
+                0 90px 200px rgba(0, 0, 0, .9),
+                0 0 180px rgba(124, 124, 255, .45),
+                inset 0 1px 0 rgba(255, 255, 255, .3);
+
+            transform-style: preserve-3d;
+            animation: float 7s ease-in-out infinite,
+                glow 6s ease-in-out infinite;
+        }
+
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: -45%;
+            background: radial-gradient(circle, rgba(124, 124, 255, .45), transparent 70%);
+            filter: blur(90px);
+            z-index: -2;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            background: linear-gradient(120deg,
+                    transparent 20%,
+                    rgba(124, 124, 255, .9),
+                    transparent 80%);
+            opacity: .35;
+            filter: blur(26px);
+            z-index: -1;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 70px 160px rgba(0, 0, 0, .85),
+                    0 0 120px rgba(124, 124, 255, .25);
+            }
+
+            50% {
+                box-shadow: 0 80px 180px rgba(0, 0, 0, .9),
+                    0 0 160px rgba(124, 124, 255, .45);
+            }
+        }
+
+        /* ---------- HEADER ---------- */
+        h1 {
+            text-align: center;
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 1.8rem;
+        }
+
+        /* ---------- METRICS ---------- */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .8rem;
+        }
+
+        .metric {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: .8rem;
+            text-align: center;
+        }
+
+        .metric span {
+            display: block;
+            font-size: .7rem;
+            color: var(--muted);
+        }
+
+        .metric strong {
+            font-size: 1.15rem;
+        }
+
+        /* ---------- GRAPH ---------- */
+        canvas {
+            width: 100%;
+            height: 120px;
+            margin-top: 1.4rem;
+        }
+
+        /* ---------- LOGS ---------- */
+        .logs {
+            margin-top: 1.4rem;
+            background: #050811;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: .8rem;
+            font-family: monospace;
+            font-size: .75rem;
+            max-height: 120px;
+            overflow: hidden;
+            color: #aeefff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="light-leak"></div>
+
+    <div class="card">
+        <h1>🚀 Go Fiber</h1>
+        <div class="subtitle">Live Server Telemetry</div>
+
+        <div class="metrics">
+            <div class="metric"><span>Uptime</span><strong id="uptime">0s</strong></div>
+            <div class="metric"><span>Requests</span><strong id="req">0</strong></div>
+            <div class="metric"><span>RPS</span><strong id="rps">0</strong></div>
+            <div class="metric"><span>Memory</span><strong id="mem">0MB</strong></div>
+        </div>
+
+        <canvas id="graph"></canvas>
+
+        <div class="logs" id="logs"></div>
+    </div>
+
+    <script>
+        /* ---------- METRICS ---------- */
+        const ctx = document.getElementById("graph").getContext("2d");
+        const canvas = ctx.canvas;
+        const uptimeEl = document.getElementById("uptime");
+        const reqEl = document.getElementById("req");
+        const rpsEl = document.getElementById("rps");
+        const memEl = document.getElementById("mem");
+        const logsEl = document.getElementById("logs");
+
+        let points = [];
+
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        resize();
+        addEventListener("resize", resize);
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (points.length < 2) return;
+
+            const max = Math.max(...points, 1);
+
+            ctx.shadowColor = "#7c7cff";
+            ctx.shadowBlur = 14;
+            ctx.strokeStyle = "#8a8aff";
+            ctx.lineWidth = 2.2;
+
+            ctx.beginPath();
+            points.forEach((v, i) => {
+                const x = i / (points.length - 1) * canvas.width;
+                const y = canvas.height - (v / max) * canvas.height;
+                i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+            });
+            ctx.stroke();
+        }
+
+        function fmt(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor(sec % 3600 / 60);
+            const s = Math.floor(sec % 60);
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        async function update() {
+            const r = await fetch("/metrics");
+            const m = await r.json();
+
+            uptimeEl.textContent = fmt(m.uptime);
+            reqEl.textContent = m.requests;
+            rpsEl.textContent = m.rps;
+            memEl.textContent = m.memory + "MB";
+
+            points.push(m.rps);
+            if (points.length > 40) points.shift();
+            draw();
+
+            logsEl.innerHTML = m.logs.slice(-8).join("<br>");
+        }
+
+        update();
+        setInterval(update, 1000);
+
+        /* ---------- PARALLAX ---------- */
+        const card = document.querySelector(".card");
+        document.addEventListener("mousemove", e => {
+            const r = card.getBoundingClientRect();
+            const x = e.clientX - r.left - r.width / 2;
+            const y = e.clientY - r.top - r.height / 2;
+            card.style.transform =
+                `rotateX(${(-y / r.height) * 10}deg)
+         rotateY(${(x / r.width) * 10}deg)
+         translateY(-8px)`;
+        });
+
+        document.addEventListener("mouseleave", () => {
+            card.style.transform = "translateY(0)";
+        });
+    </script>
+
+</body>
+
+</html>
