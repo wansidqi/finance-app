@@ -1,13 +1,21 @@
 import { AddAssetModal } from "@/components/asset/add-asset";
+import { ErrorModal } from "@/components/modal/error-modal";
+import { useErrorModal } from "@/components/modal/useErrorModal";
 import { AssetCategory, AssetInterface } from "@/interface/asset";
-import { useGetAssets, useUpdateAsset } from "@/services/asset";
+import {
+  useCreateAsset,
+  useGetAssets,
+  useUpdateAsset,
+} from "@/services/asset";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Modal,
   ScrollView,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,6 +26,7 @@ type PlatformGroup = {
   entries: AssetInterface[];
   walletTotal: number;
   zakatableTotal: number;
+  profitPercent: number | null;
 };
 
 type DisplayItem =
@@ -62,10 +71,27 @@ function groupByPlatform(assets: AssetInterface[]): DisplayItem[] {
         (sum, a) => sum + (a.is_calculate ? (a.price ?? 0) : 0),
         0,
       );
+
+      // Aggregate profit across entries that actually track a cost basis
+      // (cash earmarks usually don't), instead of per-entry, since a
+      // multi-entry platform's growth is a wallet-level story.
+      let costBasisSum = 0;
+      let priceForCostBasisSum = 0;
+      for (const a of entries) {
+        if (a.cost_basis && a.cost_basis > 0) {
+          costBasisSum += a.cost_basis;
+          priceForCostBasisSum += a.price ?? 0;
+        }
+      }
+      const profitPercent =
+        costBasisSum > 0
+          ? ((priceForCostBasisSum - costBasisSum) / costBasisSum) * 100
+          : null;
+
       return {
         type: "group",
         total: walletTotal,
-        group: { platform, entries, walletTotal, zakatableTotal },
+        group: { platform, entries, walletTotal, zakatableTotal, profitPercent },
       };
     },
   );
@@ -84,6 +110,7 @@ export function Asset() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalPlatform, setModalPlatform] = useState<string | undefined>();
   const [modalLinkId, setModalLinkId] = useState<number | undefined>();
+  const [balanceGroup, setBalanceGroup] = useState<PlatformGroup | null>(null);
   const router = useRouter();
   const { mutate: updateAsset } = useUpdateAsset();
 
@@ -177,6 +204,11 @@ export function Asset() {
                           onToggle={toggleCalculate}
                           onPressEntry={goToDetail}
                           onAdd={() => openAddModal(item.group.platform)}
+                          onUpdateBalance={
+                            item.group.entries.length > 1
+                              ? () => setBalanceGroup(item.group)
+                              : undefined
+                          }
                         />
                       ) : (
                         <StandaloneAssetCard
@@ -214,7 +246,117 @@ export function Asset() {
         initialPlatform={modalPlatform}
         linkAssetId={modalLinkId}
       />
+
+      <UpdateBalanceModal
+        visible={!!balanceGroup}
+        group={balanceGroup}
+        onClose={() => setBalanceGroup(null)}
+      />
     </View>
+  );
+}
+
+function UpdateBalanceModal({
+  visible,
+  group,
+  onClose,
+}: {
+  visible: boolean;
+  group: PlatformGroup | null;
+  onClose: () => void;
+}) {
+  const [totalInput, setTotalInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const { mutateAsync: createAsset } = useCreateAsset();
+  const { mutateAsync: updateAsset } = useUpdateAsset();
+  const { error, isVisible, hideError, showError } = useErrorModal();
+
+  const catchAll = group?.entries.find((a) => a.platform_total !== null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setTotalInput(catchAll ? String(catchAll.platform_total) : "");
+  }, [visible, catchAll?.id]);
+
+  if (!group) return null;
+
+  const handleSave = async () => {
+    const amount = Number(totalInput);
+    if (!totalInput || Number.isNaN(amount)) return;
+
+    try {
+      setIsSaving(true);
+      if (catchAll) {
+        await updateAsset({ id: catchAll.id, platform_total: amount });
+      } else {
+        await createAsset({
+          category: group.entries[0].category,
+          platform: group.platform,
+          name: "Balance",
+          platform_total: amount,
+          is_calculate: true,
+        });
+      }
+      onClose();
+    } catch (err: any) {
+      showError(
+        err?.response?.data ?? {
+          message: err?.message ?? "Failed to update balance",
+        },
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <ErrorModal visible={isVisible} error={error} onClose={hideError} />
+      <View className="flex-1 items-center justify-center bg-black/60 px-6">
+        <View className="w-full rounded-2xl bg-slate-800 border border-slate-600 p-5">
+          <Text className="text-[16px] font-bold text-white mb-1">
+            Update {group.platform} Balance
+          </Text>
+          <Text className="text-[11px] text-slate-400 mb-4">
+            Enter this platform's real total (e.g., what the app shows
+            today). The difference from your other entries here is tracked
+            automatically — no need to edit them by hand.
+          </Text>
+          <TextInput
+            value={totalInput}
+            onChangeText={setTotalInput}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            placeholderTextColor="#64748b"
+            autoFocus
+            className="rounded-lg border border-slate-600 px-3 py-2 text-[14px] text-white bg-slate-700/40 mb-4"
+          />
+          <View className="flex-row gap-2.5">
+            <TouchableOpacity
+              onPress={onClose}
+              className="flex-1 rounded-lg bg-slate-700/50 py-2.5 border border-slate-600"
+            >
+              <Text className="text-center font-semibold text-slate-200 text-[13px]">
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={isSaving || !totalInput}
+              onPress={handleSave}
+              className={`flex-1 rounded-lg py-2.5 ${
+                isSaving || !totalInput
+                  ? "bg-slate-600/30 opacity-50"
+                  : "bg-linear-to-r from-emerald-500 to-emerald-600 shadow-lg"
+              }`}
+            >
+              <Text className="text-center font-semibold text-white text-[13px]">
+                {isSaving ? "Saving..." : "Save"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -254,11 +396,13 @@ function PlatformGroupCard({
   onToggle,
   onPressEntry,
   onAdd,
+  onUpdateBalance,
 }: {
   group: PlatformGroup;
   onToggle: (asset: AssetInterface) => void;
   onPressEntry: (id: number) => void;
   onAdd: () => void;
+  onUpdateBalance?: () => void;
 }) {
   const hasExcluded = group.zakatableTotal !== group.walletTotal;
 
@@ -276,6 +420,15 @@ function PlatformGroupCard({
               {group.entries.length > 1 ? "entries" : "entry"}
             </Text>
           </View>
+          {onUpdateBalance && (
+            <TouchableOpacity
+              onPress={onUpdateBalance}
+              hitSlop={8}
+              className="p-1.5 mr-2 rounded-full bg-slate-600/40"
+            >
+              <Ionicons name="sync" size={16} color="#38bdf8" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={onAdd}
             hitSlop={8}
@@ -284,9 +437,23 @@ function PlatformGroupCard({
             <Ionicons name="add" size={16} color="#10b981" />
           </TouchableOpacity>
           <View className="items-end">
-            <Text className="text-[16px] font-bold text-white">
-              RM{group.walletTotal.toLocaleString()}
-            </Text>
+            <View className="flex-row items-baseline gap-1.5">
+              <Text className="text-[16px] font-bold text-white">
+                RM{group.walletTotal.toLocaleString()}
+              </Text>
+              {group.profitPercent !== null && (
+                <Text
+                  className={`text-[11px] font-semibold ${
+                    group.profitPercent >= 0
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  {group.profitPercent >= 0 ? "+" : ""}
+                  {group.profitPercent.toFixed(1)}%
+                </Text>
+              )}
+            </View>
             {hasExcluded && (
               <Text className="text-[10px] font-semibold text-emerald-400 mt-0.5">
                 RM{group.zakatableTotal.toLocaleString()} zakatable
@@ -305,6 +472,7 @@ function PlatformGroupCard({
             isLast={idx === group.entries.length - 1}
             onToggle={() => onToggle(asset)}
             onPress={() => onPressEntry(asset.id)}
+            showProfit={group.entries.length <= 1}
           />
         ))}
       </View>
@@ -342,17 +510,30 @@ function AssetRow({
   onToggle,
   onPress,
   onAdd,
+  showProfit = true,
 }: {
   asset: AssetInterface;
   isLast: boolean;
   onToggle: () => void;
   onPress: () => void;
   onAdd?: () => void;
+  // False when this row lives in a multi-entry platform group — profit
+  // is shown once, aggregated, on the group header instead.
+  showProfit?: boolean;
 }) {
-  const { name, quantity, price, unit, note, cost_basis, is_calculate } = asset;
+  const {
+    name,
+    quantity,
+    price,
+    unit,
+    note,
+    cost_basis,
+    is_calculate,
+    platform_total,
+  } = asset;
 
   const profitPercent =
-    cost_basis && cost_basis > 0 && price !== null
+    showProfit && cost_basis && cost_basis > 0 && price !== null
       ? ((price - cost_basis) / cost_basis) * 100
       : null;
 
@@ -373,7 +554,14 @@ function AssetRow({
               {quantity} {unit}
             </Text>
           )}
-          <Text className="text-[13px] font-semibold text-white">{name}</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-[13px] font-semibold text-white">
+              {name}
+            </Text>
+            {platform_total !== null && (
+              <Ionicons name="sync" size={11} color="#38bdf8" />
+            )}
+          </View>
           {note && (
             <Text
               className="text-[10px] text-slate-400 mt-0.5 italic"

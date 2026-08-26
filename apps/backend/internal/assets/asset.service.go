@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"errors"
 	"go-fiber-app/pkg/db"
 	"go-fiber-app/pkg/helper"
 	"strings"
@@ -19,23 +20,44 @@ func (s *Service) Create(req *CreateAssetRequest) (*Asset, error) {
 		isCalculate = *req.IsCalculate
 	}
 
+	category := strings.ToUpper(req.Category)
+
+	if req.PlatformTotal != nil {
+		platform := ""
+		if req.Platform != nil {
+			platform = strings.TrimSpace(*req.Platform)
+		}
+		if platform == "" {
+			return nil, errors.New("platform is required to set a platform total")
+		}
+
+		exists, err := s.hasPlatformTotal(category, platform, nil)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, errors.New("this platform already has a balance total set on another entry")
+		}
+	}
+
 	query := `INSERT INTO assets
-			(user_id, platform, category, name, quantity, unit, goal, price, cost_basis, note, is_calculate, status)
-			VALUES ( :user_id, :platform, :category, :name, :quantity, :unit, :goal, :price, :cost_basis, :note, :is_calculate, :status)`
+			(user_id, platform, category, name, quantity, unit, goal, price, cost_basis, note, is_calculate, platform_total, status)
+			VALUES ( :user_id, :platform, :category, :name, :quantity, :unit, :goal, :price, :cost_basis, :note, :is_calculate, :platform_total, :status)`
 
 	args := map[string]any{
-		"user_id":      req.UserId,
-		"platform":     req.Platform,
-		"category":     strings.ToUpper(req.Category),
-		"name":         req.Name,
-		"quantity":     req.Quantity,
-		"price":        req.Price,
-		"unit":         req.Unit,
-		"goal":         req.Goal,
-		"cost_basis":   req.CostBasis,
-		"note":         req.Note,
-		"is_calculate": isCalculate,
-		"status":       "ACTIVE",
+		"user_id":        req.UserId,
+		"platform":       req.Platform,
+		"category":       category,
+		"name":           req.Name,
+		"quantity":       req.Quantity,
+		"price":          req.Price,
+		"unit":           req.Unit,
+		"goal":           req.Goal,
+		"cost_basis":     req.CostBasis,
+		"note":           req.Note,
+		"is_calculate":   isCalculate,
+		"platform_total": req.PlatformTotal,
+		"status":         "ACTIVE",
 	}
 
 	result, err := db.GetDB().NamedExec(query, args)
@@ -63,6 +85,12 @@ func (s *Service) GetAssetById(id int) (*Asset, error) {
 		return nil, err
 	}
 
+	if asset.PlatformTotal != nil && asset.Platform != nil {
+		if err := s.applyComputedPrice(asset); err != nil {
+			return nil, err
+		}
+	}
+
 	return asset, err
 }
 
@@ -71,23 +99,53 @@ func (s *Service) GetAllAssets() ([]Asset, error) {
 	query := `SELECT * FROM assets where status = 'ACTIVE'`
 
 	err := db.GetDB().Select(&assets, query)
+	if err != nil {
+		return nil, err
+	}
 
-	return assets, err
+	applyComputedPrices(assets)
+
+	return assets, nil
 }
 
 func (s *Service) Update(id int, req *UpdateAssetRequest) (*Asset, error) {
 
-	if _, err := s.GetAssetById(id); err != nil {
+	existing, err := s.GetAssetById(id)
+	if err != nil {
 		return nil, err
+	}
+
+	category := existing.Category
+	if req.Category != nil {
+		upper := strings.ToUpper(*req.Category)
+		req.Category = &upper
+		category = upper
+	}
+
+	platform := ""
+	if existing.Platform != nil {
+		platform = *existing.Platform
+	}
+	if req.Platform != nil {
+		platform = strings.TrimSpace(*req.Platform)
+	}
+
+	if req.PlatformTotal != nil {
+		if platform == "" {
+			return nil, errors.New("platform is required to set a platform total")
+		}
+
+		exists, err := s.hasPlatformTotal(category, platform, &id)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, errors.New("this platform already has a balance total set on another entry")
+		}
 	}
 
 	args := map[string]any{"id": id}
 	set := []string{"updated_at = CURRENT_TIMESTAMP"}
-
-	if req.Category != nil {
-		upper := strings.ToUpper(*req.Category)
-		req.Category = &upper
-	}
 
 	helper.UpdateField(req.Platform, "platform", &set, args)
 	helper.UpdateField(req.Category, "category", &set, args)
@@ -100,6 +158,12 @@ func (s *Service) Update(id int, req *UpdateAssetRequest) (*Asset, error) {
 	helper.UpdateField(req.IsCalculate, "is_calculate", &set, args)
 	helper.UpdateField(req.Status, "status", &set, args)
 	helper.UpdateField(req.Unit, "unit", &set, args)
+
+	if req.ClearPlatformTotal {
+		set = append(set, "platform_total = NULL")
+	} else {
+		helper.UpdateField(req.PlatformTotal, "platform_total", &set, args)
+	}
 
 	if len(set) == 1 {
 		return nil, nil
@@ -117,4 +181,85 @@ func (s *Service) Delete(id int) error {
 	query := `DELETE FROM assets WHERE id = ?;`
 	_, err := db.GetDB().Exec(query, id)
 	return err
+}
+
+// hasPlatformTotal reports whether another asset in the same category+
+// platform already tracks that platform's real total, since only one
+// entry per platform can act as the catch-all balance.
+func (s *Service) hasPlatformTotal(category, platform string, excludeId *int) (bool, error) {
+	query := `SELECT COUNT(*) FROM assets WHERE status = 'ACTIVE' AND category = ? AND platform = ? AND platform_total IS NOT NULL`
+	args := []any{category, platform}
+
+	if excludeId != nil {
+		query += ` AND id != ?`
+		args = append(args, *excludeId)
+	}
+
+	var count int
+	if err := db.GetDB().Get(&count, query, args...); err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// applyComputedPrice recomputes a single catch-all asset's Price against
+// its current siblings, used by GetAssetById where the full asset list
+// isn't already loaded.
+func (s *Service) applyComputedPrice(target *Asset) error {
+	var siblings []Asset
+	query := `SELECT * FROM assets WHERE status = 'ACTIVE' AND category = ? AND platform = ? AND id != ?`
+	if err := db.GetDB().Select(&siblings, query, target.Category, *target.Platform, target.Id); err != nil {
+		return err
+	}
+
+	var sum float64
+	for _, sibling := range siblings {
+		if sibling.Price != nil {
+			sum += *sibling.Price
+		}
+	}
+
+	computed := *target.PlatformTotal - sum
+	target.Price = &computed
+	return nil
+}
+
+// applyComputedPrices overrides, in place, the Price of every catch-all
+// asset (one with PlatformTotal set) to PlatformTotal minus the sum of
+// its non-catch-all siblings sharing the same category+platform. This
+// keeps a platform's real, fluctuating total (e.g. a wallet earning
+// daily interest) in sync without redistributing the change across the
+// manually-earmarked entries.
+func applyComputedPrices(assets []Asset) {
+	type key struct {
+		category string
+		platform string
+	}
+
+	sums := map[key]float64{}
+	catchAlls := map[key]int{}
+
+	for i := range assets {
+		a := &assets[i]
+		if a.Platform == nil || strings.TrimSpace(*a.Platform) == "" {
+			continue
+		}
+
+		k := key{a.Category, *a.Platform}
+
+		if a.PlatformTotal != nil {
+			catchAlls[k] = i
+			continue
+		}
+
+		if a.Price != nil {
+			sums[k] += *a.Price
+		}
+	}
+
+	for k, idx := range catchAlls {
+		computed := *assets[idx].PlatformTotal - sums[k]
+		assets[idx].Price = &computed
+	}
 }

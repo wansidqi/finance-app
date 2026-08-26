@@ -7,6 +7,7 @@ import { useErrorModal } from "@/components/modal/useErrorModal";
 import { AssetInterface, BaseAsset } from "@/interface/asset";
 import {
   useDeleteAsset,
+  useGetAssets,
   useGetAssetsById,
   useUpdateAssetById,
 } from "@/services/asset";
@@ -88,11 +89,13 @@ export function AssetCard(asset: AssetInterface) {
     cost_basis,
     note,
     is_calculate,
+    platform_total,
     status,
   } = asset;
 
   const { mutateAsync } = useUpdateAssetById(id);
   const { mutateAsync: deleteAsset } = useDeleteAsset(id);
+  const { data: allAssets } = useGetAssets();
 
   const [isEdit, setIsEdit] = useState(false);
   const editAnimRef = useRef(new Animated.Value(0)).current;
@@ -109,9 +112,23 @@ export function AssetCard(asset: AssetInterface) {
     cost_basis,
     note,
     is_calculate,
+    platform_total,
   });
 
   const { error, isVisible, hideError, showError } = useErrorModal();
+
+  // True when this asset shares its category+platform with another entry
+  // (a multi-entry group), where profit % is aggregated on the platform
+  // card in the list instead of shown per entry.
+  const trimmedEditPlatform = editAsset.platform?.trim().toLowerCase() ?? "";
+  const isGrouped =
+    !!trimmedEditPlatform &&
+    (allAssets ?? []).some(
+      (a) =>
+        a.id !== id &&
+        a.category === editAsset.category &&
+        a.platform?.trim().toLowerCase() === trimmedEditPlatform,
+    );
 
   // DELETE confirmation modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -121,7 +138,7 @@ export function AssetCard(asset: AssetInterface) {
   const progress = goal && price !== null ? (price / goal) * 100 : 0;
 
   const profitPercent =
-    cost_basis && cost_basis > 0 && price !== null
+    !isGrouped && cost_basis && cost_basis > 0 && price !== null
       ? ((price - cost_basis) / cost_basis) * 100
       : null;
 
@@ -135,7 +152,11 @@ export function AssetCard(asset: AssetInterface) {
 
   const updateAsset = async () => {
     try {
-      await mutateAsync(editAsset);
+      const payload: BaseAsset = { ...editAsset };
+      if (platform_total !== null && editAsset.platform_total === null) {
+        payload.clear_platform_total = true;
+      }
+      await mutateAsync(payload);
       setIsEdit(false);
     } catch (error: any) {
       const apiError = error?.response?.data ?? {
@@ -245,6 +266,13 @@ export function AssetCard(asset: AssetInterface) {
                     </Text>
                   </View>
                 )}
+                {platform_total !== null && (
+                  <View className="bg-sky-500/20 rounded-full px-3 py-1">
+                    <Text className="text-[10px] font-semibold text-sky-400">
+                      Auto-tracked balance
+                    </Text>
+                  </View>
+                )}
               </View>
             }
           />
@@ -347,6 +375,17 @@ export function AssetCard(asset: AssetInterface) {
                 {quantity} {unit}
               </Text>
             )}
+            {platform_total !== null && (
+              <Text className="text-[11px] text-sky-400 mt-1">
+                = RM{platform_total.toLocaleString()} platform total − other
+                entries on {platform}
+              </Text>
+            )}
+            {isGrouped && cost_basis && cost_basis > 0 && (
+              <Text className="text-[11px] text-slate-400 mt-1">
+                Profit % is shown combined on the platform card in the list
+              </Text>
+            )}
             {note && (
               <Text className="text-[12px] text-slate-400 mt-2 italic">
                 {note}
@@ -362,16 +401,25 @@ export function AssetCard(asset: AssetInterface) {
               <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                 Current Value (RM)
               </Text>
-              <TextInput
-                value={editAsset.price?.toString() || ""}
-                onChangeText={(text) =>
-                  setEditAsset({ ...editAsset, price: Number(text) || null })
-                }
-                placeholder="0.00"
-                placeholderTextColor="#94a3b8"
-                keyboardType="decimal-pad"
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
-              />
+              {editAsset.platform_total !== null &&
+              editAsset.platform_total !== undefined ? (
+                <View className="border border-slate-600 rounded-lg py-2 px-2.5 bg-slate-700/40">
+                  <Text className="text-[12px] text-slate-400">
+                    Auto-computed from platform total below
+                  </Text>
+                </View>
+              ) : (
+                <TextInput
+                  value={editAsset.price?.toString() || ""}
+                  onChangeText={(text) =>
+                    setEditAsset({ ...editAsset, price: Number(text) || null })
+                  }
+                  placeholder="0.00"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="decimal-pad"
+                  className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                />
+              )}
             </View>
             <View className="flex-row gap-2">
               <View className="flex-1">
@@ -424,6 +472,35 @@ export function AssetCard(asset: AssetInterface) {
                 keyboardType="decimal-pad"
                 className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
               />
+              <Text className="text-[10px] text-slate-400 mt-1.5">
+                {isGrouped
+                  ? "This platform has other entries — profit % will show combined on the platform card instead of here."
+                  : "Used to calculate your profit % — leave empty to skip"}
+              </Text>
+            </View>
+            <View>
+              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                Platform Total (Optional)
+              </Text>
+              <TextInput
+                value={editAsset.platform_total?.toString() || ""}
+                onChangeText={(text) =>
+                  setEditAsset({
+                    ...editAsset,
+                    platform_total: text ? Number(text) : null,
+                  })
+                }
+                placeholder="e.g., 433 — this platform's real balance"
+                placeholderTextColor="#94a3b8"
+                keyboardType="decimal-pad"
+                editable={!!editAsset.platform}
+                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              />
+              <Text className="text-[10px] text-slate-400 mt-1.5">
+                {editAsset.platform
+                  ? "Marks this as the platform's real total — value becomes this total minus your other entries on the same platform."
+                  : "Set a Platform above first"}
+              </Text>
             </View>
             <View>
               <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
@@ -546,6 +623,7 @@ export function AssetCard(asset: AssetInterface) {
                   cost_basis,
                   note,
                   is_calculate,
+                  platform_total,
                 });
               }}
               className="flex-1 bg-slate-600/40 rounded-lg py-3"

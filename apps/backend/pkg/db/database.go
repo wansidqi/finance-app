@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS assets (
 	cost_basis REAL NULL,
 	note TEXT NULL,
 	is_calculate BOOLEAN NOT NULL DEFAULT 1,
+	platform_total REAL NULL,
 	status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP
@@ -60,6 +61,7 @@ var assetColumnMigrations = []string{
 	"ALTER TABLE assets ADD COLUMN cost_basis REAL NULL",
 	"ALTER TABLE assets ADD COLUMN is_calculate BOOLEAN NOT NULL DEFAULT 1",
 	"ALTER TABLE assets ADD COLUMN note TEXT NULL",
+	"ALTER TABLE assets ADD COLUMN platform_total REAL NULL",
 }
 
 func migrateSchema(db *sqlx.DB) error {

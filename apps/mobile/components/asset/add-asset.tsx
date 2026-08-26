@@ -1,4 +1,4 @@
-import { useCreateAsset, useUpdateAsset } from "@/services/asset";
+import { useCreateAsset, useGetAssets, useUpdateAsset } from "@/services/asset";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
@@ -45,11 +45,25 @@ export function AddAssetModal({
   const [costBasis, setCostBasis] = useState("");
   const [note, setNote] = useState("");
   const [isCalculate, setIsCalculate] = useState(true);
+  const [platformTotal, setPlatformTotal] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const { error, isVisible, hideError, showError } = useErrorModal();
 
   const { mutateAsync: createAsset } = useCreateAsset();
   const { mutateAsync: updateAsset } = useUpdateAsset();
+  const { data: existingAssets } = useGetAssets();
+
+  // If this platform already holds another entry in the same category,
+  // this new one will land in a multi-entry group, where profit % is
+  // shown once, aggregated, on the platform card — not per entry.
+  const trimmedPlatform = platform.trim().toLowerCase();
+  const willBeGrouped =
+    !!trimmedPlatform &&
+    (existingAssets ?? []).some(
+      (a) =>
+        a.category === category &&
+        a.platform?.trim().toLowerCase() === trimmedPlatform,
+    );
 
   // Re-seed the form (with the requested platform) every time the modal opens.
   useEffect(() => {
@@ -64,6 +78,7 @@ export function AddAssetModal({
     setCostBasis("");
     setNote("");
     setIsCalculate(true);
+    setPlatformTotal("");
     setShowDetails(false);
   }, [visible, initialPlatform]);
 
@@ -72,13 +87,14 @@ export function AddAssetModal({
       category,
       name,
       platform: platform || null,
-      price: value ? Number(value) : null,
+      price: platformTotal ? null : value ? Number(value) : null,
       quantity: quantity ? Number(quantity) : null,
       unit: unit || "",
       goal: goal ? Number(goal) : null,
       cost_basis: costBasis ? Number(costBasis) : null,
       note: note || null,
       is_calculate: isCalculate,
+      platform_total: platformTotal ? Number(platformTotal) : null,
     };
 
     try {
@@ -96,7 +112,8 @@ export function AddAssetModal({
     }
   };
 
-  const disabled = !name || !value;
+  const disabled =
+    !name || (!platformTotal && !value) || (!!platformTotal && !platform);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -213,14 +230,22 @@ export function AddAssetModal({
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Current Value (RM)
                 </Text>
-                <TextInput
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
-                  value={value}
-                  onChangeText={setValue}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                />
+                {platformTotal ? (
+                  <View className="rounded-lg border border-slate-700 px-3 py-2 bg-slate-800/40">
+                    <Text className="text-[13px] text-slate-400">
+                      Auto-computed from platform total below
+                    </Text>
+                  </View>
+                ) : (
+                  <TextInput
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                    value={value}
+                    onChangeText={setValue}
+                    placeholderTextColor="#64748b"
+                    className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                  />
+                )}
               </View>
 
               {/* Advanced details toggle */}
@@ -283,7 +308,9 @@ export function AddAssetModal({
                       className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
                     />
                     <Text className="text-[10px] text-slate-400 mt-1.5">
-                      Used to calculate your profit % — leave empty to skip
+                      {willBeGrouped
+                        ? "This platform already has other entries — profit % will show combined on the platform card instead of here."
+                        : "Used to calculate your profit % — leave empty to skip"}
                     </Text>
                   </View>
 
@@ -320,6 +347,29 @@ export function AddAssetModal({
                       className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
                       style={{ minHeight: 56, textAlignVertical: "top" }}
                     />
+                  </View>
+
+                  {/* Platform Total (auto-computed balance) */}
+                  <View className="mb-4">
+                    <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                      Platform Total (Optional)
+                    </Text>
+                    <TextInput
+                      placeholder="e.g., 433 — TNG eWallet's real balance"
+                      keyboardType="decimal-pad"
+                      value={platformTotal}
+                      onChangeText={setPlatformTotal}
+                      placeholderTextColor="#64748b"
+                      editable={!!platform}
+                      className={`rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30 ${
+                        !platform ? "opacity-50" : ""
+                      }`}
+                    />
+                    <Text className="text-[10px] text-slate-400 mt-1.5">
+                      {platform
+                        ? "Marks this as Platform's real total — its value becomes this total minus your other entries on the same platform. Use it for a balance that moves on its own, like interest."
+                        : "Set a Platform above first"}
+                    </Text>
                   </View>
 
                   {/* Include in Zakat calculation */}
