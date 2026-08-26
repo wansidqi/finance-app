@@ -45,6 +45,7 @@ export function AddAssetModal({
   const [costBasis, setCostBasis] = useState("");
   const [note, setNote] = useState("");
   const [isCalculate, setIsCalculate] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
   const { error, isVisible, hideError, showError } = useErrorModal();
 
   const { mutateAsync: createAsset } = useCreateAsset();
@@ -63,6 +64,7 @@ export function AddAssetModal({
     setCostBasis("");
     setNote("");
     setIsCalculate(true);
+    setShowDetails(false);
   }, [visible, initialPlatform]);
 
   const handleSave = async () => {
@@ -221,106 +223,125 @@ export function AddAssetModal({
                 />
               </View>
 
-              {/* Quantity & Unit (optional context) */}
-              <View className="mb-3 flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                    Quantity (Optional)
-                  </Text>
-                  <TextInput
-                    placeholder="e.g., 15"
-                    keyboardType="decimal-pad"
-                    value={quantity}
-                    onChangeText={setQuantity}
-                    placeholderTextColor="#64748b"
-                    className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                    Unit
-                  </Text>
-                  <TextInput
-                    placeholder="e.g., gram, BTC, shares"
-                    value={unit}
-                    onChangeText={setUnit}
-                    placeholderTextColor="#64748b"
-                    className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                  />
-                </View>
-              </View>
-
-              {/* Cost Basis */}
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Cost Basis (Optional)
+              {/* Advanced details toggle */}
+              <TouchableOpacity
+                onPress={() => setShowDetails((prev) => !prev)}
+                className="mb-4 flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/20 px-3 py-2.5"
+              >
+                <Text className="text-[12px] font-bold text-slate-300">
+                  Add more details
                 </Text>
-                <TextInput
-                  placeholder="How much you paid in total (RM)"
-                  keyboardType="decimal-pad"
-                  value={costBasis}
-                  onChangeText={setCostBasis}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                <Ionicons
+                  name={showDetails ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color="#94a3b8"
                 />
-                <Text className="text-[10px] text-slate-400 mt-1.5">
-                  Used to calculate your profit % — leave empty to skip
-                </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Goal (Optional) */}
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Goal Amount (Optional)
-                </Text>
-                <TextInput
-                  placeholder="Target amount to reach"
-                  keyboardType="numeric"
-                  value={goal}
-                  onChangeText={setGoal}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                />
-                <Text className="text-[10px] text-slate-400 mt-1.5">
-                  Leave empty if you don't have a specific goal
-                </Text>
-              </View>
+              {showDetails && (
+                <>
+                  {/* Quantity & Unit (optional context) */}
+                  <View className="mb-3 flex-row gap-3">
+                    <View className="flex-1">
+                      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                        Quantity (Optional)
+                      </Text>
+                      <TextInput
+                        placeholder="e.g., 15"
+                        keyboardType="decimal-pad"
+                        value={quantity}
+                        onChangeText={setQuantity}
+                        placeholderTextColor="#64748b"
+                        className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                        Unit
+                      </Text>
+                      <TextInput
+                        placeholder="e.g., gram, BTC, shares"
+                        value={unit}
+                        onChangeText={setUnit}
+                        placeholderTextColor="#64748b"
+                        className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                      />
+                    </View>
+                  </View>
 
-              {/* Note */}
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Note (Optional)
-                </Text>
-                <TextInput
-                  placeholder="e.g., Holding for Ali, repay by Sept"
-                  value={note}
-                  onChangeText={setNote}
-                  multiline
-                  numberOfLines={2}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                  style={{ minHeight: 56, textAlignVertical: "top" }}
-                />
-              </View>
+                  {/* Cost Basis */}
+                  <View className="mb-4">
+                    <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                      Cost Basis (Optional)
+                    </Text>
+                    <TextInput
+                      placeholder="How much you paid in total (RM)"
+                      keyboardType="decimal-pad"
+                      value={costBasis}
+                      onChangeText={setCostBasis}
+                      placeholderTextColor="#64748b"
+                      className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                    />
+                    <Text className="text-[10px] text-slate-400 mt-1.5">
+                      Used to calculate your profit % — leave empty to skip
+                    </Text>
+                  </View>
 
-              {/* Include in Zakat calculation */}
-              <View className="mb-5 flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/30 px-3 py-3">
-                <View className="flex-1 pr-3">
-                  <Text className="text-[12px] font-bold text-slate-200">
-                    Include in Zakat Calculation
-                  </Text>
-                  <Text className="text-[10px] text-slate-400 mt-0.5">
-                    Turn off if this is money you're holding for someone
-                    else
-                  </Text>
-                </View>
-                <Switch
-                  value={isCalculate}
-                  onValueChange={setIsCalculate}
-                  trackColor={{ false: "#475569", true: "#10b981" }}
-                  thumbColor="#ffffff"
-                />
-              </View>
+                  {/* Goal (Optional) */}
+                  <View className="mb-4">
+                    <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                      Goal Amount (Optional)
+                    </Text>
+                    <TextInput
+                      placeholder="Target amount to reach"
+                      keyboardType="numeric"
+                      value={goal}
+                      onChangeText={setGoal}
+                      placeholderTextColor="#64748b"
+                      className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                    />
+                    <Text className="text-[10px] text-slate-400 mt-1.5">
+                      Leave empty if you don't have a specific goal
+                    </Text>
+                  </View>
+
+                  {/* Note */}
+                  <View className="mb-4">
+                    <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                      Note (Optional)
+                    </Text>
+                    <TextInput
+                      placeholder="e.g., Holding for Ali, repay by Sept"
+                      value={note}
+                      onChangeText={setNote}
+                      multiline
+                      numberOfLines={2}
+                      placeholderTextColor="#64748b"
+                      className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                      style={{ minHeight: 56, textAlignVertical: "top" }}
+                    />
+                  </View>
+
+                  {/* Include in Zakat calculation */}
+                  <View className="mb-5 flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/30 px-3 py-3">
+                    <View className="flex-1 pr-3">
+                      <Text className="text-[12px] font-bold text-slate-200">
+                        Include in Zakat Calculation
+                      </Text>
+                      <Text className="text-[10px] text-slate-400 mt-0.5">
+                        Turn off if this is money you're holding for someone
+                        else
+                      </Text>
+                    </View>
+                    <Switch
+                      value={isCalculate}
+                      onValueChange={setIsCalculate}
+                      trackColor={{ false: "#475569", true: "#10b981" }}
+                      thumbColor="#ffffff"
+                    />
+                  </View>
+                </>
+              )}
 
               {/* Actions */}
               <View className="flex-row gap-3">

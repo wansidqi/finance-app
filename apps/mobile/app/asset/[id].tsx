@@ -218,7 +218,7 @@ export function AssetCard(asset: AssetInterface) {
               </View>
             }
             editOff={
-              <View className="flex-row items-center gap-2 flex-wrap">
+              <View className="flex-1 flex-row items-center gap-2 flex-wrap pr-2">
                 <View className="bg-emerald-500/20 rounded-full px-3 py-1">
                   <Text className="text-[11px] font-bold text-emerald-400">
                     {category}
@@ -249,7 +249,7 @@ export function AssetCard(asset: AssetInterface) {
             }
           />
 
-          <View className="flex-row">
+          <View className="flex-row flex-shrink-0">
             <TouchableOpacity
               onPress={() => setIsEdit(!isEdit)}
               className={`ml-3 p-2.5 rounded-full ${
