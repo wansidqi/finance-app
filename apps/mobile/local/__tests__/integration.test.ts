@@ -29,7 +29,7 @@ jest.mock("expo-sqlite", () => {
 });
 
 import { createAsset, getAllAssets, updateAsset } from "../asset-service";
-import { getAllCategories, upsertTracker } from "../zakat-service";
+import { getAllCategories, setCombineCategories, upsertTracker } from "../zakat-service";
 
 describe("local-first integration (real SQLite via node:sqlite)", () => {
   test("create a CASH asset and see it reflected in getAllAssets", async () => {
@@ -119,5 +119,39 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     expect(cash!.last_paid_date).toBe(paidDate);
     expect(cash!.haul_start_date).toBe(paidDate);
     expect(cash!.next_due_date).not.toBeNull();
+  }, 15000);
+
+  test("toggling combine on seeds the combined tracker from the earliest per-category haul start", async () => {
+    const backdated = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString();
+    await upsertTracker({ category: "GOLD", status: "ACTIVE", last_paid_date: backdated });
+
+    await setCombineCategories(true);
+    await upsertTracker({ category: "ALL", status: "ACTIVE" });
+
+    const categories = await getAllCategories();
+    const combined = categories.find((c) => c.category === "ALL");
+    expect(combined!.is_tracked).toBe(true);
+    // GOLD's haul start (backdated) is earlier than CASH's (from the previous
+    // test), so the combined tracker should anchor to GOLD's date, not CASH's.
+    expect(combined!.haul_start_date).toBe(backdated);
+    expect(combined!.last_paid_date).toBeNull();
+  }, 15000);
+
+  test("toggling combine off propagates the combined payment to stale per-category trackers", async () => {
+    const combinedPaidDate = new Date().toISOString();
+    await upsertTracker({ category: "ALL", status: "ACTIVE", last_paid_date: combinedPaidDate });
+
+    await setCombineCategories(false);
+
+    const categories = await getAllCategories();
+    const gold = categories.find((c) => c.category === "GOLD");
+    const cash = categories.find((c) => c.category === "CASH");
+    // Both were frozen with older dates while combine mode was on; splitting
+    // back out should carry the combined payment forward so neither shows
+    // as overdue for wealth already zakat'd via the combined pool.
+    expect(gold!.last_paid_date).toBe(combinedPaidDate);
+    expect(gold!.haul_start_date).toBe(combinedPaidDate);
+    expect(cash!.last_paid_date).toBe(combinedPaidDate);
+    expect(cash!.haul_start_date).toBe(combinedPaidDate);
   }, 15000);
 });

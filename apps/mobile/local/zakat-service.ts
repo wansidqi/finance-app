@@ -91,6 +91,13 @@ async function getAllTrackers(): Promise<ZakatTrackerRow[]> {
   return db.getAllAsync<ZakatTrackerRow>("SELECT * FROM zakat_tracker WHERE status = 'ACTIVE'");
 }
 
+/** Categories that already have a tracker row, active or not — used to tell a brand-new category (never seen) from one the user explicitly untracked. */
+async function getKnownCategoryNames(): Promise<Set<string>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ category: string }>("SELECT category FROM zakat_tracker");
+  return new Set(rows.map((r) => r.category));
+}
+
 async function updateHaulStartDate(category: string, haulStart: Date | null): Promise<void> {
   const db = await getDb();
   await db.runAsync(
@@ -111,8 +118,45 @@ export async function getZakatSettings(): Promise<ZakatSettingsDto> {
   return { combine_categories: !!row?.combine_categories };
 }
 
+/**
+ * When leaving combine mode, per-category trackers were frozen at whatever
+ * state they were in when combine mode turned on — payments made via the
+ * combined tracker never touched them. Before splitting back out, carry
+ * that payment forward: any category whose own last_paid_date is missing or
+ * older than the combined tracker's is treated as paid on that date too, so
+ * it doesn't reappear as OVERDUE for wealth that was already zakat'd as
+ * part of the combined pool.
+ */
+async function propagateCombinedPaymentToCategories(): Promise<void> {
+  const db = await getDb();
+  const combined = await db.getFirstAsync<{ last_paid_date: string | null }>(
+    "SELECT last_paid_date FROM zakat_tracker WHERE category = ?",
+    COMBINED_CATEGORY,
+  );
+  const combinedPaidDate = combined?.last_paid_date ?? null;
+  if (!combinedPaidDate) return;
+
+  await db.runAsync(
+    `UPDATE zakat_tracker
+     SET last_paid_date = ?, haul_start_date = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE category != ? AND (last_paid_date IS NULL OR last_paid_date < ?)`,
+    combinedPaidDate,
+    combinedPaidDate,
+    COMBINED_CATEGORY,
+    combinedPaidDate,
+  );
+}
+
 export async function setCombineCategories(combine: boolean): Promise<void> {
   const db = await getDb();
+
+  if (!combine) {
+    const current = await getZakatSettings();
+    if (current.combine_categories) {
+      await propagateCombinedPaymentToCategories();
+    }
+  }
+
   await db.runAsync(
     `INSERT INTO zakat_settings (id, combine_categories, updated_at)
      VALUES (1, ?, CURRENT_TIMESTAMP)
@@ -159,6 +203,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
 
   const trackers = await getAllTrackers();
   const trackerMap = new Map(trackers.map((t) => [t.category, t]));
+  const knownCategories = await getKnownCategoryNames();
 
   const now = new Date();
   const currentNisab = await nisabValue();
@@ -183,7 +228,8 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
       status: null,
       created_at: null,
       updated_at: null,
-      is_tracked: false,
+      // A category with no tracker row at all is one we've never seen before — default it to tracked.
+      is_tracked: !knownCategories.has(category),
       haul_status: "PENDING",
       nisab: currentNisab,
       nisab_reached: nisabReached,
@@ -236,10 +282,40 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
   return dtos;
 }
 
+/**
+ * Earliest non-null haul_start_date among the per-category trackers (all
+ * categories except the combined pseudo-category). Used to seed the combined
+ * tracker's haul so switching on "calculate altogether" doesn't discard
+ * progress already accrued by an individual category — the combined pool
+ * necessarily held that category's wealth since at least that date, so
+ * anchoring any later would understate the accrual and delay the obligation.
+ */
+async function earliestCategoryHaulStart(): Promise<string | null> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ haul_start_date: string | null }>(
+    "SELECT haul_start_date FROM zakat_tracker WHERE category != ? AND haul_start_date IS NOT NULL",
+    COMBINED_CATEGORY,
+  );
+  const dates = rows.map((r) => r.haul_start_date!);
+  if (dates.length === 0) return null;
+  return dates.reduce((earliest, d) => (d < earliest ? d : earliest));
+}
+
 export async function upsertTracker(req: UpdateZakatTrackerRequest): Promise<void> {
   const category = req.category.toUpperCase();
   const lastPaidDate = req.last_paid_date ?? null;
-  const haulStart = lastPaidDate;
+  let haulStart = lastPaidDate;
+
+  if (category === COMBINED_CATEGORY && lastPaidDate === null && req.status === "ACTIVE") {
+    const db = await getDb();
+    const existing = await db.getFirstAsync<{ id: number }>(
+      "SELECT id FROM zakat_tracker WHERE category = ?",
+      category,
+    );
+    if (!existing) {
+      haulStart = await earliestCategoryHaulStart();
+    }
+  }
 
   const db = await getDb();
   await db.runAsync(

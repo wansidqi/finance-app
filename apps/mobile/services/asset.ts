@@ -44,6 +44,7 @@ export const useCreateAsset = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
     },
   });
 };
@@ -57,6 +58,7 @@ export const useUpdateAssetById = (id: any) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: [`assets/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
     },
   });
 };
@@ -70,6 +72,7 @@ export const useUpdateAsset = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: [`assets/${variables.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
     },
   });
 };
@@ -84,6 +87,7 @@ export const useDeleteAsset = (id: any) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
       router.push("/(tabs)/asset");
     },
   });
