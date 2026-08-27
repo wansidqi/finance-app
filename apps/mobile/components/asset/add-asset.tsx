@@ -2,9 +2,7 @@ import { useCreateAsset, useGetAssets, useUpdateAsset } from "@/services/asset";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   Switch,
   Text,
@@ -12,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { ErrorModal } from "../modal/error-modal";
 import { useErrorModal } from "../modal/useErrorModal";
 
@@ -46,6 +45,7 @@ export function AddAssetModal({
   const [note, setNote] = useState("");
   const [isCalculate, setIsCalculate] = useState(true);
   const [platformTotal, setPlatformTotal] = useState("");
+  const [useLiveGoldPrice, setUseLiveGoldPrice] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const { error, isVisible, hideError, showError } = useErrorModal();
 
@@ -79,22 +79,34 @@ export function AddAssetModal({
     setNote("");
     setIsCalculate(true);
     setPlatformTotal("");
+    setUseLiveGoldPrice(false);
     setShowDetails(false);
   }, [visible, initialPlatform]);
+
+  // Live gold pricing only applies to GOLD — drop it if the category changes.
+  useEffect(() => {
+    if (category !== "GOLD") setUseLiveGoldPrice(false);
+  }, [category]);
 
   const handleSave = async () => {
     const data = {
       category,
       name,
       platform: platform || null,
-      price: platformTotal ? null : value ? Number(value) : null,
+      price:
+        platformTotal || useLiveGoldPrice
+          ? null
+          : value
+            ? Number(value)
+            : null,
       quantity: quantity ? Number(quantity) : null,
-      unit: unit || "",
+      unit: useLiveGoldPrice ? "gram" : unit || "",
       goal: goal ? Number(goal) : null,
       cost_basis: costBasis ? Number(costBasis) : null,
       note: note || null,
       is_calculate: isCalculate,
       platform_total: platformTotal ? Number(platformTotal) : null,
+      use_live_gold_price: useLiveGoldPrice,
     };
 
     try {
@@ -113,15 +125,15 @@ export function AddAssetModal({
   };
 
   const disabled =
-    !name || (!platformTotal && !value) || (!!platformTotal && !platform);
+    !name ||
+    (!platformTotal && !value && !useLiveGoldPrice) ||
+    (!!platformTotal && !platform) ||
+    (useLiveGoldPrice && !quantity);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
         <View className="flex-1 justify-end bg-black/50">
           <View className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]">
             {/* Header */}
@@ -225,6 +237,50 @@ export function AddAssetModal({
                 </Text>
               </View>
 
+              {/* Gold weight + live pricing */}
+              {category === "GOLD" && (
+                <View className="mb-3">
+                  <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                    Weight (grams)
+                  </Text>
+                  <TextInput
+                    placeholder="e.g., 42"
+                    keyboardType="decimal-pad"
+                    value={quantity}
+                    onChangeText={setQuantity}
+                    placeholderTextColor="#64748b"
+                    className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                  />
+                  <TouchableOpacity
+                    onPress={() => quantity && setUseLiveGoldPrice((prev) => !prev)}
+                    disabled={!quantity}
+                    className={`mt-3 flex-row items-center justify-between rounded-lg border px-3 py-2.5 ${
+                      useLiveGoldPrice
+                        ? "border-emerald-500 bg-emerald-500/10"
+                        : "border-slate-600 bg-slate-700/20"
+                    } ${!quantity ? "opacity-50" : ""}`}
+                  >
+                    <View className="flex-1 pr-3">
+                      <Text className="text-[12px] font-bold text-slate-200">
+                        Use Live Gold Price
+                      </Text>
+                      <Text className="text-[10px] text-slate-400 mt-0.5">
+                        {quantity
+                          ? "Value updates daily from Bank Negara Malaysia's gold price — no need to update it yourself"
+                          : "Enter weight above first"}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={useLiveGoldPrice}
+                      onValueChange={setUseLiveGoldPrice}
+                      disabled={!quantity}
+                      trackColor={{ false: "#475569", true: "#10b981" }}
+                      thumbColor="#ffffff"
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Current Value */}
               <View className="mb-3">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
@@ -234,6 +290,12 @@ export function AddAssetModal({
                   <View className="rounded-lg border border-slate-700 px-3 py-2 bg-slate-800/40">
                     <Text className="text-[13px] text-slate-400">
                       Auto-computed from platform total below
+                    </Text>
+                  </View>
+                ) : useLiveGoldPrice ? (
+                  <View className="rounded-lg border border-slate-700 px-3 py-2 bg-slate-800/40">
+                    <Text className="text-[13px] text-slate-400">
+                      Auto-computed from live gold price × weight
                     </Text>
                   </View>
                 ) : (
@@ -265,34 +327,38 @@ export function AddAssetModal({
 
               {showDetails && (
                 <>
-                  {/* Quantity & Unit (optional context) */}
-                  <View className="mb-3 flex-row gap-3">
-                    <View className="flex-1">
-                      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                        Quantity (Optional)
-                      </Text>
-                      <TextInput
-                        placeholder="e.g., 15"
-                        keyboardType="decimal-pad"
-                        value={quantity}
-                        onChangeText={setQuantity}
-                        placeholderTextColor="#64748b"
-                        className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                      />
+                  {/* Quantity & Unit (optional context) — gold has its own
+                      dedicated Weight field above instead, so it's not
+                      duplicated here. */}
+                  {category !== "GOLD" && (
+                    <View className="mb-3 flex-row gap-3">
+                      <View className="flex-1">
+                        <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                          Quantity (Optional)
+                        </Text>
+                        <TextInput
+                          placeholder="e.g., 15"
+                          keyboardType="decimal-pad"
+                          value={quantity}
+                          onChangeText={setQuantity}
+                          placeholderTextColor="#64748b"
+                          className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                          Unit
+                        </Text>
+                        <TextInput
+                          placeholder="e.g., gram, BTC, shares"
+                          value={unit}
+                          onChangeText={setUnit}
+                          placeholderTextColor="#64748b"
+                          className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
+                        />
+                      </View>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                        Unit
-                      </Text>
-                      <TextInput
-                        placeholder="e.g., gram, BTC, shares"
-                        value={unit}
-                        onChangeText={setUnit}
-                        placeholderTextColor="#64748b"
-                        className="rounded-lg border border-slate-600 px-3 py-2 text-[13px] text-white bg-slate-700/30"
-                      />
-                    </View>
-                  </View>
+                  )}
 
                   {/* Cost Basis */}
                   <View className="mb-4">

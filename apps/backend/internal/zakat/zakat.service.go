@@ -4,6 +4,7 @@ import (
 	asset "go-fiber-app/internal/assets"
 	"go-fiber-app/pkg/db"
 	"go-fiber-app/pkg/hijri"
+	"go-fiber-app/pkg/nisab"
 	"strings"
 	"time"
 )
@@ -15,9 +16,6 @@ func ZakatService() *Service {
 }
 
 const (
-	// nisab is the Malaysia 2026 cash/tradeable-asset nisab threshold in RM,
-	// used uniformly across categories since asset values are always stored in RM.
-	nisab     = 29740.0
 	zakatRate = 0.025
 
 	// dueWindowDays is how many days before the haul completes that status
@@ -72,11 +70,12 @@ func (s *Service) GetAllCategories() (*[]TrackerDto, error) {
 
 	// 4️⃣ Build DTOs (loop categories, not trackers)
 	now := time.Now()
+	currentNisab := nisab.Value()
 	var trackerDtos []TrackerDto
 
 	for category, agg := range categories {
 		value := agg.value
-		nisabReached := value >= nisab
+		nisabReached := value >= currentNisab
 
 		var zakatDue float64
 		if nisabReached {
@@ -99,7 +98,7 @@ func (s *Service) GetAllCategories() (*[]TrackerDto, error) {
 		dto := TrackerDto{
 			Category:          category,
 			Value:             &value,
-			Nisab:             nisab,
+			Nisab:             currentNisab,
 			NisabReached:      nisabReached,
 			ZakatDue:          zakatDue,
 			PlatformBreakdown: breakdown,

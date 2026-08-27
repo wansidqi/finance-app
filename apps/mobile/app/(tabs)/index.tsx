@@ -1,40 +1,89 @@
+import { AssetCategory } from "@/interface/asset";
+import { ZakatTrackerDto } from "@/interface/zakat";
+import { useGetAssets } from "@/services/asset";
+import { useGetLiabilities } from "@/services/liability";
+import { useGetZakatCategories } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useMemo } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+const CATEGORY_META: Record<
+  AssetCategory,
+  { label: string; icon: any; color: string }
+> = {
+  CASH: { label: "Cash & Savings", icon: "cash-outline", color: "#10b981" },
+  GOLD: { label: "Gold", icon: "diamond-outline", color: "#f59e0b" },
+  CRYPTO: { label: "Crypto", icon: "logo-bitcoin", color: "#8b5cf6" },
+  STOCK: { label: "Stock", icon: "trending-up-outline", color: "#06b6d4" },
+};
+const CATEGORY_ORDER: AssetCategory[] = ["CASH", "GOLD", "CRYPTO", "STOCK"];
 
 export default function DashboardScreen() {
-  // 1. RAW DATA (Usually from your Database/State)
-  const savings = 45000;
-  const goldInvestmentValue = 15000;
-  const goldWeightGrams = 42;
-  const cryptoValue = 25500;
-  const stockValue = 18000;
-  const totalDebt = 5000;
-  const totalLiabilities = 8500;
+  const { data: assets, isLoading: assetsLoading } = useGetAssets();
+  const { data: liabilities, isLoading: liabilitiesLoading } =
+    useGetLiabilities();
+  const { data: zakatCategories, isLoading: zakatLoading } =
+    useGetZakatCategories();
 
-  // 2. CONSTANTS (Malaysia 2026)
-  const NISAB_RM = 29740;
-  const URUF_GRAMS = 800;
-  const ZAKAT_RATE = 0.025;
+  const isLoading = assetsLoading || liabilitiesLoading || zakatLoading;
 
-  // 3. LOGIC CALCULATIONS
-  const totalAssets = savings + goldInvestmentValue + cryptoValue + stockValue;
+  // Totals by category, across every active asset regardless of zakat
+  // inclusion — net worth reflects everything you own, not just what's
+  // zakatable.
+  const categoryTotals = useMemo(() => {
+    const totals: Record<AssetCategory, number> = {
+      CASH: 0,
+      GOLD: 0,
+      CRYPTO: 0,
+      STOCK: 0,
+    };
+    for (const a of assets ?? []) {
+      totals[a.category] = (totals[a.category] ?? 0) + (a.price ?? 0);
+    }
+    return totals;
+  }, [assets]);
+
+  const totalAssets = CATEGORY_ORDER.reduce(
+    (sum, c) => sum + categoryTotals[c],
+    0,
+  );
+  const totalLiabilities = (liabilities ?? []).reduce(
+    (sum, l) => sum + (l.total_balance ?? 0),
+    0,
+  );
   const netWorth = totalAssets - totalLiabilities;
-  const debtRatio = (totalLiabilities / totalAssets) * 100;
+  const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
 
-  // Zakat Calculations
-  const zakatSavings = savings >= NISAB_RM ? savings * ZAKAT_RATE : 0;
-  const zakatGold =
-    goldWeightGrams >= 85 ? goldInvestmentValue * ZAKAT_RATE : 0;
-  const zakatCrypto = cryptoValue >= NISAB_RM ? cryptoValue * ZAKAT_RATE : 0;
-  const zakatStock = stockValue >= NISAB_RM ? stockValue * ZAKAT_RATE : 0;
-  const totalZakat = zakatSavings + zakatGold + zakatCrypto + zakatStock;
+  // Zakat figures come straight from the same backend logic the Zakat
+  // Tracker screen uses, keyed by category — categories with no assets
+  // yet simply fall back to a zero/not-reached state below.
+  const zakatByCategory = useMemo(() => {
+    const map = new Map<string, ZakatTrackerDto>();
+    for (const z of zakatCategories ?? []) map.set(z.category, z);
+    return map;
+  }, [zakatCategories]);
 
-  // Asset percentages
-  const savingsPercent = (savings / totalAssets) * 100;
-  const goldPercent = (goldInvestmentValue / totalAssets) * 100;
-  const cryptoPercent = (cryptoValue / totalAssets) * 100;
-  const stockPercent = (stockValue / totalAssets) * 100;
+  const nisab = zakatCategories?.[0]?.nisab ?? 29740;
+
+  const totalZakatPayable = (zakatCategories ?? []).reduce(
+    (sum, z) => sum + (z.nisab_reached ? z.zakat_due : 0),
+    0,
+  );
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+        <ActivityIndicator color="#10b981" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -92,35 +141,22 @@ export default function DashboardScreen() {
             Asset Distribution
           </Text>
           <View className="rounded-3xl bg-linear-to-br from-slate-700 to-slate-800 border border-slate-500/50 overflow-hidden shadow-xl">
-            <AssetBreakdownRow
-              icon="cash-outline"
-              label="Cash & Savings"
-              value={savings}
-              percent={savingsPercent}
-              color="#10b981"
-            />
-            <AssetBreakdownRow
-              icon="diamond-outline"
-              label="Gold"
-              value={goldInvestmentValue}
-              percent={goldPercent}
-              color="#f59e0b"
-            />
-            <AssetBreakdownRow
-              icon="logo-bitcoin"
-              label="Crypto"
-              value={cryptoValue}
-              percent={cryptoPercent}
-              color="#8b5cf6"
-            />
-            <AssetBreakdownRow
-              icon="trending-up-outline"
-              label="Stock"
-              value={stockValue}
-              percent={stockPercent}
-              color="#06b6d4"
-              isLast
-            />
+            {CATEGORY_ORDER.map((category, index) => {
+              const meta = CATEGORY_META[category];
+              const value = categoryTotals[category];
+              const percent = totalAssets > 0 ? (value / totalAssets) * 100 : 0;
+              return (
+                <AssetBreakdownRow
+                  key={category}
+                  icon={meta.icon}
+                  label={meta.label}
+                  value={value}
+                  percent={percent}
+                  color={meta.color}
+                  isLast={index === CATEGORY_ORDER.length - 1}
+                />
+              );
+            })}
           </View>
         </View>
 
@@ -130,27 +166,18 @@ export default function DashboardScreen() {
             Zakat Due
           </Text>
           <View className="rounded-2xl bg-linear-to-br from-amber-500/10 to-amber-600/10 border border-amber-500/30 p-5">
-            <ZakatBreakdownRow
-              label="Cash & Savings"
-              amount={zakatSavings}
-              isNisabReached={savings >= NISAB_RM}
-            />
-            <ZakatBreakdownRow
-              label="Gold Investment"
-              amount={zakatGold}
-              subtext={`${goldWeightGrams}g`}
-              isNisabReached={goldWeightGrams >= 85}
-            />
-            <ZakatBreakdownRow
-              label="Crypto/Digital"
-              amount={zakatCrypto}
-              isNisabReached={cryptoValue >= NISAB_RM}
-            />
-            <ZakatBreakdownRow
-              label="Stocks"
-              amount={zakatStock}
-              isNisabReached={stockValue >= NISAB_RM}
-            />
+            {CATEGORY_ORDER.map((category) => {
+              const meta = CATEGORY_META[category];
+              const z = zakatByCategory.get(category);
+              return (
+                <ZakatBreakdownRow
+                  key={category}
+                  label={meta.label}
+                  amount={z?.nisab_reached ? z.zakat_due : 0}
+                  isNisabReached={z?.nisab_reached ?? false}
+                />
+              );
+            })}
 
             <View className="mt-4 pt-4 border-t border-amber-500/30 flex-row justify-between items-center">
               <Text className="text-white font-bold text-[13px]">
@@ -158,7 +185,7 @@ export default function DashboardScreen() {
               </Text>
               <Text className="text-amber-300 text-[18px] font-bold">
                 RM
-                {totalZakat.toLocaleString(undefined, {
+                {totalZakatPayable.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </Text>
@@ -172,19 +199,20 @@ export default function DashboardScreen() {
             Nisab Status
           </Text>
           <View className="rounded-3xl bg-linear-to-br from-slate-700 via-slate-800 to-slate-900 border border-emerald-500/20 overflow-hidden shadow-xl">
-            <NisabStatusRow
-              label="Cash & Savings"
-              current={savings}
-              nisab={NISAB_RM}
-              unit="RM"
-            />
-            <NisabStatusRow
-              label="Gold"
-              current={goldWeightGrams}
-              nisab={85}
-              unit="grams"
-              isLast
-            />
+            {CATEGORY_ORDER.map((category, index) => {
+              const meta = CATEGORY_META[category];
+              const z = zakatByCategory.get(category);
+              return (
+                <NisabStatusRow
+                  key={category}
+                  label={meta.label}
+                  current={z?.value ?? 0}
+                  nisab={nisab}
+                  unit="RM"
+                  isLast={index === CATEGORY_ORDER.length - 1}
+                />
+              );
+            })}
           </View>
         </View>
 
@@ -358,7 +386,7 @@ function NisabStatusRow({
   isLast?: boolean;
 }) {
   const isReached = current >= nisab;
-  const percent = (current / nisab) * 100;
+  const percent = nisab > 0 ? (current / nisab) * 100 : 0;
 
   return (
     <View className={`px-5 py-4 ${!isLast ? "border-b border-slate-600" : ""}`}>

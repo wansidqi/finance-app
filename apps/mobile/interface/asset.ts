@@ -15,6 +15,9 @@ export interface AssetInterface {
   // backend derives `price` as platform_total minus the sum of the
   // other entries sharing the same category+platform.
   platform_total: number | null;
+  // When set, the backend derives `price` as quantity (grams) times
+  // today's live BNM gold price, instead of using a manually entered price.
+  use_live_gold_price: boolean;
   status: "ACTIVE" | "INACTIVE" | string;
   created_at: string;
   updated_at: string | null;
@@ -34,6 +37,7 @@ export interface BaseAsset {
   is_calculate: boolean;
   platform_total?: number | null;
   clear_platform_total?: boolean;
+  use_live_gold_price?: boolean;
 }
 
 export type AssetCategory = "CASH" | "GOLD" | "STOCK" | "CRYPTO";

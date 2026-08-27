@@ -19,10 +19,14 @@ type Asset struct {
 	// catch-all balance: Price is derived at read time as
 	// PlatformTotal minus the sum of the other assets sharing the
 	// same category+platform, instead of being entered by hand.
-	PlatformTotal *float64   `db:"platform_total" json:"platform_total" form:"platform_total"`
-	Status        string     `db:"status" json:"status" form:"status"`
-	CreatedAt     time.Time  `db:"created_at" json:"created_at" form:"created_at"`
-	UpdatedAt     *time.Time `db:"updated_at" json:"updated_at" form:"updated_at"`
+	PlatformTotal *float64 `db:"platform_total" json:"platform_total" form:"platform_total"`
+	// UseLiveGoldPrice, when set, marks this asset's Price as derived at
+	// read time from Quantity (grams) times the live BNM gold price,
+	// instead of being entered by hand.
+	UseLiveGoldPrice bool       `db:"use_live_gold_price" json:"use_live_gold_price" form:"use_live_gold_price"`
+	Status           string     `db:"status" json:"status" form:"status"`
+	CreatedAt        time.Time  `db:"created_at" json:"created_at" form:"created_at"`
+	UpdatedAt        *time.Time `db:"updated_at" json:"updated_at" form:"updated_at"`
 }
 
 //reuqest
@@ -37,9 +41,10 @@ type CreateAssetRequest struct {
 	Goal          *float64 `db:"goal" json:"goal" form:"goal"`
 	CostBasis     *float64 `db:"cost_basis" json:"cost_basis" form:"cost_basis"`
 	Note          *string  `db:"note" json:"note" form:"note"`
-	IsCalculate   *bool    `db:"is_calculate" json:"is_calculate" form:"is_calculate"`
-	PlatformTotal *float64 `db:"platform_total" json:"platform_total" form:"platform_total"`
-	Status        string   `db:"status" json:"status" form:"status"`
+	IsCalculate      *bool    `db:"is_calculate" json:"is_calculate" form:"is_calculate"`
+	PlatformTotal    *float64 `db:"platform_total" json:"platform_total" form:"platform_total"`
+	UseLiveGoldPrice *bool    `db:"use_live_gold_price" json:"use_live_gold_price" form:"use_live_gold_price"`
+	Status           string   `db:"status" json:"status" form:"status"`
 }
 
 type UpdateAssetRequest struct {
@@ -53,8 +58,9 @@ type UpdateAssetRequest struct {
 	Goal          *float64 `db:"goal" json:"goal" form:"goal"`
 	CostBasis     *float64 `db:"cost_basis" json:"cost_basis" form:"cost_basis"`
 	Note          *string  `db:"note" json:"note" form:"note"`
-	IsCalculate   *bool    `db:"is_calculate" json:"is_calculate" form:"is_calculate"`
-	PlatformTotal *float64 `db:"platform_total" json:"platform_total" form:"platform_total"`
+	IsCalculate      *bool    `db:"is_calculate" json:"is_calculate" form:"is_calculate"`
+	PlatformTotal    *float64 `db:"platform_total" json:"platform_total" form:"platform_total"`
+	UseLiveGoldPrice *bool    `db:"use_live_gold_price" json:"use_live_gold_price" form:"use_live_gold_price"`
 	// ClearPlatformTotal lets the client turn a catch-all entry back into
 	// a normal manually-priced one, since a bare `null` for
 	// PlatformTotal is indistinguishable from "field omitted" via JSON.

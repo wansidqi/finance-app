@@ -1,12 +1,12 @@
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
+import { triggerZakatBackgroundTaskForTesting } from "@/services/zakat-background-task";
 import {
   sendTestDueSequence,
   sendTestNotification,
-  syncZakatReminders,
 } from "@/services/zakat-notifications";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { EditPaidDateModal } from "./edit-paid-date-modal";
 import {
   ActivityIndicator,
@@ -40,6 +40,21 @@ export function ZakatTrackerScreen() {
   const [testSequenceState, setTestSequenceState] = useState<
     "idle" | "sending" | "sent" | "denied"
   >("idle");
+  const [bgSyncState, setBgSyncState] = useState<
+    "idle" | "sending" | "sent" | "denied"
+  >("idle");
+
+  const handleTriggerBackgroundSync = async () => {
+    setBgSyncState("sending");
+    try {
+      await triggerZakatBackgroundTaskForTesting();
+      setBgSyncState("sent");
+    } catch (err) {
+      console.warn("Failed to trigger background sync", err);
+      setBgSyncState("denied");
+    }
+    setTimeout(() => setBgSyncState("idle"), 3000);
+  };
 
   const handleSendTestNotification = async () => {
     setTestNotificationState("sending");
@@ -54,13 +69,6 @@ export function ZakatTrackerScreen() {
     setTestSequenceState(granted ? "sent" : "denied");
     setTimeout(() => setTestSequenceState("idle"), 20000);
   };
-
-  useEffect(() => {
-    if (!zakatData) return;
-    syncZakatReminders(zakatData).catch((err) =>
-      console.warn("Failed to sync zakat reminders", err),
-    );
-  }, [zakatData]);
 
   /* ===========================
      Helpers
@@ -234,6 +242,39 @@ export function ZakatTrackerScreen() {
                   : testSequenceState === "denied"
                     ? "No permission"
                     : "7/5/3/1/0"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleTriggerBackgroundSync}
+            disabled={bgSyncState === "sending"}
+            className="flex-row items-center gap-1.5 bg-slate-700/40 border border-slate-600 rounded-full px-3 py-2"
+          >
+            <Ionicons
+              name={
+                bgSyncState === "sent"
+                  ? "checkmark-circle"
+                  : bgSyncState === "denied"
+                    ? "close-circle"
+                    : "sync-outline"
+              }
+              size={14}
+              color={
+                bgSyncState === "sent"
+                  ? "#10b981"
+                  : bgSyncState === "denied"
+                    ? "#ef4444"
+                    : "#94a3b8"
+              }
+            />
+            <Text className="text-[10px] font-bold text-slate-300">
+              {bgSyncState === "sending"
+                ? "Running…"
+                : bgSyncState === "sent"
+                  ? "Triggered!"
+                  : bgSyncState === "denied"
+                    ? "Failed"
+                    : "BG Sync"}
             </Text>
           </TouchableOpacity>
         </View>

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS assets (
 	note TEXT NULL,
 	is_calculate BOOLEAN NOT NULL DEFAULT 1,
 	platform_total REAL NULL,
+	use_live_gold_price BOOLEAN NOT NULL DEFAULT 0,
 	status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP
@@ -62,6 +63,15 @@ CREATE TABLE IF NOT EXISTS hijri_cache (
 	cached_on VARCHAR(10) NOT NULL DEFAULT '',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS nisab_cache (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	effective_date VARCHAR(10) NOT NULL,
+	price_per_gram REAL NOT NULL,
+	nisab_rm REAL NOT NULL,
+	cached_on VARCHAR(10) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 var assetColumnMigrations = []string{
@@ -72,6 +82,7 @@ var assetColumnMigrations = []string{
 	"ALTER TABLE assets ADD COLUMN platform_total REAL NULL",
 	"ALTER TABLE zakat_tracker ADD COLUMN haul_start_date DATETIME NULL",
 	"ALTER TABLE hijri_cache ADD COLUMN cached_on VARCHAR(10) NOT NULL DEFAULT ''",
+	"ALTER TABLE assets ADD COLUMN use_live_gold_price BOOLEAN NOT NULL DEFAULT 0",
 }
 
 func migrateSchema(db *sqlx.DB) error {

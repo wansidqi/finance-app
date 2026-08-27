@@ -6,14 +6,29 @@ import {
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import "react-native-reanimated";
 
+import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { registerZakatBackgroundTask } from "@/services/zakat-background-task";
 
 import "@/global.css";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+
+// React Query's refetch-on-focus only fires automatically on web, where it
+// listens to the browser's visibilitychange event. On native it needs to be
+// told about app foreground/background transitions explicitly — without
+// this, data (and anything derived from it, like zakat reminders) only ever
+// refreshes on a cold launch, not when the app resumes from the background.
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== "web") {
+    focusManager.setFocused(status === "active");
+  }
+}
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -24,7 +39,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const queryClient = new QueryClient();
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     // Simulate loading time and then hide splash screen
@@ -36,16 +51,38 @@ export default function RootLayout() {
     hideSpashScreen();
   }, []);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      "change",
+      onAppStateChange,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    registerZakatBackgroundTask().catch((err) =>
+      console.warn("Failed to register zakat background task", err),
+    );
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="asset/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="liability/[id]" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <KeyboardProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <ZakatReminderSync />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="asset/[id]" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="liability/[id]"
+              options={{ headerShown: false }}
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </KeyboardProvider>
   );
 }

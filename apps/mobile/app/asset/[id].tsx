@@ -16,8 +16,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Switch,
   Text,
@@ -25,6 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 export default function AssetDetailPage() {
   const { id } = useLocalSearchParams();
@@ -60,10 +59,7 @@ export default function AssetDetailPage() {
           Asset Details
         </Text>
       </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView
           className="px-6"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -90,6 +86,7 @@ export function AssetCard(asset: AssetInterface) {
     note,
     is_calculate,
     platform_total,
+    use_live_gold_price,
     status,
   } = asset;
 
@@ -113,6 +110,7 @@ export function AssetCard(asset: AssetInterface) {
     note,
     is_calculate,
     platform_total,
+    use_live_gold_price,
   });
 
   const { error, isVisible, hideError, showError } = useErrorModal();
@@ -408,6 +406,12 @@ export function AssetCard(asset: AssetInterface) {
                     Auto-computed from platform total below
                   </Text>
                 </View>
+              ) : editAsset.use_live_gold_price ? (
+                <View className="border border-slate-600 rounded-lg py-2 px-2.5 bg-slate-700/40">
+                  <Text className="text-[12px] text-slate-400">
+                    Auto-computed from live gold price × weight
+                  </Text>
+                </View>
               ) : (
                 <TextInput
                   value={editAsset.price?.toString() || ""}
@@ -455,6 +459,52 @@ export function AssetCard(asset: AssetInterface) {
                 />
               </View>
             </View>
+
+            {editAsset.category === "GOLD" && (
+              <TouchableOpacity
+                onPress={() =>
+                  editAsset.quantity &&
+                  setEditAsset({
+                    ...editAsset,
+                    use_live_gold_price: !editAsset.use_live_gold_price,
+                    unit: !editAsset.use_live_gold_price
+                      ? "gram"
+                      : editAsset.unit,
+                  })
+                }
+                disabled={!editAsset.quantity}
+                className={`flex-row items-center justify-between rounded-lg border px-3 py-2.5 ${
+                  editAsset.use_live_gold_price
+                    ? "border-emerald-500 bg-emerald-500/10"
+                    : "border-slate-500 bg-slate-600/40"
+                } ${!editAsset.quantity ? "opacity-50" : ""}`}
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-[12px] font-bold text-slate-200">
+                    Use Live Gold Price
+                  </Text>
+                  <Text className="text-[10px] text-slate-400 mt-0.5">
+                    {editAsset.quantity
+                      ? "Value updates daily from Bank Negara Malaysia's gold price"
+                      : "Set a quantity (grams) above first"}
+                  </Text>
+                </View>
+                <Switch
+                  value={!!editAsset.use_live_gold_price}
+                  onValueChange={(val) =>
+                    setEditAsset({
+                      ...editAsset,
+                      use_live_gold_price: val,
+                      unit: val ? "gram" : editAsset.unit,
+                    })
+                  }
+                  disabled={!editAsset.quantity}
+                  trackColor={{ false: "#475569", true: "#10b981" }}
+                  thumbColor="#ffffff"
+                />
+              </TouchableOpacity>
+            )}
+
             <View>
               <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                 Cost Basis (Optional)
@@ -624,6 +674,7 @@ export function AssetCard(asset: AssetInterface) {
                   note,
                   is_calculate,
                   platform_total,
+                  use_live_gold_price,
                 });
               }}
               className="flex-1 bg-slate-600/40 rounded-lg py-3"

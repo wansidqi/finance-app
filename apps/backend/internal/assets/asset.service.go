@@ -4,6 +4,7 @@ import (
 	"errors"
 	"go-fiber-app/pkg/db"
 	"go-fiber-app/pkg/helper"
+	"go-fiber-app/pkg/nisab"
 	"strings"
 )
 
@@ -40,24 +41,30 @@ func (s *Service) Create(req *CreateAssetRequest) (*Asset, error) {
 		}
 	}
 
+	useLiveGoldPrice := false
+	if req.UseLiveGoldPrice != nil {
+		useLiveGoldPrice = *req.UseLiveGoldPrice
+	}
+
 	query := `INSERT INTO assets
-			(user_id, platform, category, name, quantity, unit, goal, price, cost_basis, note, is_calculate, platform_total, status)
-			VALUES ( :user_id, :platform, :category, :name, :quantity, :unit, :goal, :price, :cost_basis, :note, :is_calculate, :platform_total, :status)`
+			(user_id, platform, category, name, quantity, unit, goal, price, cost_basis, note, is_calculate, platform_total, use_live_gold_price, status)
+			VALUES ( :user_id, :platform, :category, :name, :quantity, :unit, :goal, :price, :cost_basis, :note, :is_calculate, :platform_total, :use_live_gold_price, :status)`
 
 	args := map[string]any{
-		"user_id":        req.UserId,
-		"platform":       req.Platform,
-		"category":       category,
-		"name":           req.Name,
-		"quantity":       req.Quantity,
-		"price":          req.Price,
-		"unit":           req.Unit,
-		"goal":           req.Goal,
-		"cost_basis":     req.CostBasis,
-		"note":           req.Note,
-		"is_calculate":   isCalculate,
-		"platform_total": req.PlatformTotal,
-		"status":         "ACTIVE",
+		"user_id":             req.UserId,
+		"platform":            req.Platform,
+		"category":            category,
+		"name":                req.Name,
+		"quantity":            req.Quantity,
+		"price":               req.Price,
+		"unit":                req.Unit,
+		"goal":                req.Goal,
+		"cost_basis":          req.CostBasis,
+		"note":                req.Note,
+		"is_calculate":        isCalculate,
+		"platform_total":      req.PlatformTotal,
+		"use_live_gold_price": useLiveGoldPrice,
+		"status":              "ACTIVE",
 	}
 
 	result, err := db.GetDB().NamedExec(query, args)
@@ -91,6 +98,8 @@ func (s *Service) GetAssetById(id int) (*Asset, error) {
 		}
 	}
 
+	applyLiveGoldPrice(asset)
+
 	return asset, err
 }
 
@@ -104,6 +113,9 @@ func (s *Service) GetAllAssets() ([]Asset, error) {
 	}
 
 	applyComputedPrices(assets)
+	for i := range assets {
+		applyLiveGoldPrice(&assets[i])
+	}
 
 	return assets, nil
 }
@@ -156,6 +168,7 @@ func (s *Service) Update(id int, req *UpdateAssetRequest) (*Asset, error) {
 	helper.UpdateField(req.CostBasis, "cost_basis", &set, args)
 	helper.UpdateField(req.Note, "note", &set, args)
 	helper.UpdateField(req.IsCalculate, "is_calculate", &set, args)
+	helper.UpdateField(req.UseLiveGoldPrice, "use_live_gold_price", &set, args)
 	helper.UpdateField(req.Status, "status", &set, args)
 	helper.UpdateField(req.Unit, "unit", &set, args)
 
@@ -223,6 +236,19 @@ func (s *Service) applyComputedPrice(target *Asset) error {
 	computed := *target.PlatformTotal - sum
 	target.Price = &computed
 	return nil
+}
+
+// applyLiveGoldPrice overrides, in place, the Price of an asset that opted
+// into live gold pricing (UseLiveGoldPrice) to Quantity grams times today's
+// BNM gold price per gram — the same live source zakat nisab is computed
+// from, so a gold asset's value and the nisab it's compared against never
+// drift apart because one was manually entered and went stale.
+func applyLiveGoldPrice(a *Asset) {
+	if !a.UseLiveGoldPrice || a.Quantity == nil {
+		return
+	}
+	computed := *a.Quantity * nisab.PricePerGram()
+	a.Price = &computed
 }
 
 // applyComputedPrices overrides, in place, the Price of every catch-all

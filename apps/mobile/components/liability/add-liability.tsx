@@ -2,15 +2,14 @@ import { useCreateLiability } from "@/services/liability";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { ErrorModal } from "../modal/error-modal";
 import { useErrorModal } from "../modal/useErrorModal";
 
@@ -57,10 +56,7 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
         <View className="flex-1 justify-end bg-black/50">
           <View className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]">
             {/* Header */}
