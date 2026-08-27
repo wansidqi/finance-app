@@ -227,16 +227,28 @@ The backend should remain optional for the local-first mobile experience.
 ## Improvements
 
 - [ ] Review and standardize financial domain models
-- [ ] Improve net-worth calculations
+- [x] Improve net-worth calculations
 - [ ] Establish shared date/calculation utilities
-- [ ] Establish shared database migration strategy
+- [x] Establish shared database migration strategy
 - [ ] Establish repository/service patterns
 - [ ] Separate domain logic from UI
-- [ ] Ensure core functionality does not depend on backend availability
+- [x] Ensure core functionality does not depend on backend availability
 
 ---
 
 # Phase 2 — Payment Reminders
+
+## Status: Implemented
+
+`payment_reminders` table/service, the shared notification-core refactor
+(zakat + reminders each with their own identifier prefix and background
+sync task), and the `reminders.tsx` tab (Upcoming/Due Today/Overdue/
+Completed, add/edit, mark-paid, pause/resume) are live on `main`. Reminder
+offsets are 7/3/1/0 days before due date, fired at 9am local time.
+
+Not yet done from this phase's spec: currency field (app is RM-only
+throughout, so skipped as unnecessary for now) and configurable
+per-reminder offsets (hardcoded to 7/3/1/0 like zakat's fixed set).
 
 ## Goal
 
