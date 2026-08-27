@@ -1,15 +1,12 @@
-import { UpdateZakatTrackerRequest, ZakatTrackerDto } from "@/interface/zakat";
+import { UpdateZakatTrackerRequest } from "@/interface/zakat";
+import { getAllCategories, upsertTracker } from "@/local/zakat-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 
 export const useGetZakatCategories = () => {
   return useQuery({
     queryKey: ["zakat-categories"],
     queryFn: async () => {
-      const response = await axios.get(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/get-categories`,
-      );
-      return response.data as ZakatTrackerDto[];
+      return getAllCategories();
     },
   });
 };
@@ -19,11 +16,7 @@ export const useUpdateZakatTracker = () => {
 
   return useMutation({
     mutationFn: async (data: UpdateZakatTrackerRequest) => {
-      const response = await axios.put(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/zakat-tracker`,
-        data,
-      );
-      return response.data;
+      return upsertTracker(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });

@@ -1,5 +1,4 @@
-import { ZakatTrackerDto } from "@/interface/zakat";
-import axios from "axios";
+import { getAllCategories } from "@/local/zakat-service";
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { syncZakatReminders } from "./zakat-notifications";
@@ -10,18 +9,17 @@ export const ZAKAT_BACKGROUND_TASK = "zakat-reminder-background-sync";
 // wakes the app up in the background, Expo re-imports the module graph and
 // needs this side effect to have already registered the task executor
 // before it tries to invoke it by name.
+//
+// Reads straight from the on-device database now (no network round-trip to
+// a backend needed), so this reliably runs regardless of Wi-Fi — only the
+// JAKIM/BNM live lookups inside getAllCategories still need network, and
+// they already fall back gracefully if unreachable.
 TaskManager.defineTask(ZAKAT_BACKGROUND_TASK, async () => {
   try {
-    const response = await axios.get<ZakatTrackerDto[]>(
-      `${process.env.EXPO_PUBLIC_API_URL}/api/get-categories`,
-      { timeout: 10000 },
-    );
-    await syncZakatReminders(response.data);
+    const categories = await getAllCategories();
+    await syncZakatReminders(categories);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (err) {
-    // Most commonly means the backend simply isn't reachable from wherever
-    // the phone is right now (e.g. off the home Wi-Fi) — expected, not a
-    // bug. The next scheduled run just tries again.
     console.warn("Zakat background sync failed", err);
     return BackgroundTask.BackgroundTaskResult.Failed;
   }

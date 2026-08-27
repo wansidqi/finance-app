@@ -1,6 +1,12 @@
 import { AssetInterface, BaseAsset } from "@/interface/asset";
+import {
+  createAsset as localCreateAsset,
+  deleteAsset as localDeleteAsset,
+  getAllAssets,
+  getAssetById,
+  updateAsset as localUpdateAsset,
+} from "@/local/asset-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { useRouter } from "expo-router";
 
 export const useGetAssets = () => {
@@ -8,10 +14,7 @@ export const useGetAssets = () => {
     queryKey: ["assets"],
     queryFn: async () => {
       try {
-        const response = await axios.get(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/assets`,
-        );
-        return response.data as AssetInterface[];
+        return await getAllAssets();
       } catch (error) {
         console.log(error);
       }
@@ -24,10 +27,7 @@ export const useGetAssetsById = (id: string | number) => {
     queryKey: [`assets/${id}`],
     queryFn: async () => {
       try {
-        const response = await axios.get(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/assets/${id}`,
-        );
-        return response.data as AssetInterface;
+        return await getAssetById(Number(id));
       } catch (error) {
         console.log(error);
       }
@@ -40,11 +40,7 @@ export const useCreateAsset = () => {
 
   return useMutation({
     mutationFn: async (data: Partial<AssetInterface>) => {
-      const response = await axios.post(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets`,
-        data,
-      );
-      return response.data;
+      return localCreateAsset(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -56,11 +52,7 @@ export const useUpdateAssetById = (id: any) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: BaseAsset) => {
-      const response = await axios.put(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets/${data.id}`,
-        data,
-      );
-      return response.data;
+      return localUpdateAsset(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -73,11 +65,7 @@ export const useUpdateAsset = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: Partial<BaseAsset> & { id: number }) => {
-      const response = await axios.put(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets/${data.id}`,
-        data,
-      );
-      return response.data;
+      return localUpdateAsset(data);
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -92,10 +80,7 @@ export const useDeleteAsset = (id: any) => {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await axios.delete(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/assets/${id}`,
-      );
-      return response.data;
+      return localDeleteAsset(Number(id));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -103,4 +88,3 @@ export const useDeleteAsset = (id: any) => {
     },
   });
 };
-

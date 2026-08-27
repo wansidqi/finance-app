@@ -1,16 +1,19 @@
 import { LiabilityInterface } from "@/interface/liability";
+import {
+  createLiability as localCreateLiability,
+  deleteLiability as localDeleteLiability,
+  getAllLiabilities,
+  getLiabilityById,
+  updateLiability as localUpdateLiability,
+} from "@/local/liability-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { useRouter } from "expo-router";
 
 export const useGetLiabilities = () => {
   return useQuery({
     queryKey: ["liabilities"],
     queryFn: async () => {
-      const response = await axios.get(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/liabilities`,
-      );
-      return response.data as LiabilityInterface[];
+      return getAllLiabilities();
     },
   });
 };
@@ -19,10 +22,7 @@ export const useGetLiabilitiesById = (id: any) => {
   return useQuery({
     queryKey: [`liabilities/${id}`],
     queryFn: async () => {
-      const response = await axios.get(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/liabilities/${id}`,
-      );
-      return response.data as LiabilityInterface;
+      return getLiabilityById(Number(id));
     },
   });
 };
@@ -31,11 +31,7 @@ export const useCreateLiability = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: Partial<LiabilityInterface>) => {
-      const response = await axios.post(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/liabilities`,
-        data,
-      );
-      return response.data as LiabilityInterface;
+      return localCreateLiability(data);
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ["liabilities"] });
@@ -48,10 +44,7 @@ export const useDeleteLiability = (id: any) => {
   const router = useRouter();
   return useMutation({
     mutationFn: async () => {
-      const response = await axios.delete(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/liabilities/${id}`,
-      );
-      return response.data;
+      return localDeleteLiability(Number(id));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["liabilities"] });
@@ -70,11 +63,7 @@ export const useUpdateLiabilityById = (id: any) => {
       id: number | string;
       data: Partial<LiabilityInterface>;
     }) => {
-      const response = await axios.put(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/liabilities/${id}`,
-        data,
-      );
-      return response.data as LiabilityInterface;
+      return localUpdateLiability(Number(id), data);
     },
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({ queryKey: ["liabilities"] });

@@ -47,7 +47,8 @@
           "color": "#10b981"
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
