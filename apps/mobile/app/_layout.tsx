@@ -10,8 +10,10 @@ import { useEffect, useState } from "react";
 import { AppState, AppStateStatus, Platform } from "react-native";
 import "react-native-reanimated";
 
+import { PaymentReminderSync } from "@/components/reminders/reminder-sync";
 import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { registerReminderBackgroundTask } from "@/services/reminder-background-task";
 import { registerZakatBackgroundTask } from "@/services/zakat-background-task";
 
 import "@/global.css";
@@ -64,6 +66,9 @@ export default function RootLayout() {
     registerZakatBackgroundTask().catch((err) =>
       console.warn("Failed to register zakat background task", err),
     );
+    registerReminderBackgroundTask().catch((err) =>
+      console.warn("Failed to register payment reminder background task", err),
+    );
   }, []);
 
   return (
@@ -74,6 +79,7 @@ export default function RootLayout() {
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
             <ZakatReminderSync />
+            <PaymentReminderSync />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen

@@ -77,6 +77,22 @@ CREATE TABLE IF NOT EXISTS liability_payments (
   note TEXT NULL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+CREATE TABLE IF NOT EXISTS payment_reminders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NULL,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'other',
+  amount REAL NOT NULL DEFAULT 0,
+  recurrence TEXT NOT NULL DEFAULT 'monthly',
+  recurrence_interval_days INTEGER NULL,
+  next_due_date TEXT NOT NULL,
+  last_paid_date TEXT NULL,
+  note TEXT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 `;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -106,9 +122,41 @@ async function ensureColumn(
   }
 }
 
+/**
+ * Ordered, numbered migration steps applied via SQLite's built-in
+ * `PRAGMA user_version` counter. Only steps with a version greater than the
+ * database's current version run, and each is idempotent (safe to re-run on
+ * a fresh install where `SCHEMA` above already created the target column) —
+ * but framing it this way, rather than re-running every step unconditionally
+ * on every launch, means a *future* migration is free to do something
+ * non-idempotent (e.g. a one-time data backfill) without needing its own
+ * existence check.
+ *
+ * To add a migration: append a new entry with the next integer version.
+ * Never change the version number or behavior of an existing entry once it
+ * has shipped.
+ */
+const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise<void> }[] = [
+  {
+    version: 1,
+    run: (db) => ensureColumn(db, "liability_payments", "paid_date", "paid_date TEXT", "created_at"),
+  },
+  {
+    version: 2,
+    run: (db) => ensureColumn(db, "liability_payments", "note", "note TEXT"),
+  },
+];
+
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
-  await ensureColumn(db, "liability_payments", "paid_date", "paid_date TEXT", "created_at");
-  await ensureColumn(db, "liability_payments", "note", "note TEXT");
+  const [{ user_version: currentVersion }] = await db.getAllAsync<{ user_version: number }>(
+    "PRAGMA user_version",
+  );
+
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= currentVersion) continue;
+    await migration.run(db);
+    await db.execAsync(`PRAGMA user_version = ${migration.version}`);
+  }
 }
 
 /**

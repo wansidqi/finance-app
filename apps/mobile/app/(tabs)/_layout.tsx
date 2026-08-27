@@ -76,6 +76,15 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="reminders"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="notifications-outline" activeIcon="notifications" focused={focused} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

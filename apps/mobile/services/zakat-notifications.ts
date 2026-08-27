@@ -1,37 +1,20 @@
 import { ZakatTrackerDto } from "@/interface/zakat";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import {
+  cancelNotificationsWithPrefix,
+  ensureAndroidChannel as ensureChannel,
+  ensureNotificationPermissions,
+} from "./notifications-core";
 
 const REMINDER_OFFSETS_DAYS = [7, 5, 3, 1, 0];
 const NOTIFICATION_PREFIX = "zakat-due-";
 const ANDROID_CHANNEL_ID = "zakat-reminders";
 const REMINDER_HOUR = 9; // local time the reminder fires
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
-async function ensurePermissions(): Promise<boolean> {
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-
-  const requested = await Notifications.requestPermissionsAsync();
-  return requested.granted;
-}
+const ensurePermissions = ensureNotificationPermissions;
 
 async function ensureAndroidChannel() {
-  if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: "Zakat Reminders",
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: "#10b981",
-  });
+  await ensureChannel({ id: ANDROID_CHANNEL_ID, name: "Zakat Reminders", color: "#10b981" });
 }
 
 function titleCase(category: string) {
@@ -157,15 +140,7 @@ export async function syncZakatReminders(categories: ZakatTrackerDto[]) {
   if (!granted) return;
 
   await ensureAndroidChannel();
-
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter((n) => n.identifier.startsWith(NOTIFICATION_PREFIX))
-      .map((n) =>
-        Notifications.cancelScheduledNotificationAsync(n.identifier),
-      ),
-  );
+  await cancelNotificationsWithPrefix(NOTIFICATION_PREFIX);
 
   const now = new Date();
 
