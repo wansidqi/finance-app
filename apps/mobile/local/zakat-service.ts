@@ -1,4 +1,9 @@
-import { PlatformShare, UpdateZakatTrackerRequest, ZakatTrackerDto } from "@/interface/zakat";
+import {
+  PlatformShare,
+  UpdateZakatTrackerRequest,
+  ZakatSettingsDto,
+  ZakatTrackerDto,
+} from "@/interface/zakat";
 import { getAllAssets } from "./asset-service";
 import { getDb } from "./db";
 import { addHijriYear, format as formatHijri } from "./hijri";
@@ -95,22 +100,61 @@ async function updateHaulStartDate(category: string, haulStart: Date | null): Pr
   );
 }
 
+/** Pseudo-category used to key the single combined tracker/aggregate when "combine categories" is on. */
+export const COMBINED_CATEGORY = "ALL";
+
+export async function getZakatSettings(): Promise<ZakatSettingsDto> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ combine_categories: number }>(
+    "SELECT combine_categories FROM zakat_settings WHERE id = 1",
+  );
+  return { combine_categories: !!row?.combine_categories };
+}
+
+export async function setCombineCategories(combine: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO zakat_settings (id, combine_categories, updated_at)
+     VALUES (1, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(id) DO UPDATE SET
+       combine_categories = excluded.combine_categories,
+       updated_at = CURRENT_TIMESTAMP`,
+    combine ? 1 : 0,
+  );
+}
+
 export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
   const assets = await getAllAssets();
+  const { combine_categories } = await getZakatSettings();
 
   const categories = new Map<string, CategoryTotal>();
-  for (const a of assets) {
-    if (!a.is_calculate || a.price == null) continue;
 
-    let agg = categories.get(a.category);
-    if (!agg) {
-      agg = { value: 0, platforms: new Map() };
-      categories.set(a.category, agg);
+  function addToAgg(agg: CategoryTotal, asset: (typeof assets)[number]) {
+    const platform = asset.platform && asset.platform !== "" ? asset.platform : "Unspecified";
+    agg.value += asset.price!;
+    agg.platforms.set(platform, (agg.platforms.get(platform) ?? 0) + asset.price!);
+  }
+
+  if (combine_categories) {
+    // Every eligible asset, across every category, folds into one bucket —
+    // nisab and zakat are then computed once on the combined total.
+    const agg: CategoryTotal = { value: 0, platforms: new Map() };
+    for (const a of assets) {
+      if (!a.is_calculate || a.price == null) continue;
+      addToAgg(agg, a);
     }
+    categories.set(COMBINED_CATEGORY, agg);
+  } else {
+    for (const a of assets) {
+      if (!a.is_calculate || a.price == null) continue;
 
-    const platform = a.platform && a.platform !== "" ? a.platform : "Unspecified";
-    agg.value += a.price;
-    agg.platforms.set(platform, (agg.platforms.get(platform) ?? 0) + a.price);
+      let agg = categories.get(a.category);
+      if (!agg) {
+        agg = { value: 0, platforms: new Map() };
+        categories.set(a.category, agg);
+      }
+      addToAgg(agg, a);
+    }
   }
 
   const trackers = await getAllTrackers();

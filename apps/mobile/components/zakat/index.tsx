@@ -1,5 +1,10 @@
 import { ZakatTrackerDto } from "@/interface/zakat";
-import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
+import {
+  useGetZakatCategories,
+  useGetZakatSettings,
+  useSetZakatCombineMode,
+  useUpdateZakatTracker,
+} from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { EditPaidDateModal } from "./edit-paid-date-modal";
@@ -8,6 +13,7 @@ import {
   LayoutAnimation,
   Platform,
   ScrollView,
+  Switch,
   Text,
   TouchableOpacity,
   UIManager,
@@ -23,6 +29,8 @@ if (
 
 export function ZakatTrackerScreen() {
   const { data: zakatData, isLoading, isError } = useGetZakatCategories();
+  const { data: zakatSettings } = useGetZakatSettings();
+  const setCombineMode = useSetZakatCombineMode();
   const updateTracker = useUpdateZakatTracker();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     null,
@@ -140,6 +148,27 @@ export function ZakatTrackerScreen() {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ================= COMBINE CATEGORIES TOGGLE ================= */}
+        <View className="mb-5 flex-row items-center justify-between rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5">
+          <View className="flex-1 pr-3">
+            <Text className="text-[12px] font-bold text-slate-200">
+              Calculate Altogether
+            </Text>
+            <Text className="text-[10px] text-slate-400 mt-0.5">
+              {zakatSettings?.combine_categories
+                ? "Combining every category into one nisab check and zakat total"
+                : "Off: each category (Cash, Gold, Crypto, Stock) is checked against nisab separately"}
+            </Text>
+          </View>
+          <Switch
+            value={!!zakatSettings?.combine_categories}
+            onValueChange={(value) => setCombineMode.mutate(value)}
+            disabled={setCombineMode.isPending}
+            trackColor={{ false: "#334155", true: "#34d399" }}
+            thumbColor="#ffffff"
+          />
+        </View>
+
         {/* ================= TOTAL SUMMARY ================= */}
         <View className="mb-6 rounded-[24px] bg-linear-to-br from-emerald-400 to-emerald-600 px-5 py-5">
           <Text className="text-[11px] font-bold text-emerald-950/70 uppercase tracking-wider">
@@ -184,7 +213,9 @@ export function ZakatTrackerScreen() {
                   <View>
                     <View className="bg-emerald-500/20 self-start rounded-full px-3 py-1">
                       <Text className="text-[11px] font-bold text-emerald-400">
-                        {category.category}
+                        {category.category === "ALL"
+                          ? "ALL ASSETS"
+                          : category.category}
                       </Text>
                     </View>
 

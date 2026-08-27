@@ -65,7 +65,12 @@ function groupByPlatform(assets: AssetInterface[]): DisplayItem[] {
   }
 
   const groupItems: DisplayItem[] = Array.from(platformMap.entries()).map(
-    ([platform, entries]) => {
+    ([platform, rawEntries]) => {
+      // The platform's balance entry (platform_total set) always renders
+      // first, since it's the figure people scan for before the breakdown.
+      const entries = [...rawEntries].sort(
+        (a, b) => Number(b.platform_total !== null) - Number(a.platform_total !== null),
+      );
       const walletTotal = entries.reduce((sum, a) => sum + (a.price ?? 0), 0);
       const zakatableTotal = entries.reduce(
         (sum, a) => sum + (a.is_calculate ? (a.price ?? 0) : 0),
@@ -385,11 +390,11 @@ function CategorySectionHeader({ section }: { section: CategorySection }) {
       </View>
       <View className="items-end">
         <Text className="text-[14px] font-bold text-white">
-          RM{section.total.toLocaleString()}
+          RM{section.zakatableTotal.toLocaleString()}
         </Text>
         {hasExcluded && (
-          <Text className="text-[10px] font-semibold text-emerald-400">
-            RM{section.zakatableTotal.toLocaleString()} zakatable
+          <Text className="text-[10px] font-semibold text-slate-500">
+            +RM{(section.total - section.zakatableTotal).toLocaleString()} excluded
           </Text>
         )}
       </View>
@@ -445,7 +450,7 @@ function PlatformGroupCard({
           <View className="items-end">
             <View className="flex-row items-baseline gap-1.5">
               <Text className="text-[16px] font-bold text-white">
-                RM{group.walletTotal.toLocaleString()}
+                RM{group.zakatableTotal.toLocaleString()}
               </Text>
               {group.profitPercent !== null && (
                 <Text
@@ -461,8 +466,8 @@ function PlatformGroupCard({
               )}
             </View>
             {hasExcluded && (
-              <Text className="text-[10px] font-semibold text-emerald-400 mt-0.5">
-                RM{group.zakatableTotal.toLocaleString()} zakatable
+              <Text className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                +RM{(group.walletTotal - group.zakatableTotal).toLocaleString()} excluded
               </Text>
             )}
           </View>
@@ -536,6 +541,7 @@ function AssetRow({
     cost_basis,
     is_calculate,
     platform_total,
+    goal,
   } = asset;
 
   const profitPercent =
@@ -543,74 +549,98 @@ function AssetRow({
       ? ((price - cost_basis) / cost_basis) * 100
       : null;
 
+  const goalPercent =
+    goal && goal > 0 && price !== null ? (price / goal) * 100 : null;
+
   return (
     <View
-      className={`flex-row items-center px-4 py-3 ${
+      className={`px-4 py-3 ${
         !isLast ? "border-b border-white/8" : ""
       } ${!is_calculate ? "opacity-60" : ""}`}
     >
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.7}
-        className="flex-1 flex-row items-center justify-between pr-3"
-      >
-        <View className="flex-1 pr-2">
-          {quantity !== null && (
-            <Text className="text-[10px] text-slate-400 mb-1">
-              {quantity} {unit}
-            </Text>
-          )}
-          <View className="flex-row items-center gap-1">
-            <Text className="text-[13px] font-semibold text-white">
-              {name}
-            </Text>
-            {platform_total !== null && (
-              <Ionicons name="sync" size={11} color="#38bdf8" />
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.7}
+          className="flex-1 flex-row items-center justify-between pr-3"
+        >
+          <View className="flex-1 pr-2">
+            {quantity !== null && (
+              <Text className="text-[10px] text-slate-400 mb-1">
+                {quantity} {unit}
+              </Text>
+            )}
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[13px] font-semibold text-white">
+                {name}
+              </Text>
+              {platform_total !== null && (
+                <Ionicons name="sync" size={11} color="#38bdf8" />
+              )}
+            </View>
+            {note && (
+              <Text
+                className="text-[10px] text-slate-400 mt-0.5 italic"
+                numberOfLines={1}
+              >
+                {note}
+              </Text>
             )}
           </View>
-          {note && (
-            <Text
-              className="text-[10px] text-slate-400 mt-0.5 italic"
-              numberOfLines={1}
-            >
-              {note}
+          <View className="items-end">
+            <Text className="text-[14px] font-bold text-emerald-400">
+              {price !== null ? `RM${price.toLocaleString()}` : "N/A"}
             </Text>
-          )}
-        </View>
-        <View className="items-end">
-          <Text className="text-[14px] font-bold text-emerald-400">
-            {price !== null ? `RM${price.toLocaleString()}` : "N/A"}
-          </Text>
-          {profitPercent !== null && (
-            <Text
-              className={`text-[10px] font-semibold mt-0.5 ${
-                profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"
-              }`}
-            >
-              {profitPercent >= 0 ? "+" : ""}
-              {profitPercent.toFixed(1)}%
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      {onAdd && (
-        <TouchableOpacity
-          onPress={onAdd}
-          hitSlop={8}
-          className="p-1.5 mr-3 rounded-full bg-white/10"
-        >
-          <Ionicons name="add" size={16} color="#34d399" />
+            {profitPercent !== null && (
+              <Text
+                className={`text-[10px] font-semibold mt-0.5 ${
+                  profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {profitPercent >= 0 ? "+" : ""}
+                {profitPercent.toFixed(1)}%
+              </Text>
+            )}
+          </View>
         </TouchableOpacity>
-      )}
 
-      <Switch
-        key={`${asset.id}-${is_calculate}`}
-        value={is_calculate}
-        onValueChange={onToggle}
-        trackColor={{ false: "#334155", true: "#34d399" }}
-        thumbColor="#ffffff"
-      />
+        {onAdd && (
+          <TouchableOpacity
+            onPress={onAdd}
+            hitSlop={8}
+            className="p-1.5 mr-3 rounded-full bg-white/10"
+          >
+            <Ionicons name="add" size={16} color="#34d399" />
+          </TouchableOpacity>
+        )}
+
+        <Switch
+          key={`${asset.id}-${is_calculate}`}
+          value={is_calculate}
+          onValueChange={onToggle}
+          trackColor={{ false: "#334155", true: "#34d399" }}
+          thumbColor="#ffffff"
+        />
+      </View>
+
+      {goalPercent !== null && (
+        <View className="mt-2.5">
+          <View className="flex-row justify-between mb-1">
+            <Text className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
+              Goal RM{goal!.toLocaleString()}
+            </Text>
+            <Text className="text-[9px] font-bold text-emerald-400">
+              {Math.round(goalPercent)}%
+            </Text>
+          </View>
+          <View className="h-1 rounded-full bg-white/10 overflow-hidden">
+            <View
+              className="h-full rounded-full bg-emerald-500"
+              style={{ width: `${Math.min(goalPercent, 100)}%` }}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 }

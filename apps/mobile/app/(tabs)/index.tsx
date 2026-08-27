@@ -2,7 +2,7 @@ import { AssetCategory } from "@/interface/asset";
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetAssets } from "@/services/asset";
 import { useGetLiabilities } from "@/services/liability";
-import { useGetZakatCategories } from "@/services/zakat";
+import { useGetZakatCategories, useGetZakatSettings } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
@@ -38,12 +38,14 @@ export default function DashboardScreen() {
     useGetLiabilities();
   const { data: zakatCategories, isLoading: zakatLoading } =
     useGetZakatCategories();
+  const { data: zakatSettings } = useGetZakatSettings();
+  const combineZakat = !!zakatSettings?.combine_categories;
 
   const isLoading = assetsLoading || liabilitiesLoading || zakatLoading;
 
-  // Totals by category, across every active asset regardless of zakat
-  // inclusion — net worth reflects everything you own, not just what's
-  // zakatable.
+  // Totals by category, counting only assets still marked "include in
+  // total" — assets held for someone else (toggled off) are excluded from
+  // net worth, not just from zakat.
   const categoryTotals = useMemo(() => {
     const totals: Record<AssetCategory, number> = {
       CASH: 0,
@@ -52,9 +54,17 @@ export default function DashboardScreen() {
       STOCK: 0,
     };
     for (const a of assets ?? []) {
+      if (!a.is_calculate) continue;
       totals[a.category] = (totals[a.category] ?? 0) + (a.price ?? 0);
     }
     return totals;
+  }, [assets]);
+
+  const excludedTotal = useMemo(() => {
+    return (assets ?? []).reduce(
+      (sum, a) => sum + (!a.is_calculate ? (a.price ?? 0) : 0),
+      0,
+    );
   }, [assets]);
 
   const totalAssets = CATEGORY_ORDER.reduce(
@@ -67,6 +77,10 @@ export default function DashboardScreen() {
   );
   const netWorth = totalAssets - totalLiabilities;
   const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
+  const avgMonthlyCommitment = (liabilities ?? []).reduce(
+    (sum, l) => sum + (l.average_monthly_payment ?? l.monthly_payment ?? 0),
+    0,
+  );
 
   // Zakat figures come straight from the same backend logic the Zakat
   // Tracker screen uses, keyed by category — categories with no assets
@@ -123,26 +137,37 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {/* Quick Stats Row */}
-        <View className="mb-5 flex-row gap-3">
-          <StatCard
-            icon="wallet-outline"
-            label="Total Assets"
-            value={formatRM(totalAssets)}
-            tint="#34d399"
-          />
-          <StatCard
-            icon="card-outline"
-            label="Total Debt"
-            value={formatRM(totalLiabilities)}
-            tint="#fb7185"
-          />
-          <StatCard
-            icon="calculator-outline"
-            label="Debt Ratio"
-            value={`${debtRatio.toFixed(1)}%`}
-            tint="#fbbf24"
-          />
+        {/* Quick Stats Grid */}
+        <View className="mb-5 gap-3">
+          <View className="flex-row gap-3">
+            <StatCard
+              icon="wallet-outline"
+              label="Total Assets"
+              value={formatRM(totalAssets)}
+              sub={excludedTotal > 0 ? `+${formatRM(excludedTotal)} excluded` : undefined}
+              tint="#34d399"
+            />
+            <StatCard
+              icon="card-outline"
+              label="Total Debt"
+              value={formatRM(totalLiabilities)}
+              tint="#fb7185"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <StatCard
+              icon="calculator-outline"
+              label="Debt Ratio"
+              value={`${debtRatio.toFixed(1)}%`}
+              tint="#fbbf24"
+            />
+            <StatCard
+              icon="repeat-outline"
+              label="Avg Monthly Commitment"
+              value={formatRM(avgMonthlyCommitment)}
+              tint="#38bdf8"
+            />
+          </View>
         </View>
 
         {/* Asset Distribution */}
@@ -170,19 +195,33 @@ export default function DashboardScreen() {
         {/* Zakat Due */}
         <Section title="Zakat Due">
           <Card padded>
-            {CATEGORY_ORDER.map((category, index) => {
-              const meta = CATEGORY_META[category];
-              const z = zakatByCategory.get(category);
-              return (
-                <ZakatBreakdownRow
-                  key={category}
-                  label={meta.label}
-                  amount={z?.nisab_reached ? z.zakat_due : 0}
-                  isNisabReached={z?.nisab_reached ?? false}
-                  isLast={index === CATEGORY_ORDER.length - 1}
-                />
-              );
-            })}
+            {combineZakat ? (
+              (() => {
+                const z = zakatByCategory.get("ALL");
+                return (
+                  <ZakatBreakdownRow
+                    label="All Assets"
+                    amount={z?.nisab_reached ? z.zakat_due : 0}
+                    isNisabReached={z?.nisab_reached ?? false}
+                    isLast
+                  />
+                );
+              })()
+            ) : (
+              CATEGORY_ORDER.map((category, index) => {
+                const meta = CATEGORY_META[category];
+                const z = zakatByCategory.get(category);
+                return (
+                  <ZakatBreakdownRow
+                    key={category}
+                    label={meta.label}
+                    amount={z?.nisab_reached ? z.zakat_due : 0}
+                    isNisabReached={z?.nisab_reached ?? false}
+                    isLast={index === CATEGORY_ORDER.length - 1}
+                  />
+                );
+              })
+            )}
 
             <View className="mt-3 pt-4 border-t border-white/10 flex-row justify-between items-center">
               <Text className="text-slate-300 font-semibold text-[13px]">
@@ -198,7 +237,21 @@ export default function DashboardScreen() {
         {/* Nisab Status */}
         <Section title="Nisab Status">
           <Card>
-            {CATEGORY_ORDER.map((category, index) => {
+            {combineZakat ? (
+              (() => {
+                const z = zakatByCategory.get("ALL");
+                return (
+                  <NisabStatusRow
+                    label="All Assets"
+                    color="#34d399"
+                    current={z?.value ?? 0}
+                    nisab={nisab}
+                    isLast
+                  />
+                );
+              })()
+            ) : (
+              CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
               const z = zakatByCategory.get(category);
               return (
@@ -211,7 +264,8 @@ export default function DashboardScreen() {
                   isLast={index === CATEGORY_ORDER.length - 1}
                 />
               );
-            })}
+              })
+            )}
           </Card>
         </Section>
 
@@ -284,11 +338,13 @@ function StatCard({
   icon,
   label,
   value,
+  sub,
   tint,
 }: {
   icon: any;
   label: string;
   value: string;
+  sub?: string;
   tint: string;
 }) {
   return (
@@ -308,6 +364,11 @@ function StatCard({
       >
         {value}
       </Text>
+      {sub && (
+        <Text numberOfLines={1} className="mt-0.5 text-[9px] text-slate-500">
+          {sub}
+        </Text>
+      )}
     </View>
   );
 }
