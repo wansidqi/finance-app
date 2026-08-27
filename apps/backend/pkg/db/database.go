@@ -49,10 +49,18 @@ CREATE TABLE IF NOT EXISTS zakat_tracker (
 	user_id INTEGER NULL,
 	category VARCHAR(100) NOT NULL,
 	last_paid_date DATETIME NULL,
+	haul_start_date DATETIME NULL,
 	status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE (category)
+);
+
+CREATE TABLE IF NOT EXISTS hijri_cache (
+	gregorian_date VARCHAR(10) PRIMARY KEY,
+	hijri_date VARCHAR(10) NOT NULL,
+	cached_on VARCHAR(10) NOT NULL DEFAULT '',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 `
 
@@ -62,6 +70,8 @@ var assetColumnMigrations = []string{
 	"ALTER TABLE assets ADD COLUMN is_calculate BOOLEAN NOT NULL DEFAULT 1",
 	"ALTER TABLE assets ADD COLUMN note TEXT NULL",
 	"ALTER TABLE assets ADD COLUMN platform_total REAL NULL",
+	"ALTER TABLE zakat_tracker ADD COLUMN haul_start_date DATETIME NULL",
+	"ALTER TABLE hijri_cache ADD COLUMN cached_on VARCHAR(10) NOT NULL DEFAULT ''",
 }
 
 func migrateSchema(db *sqlx.DB) error {

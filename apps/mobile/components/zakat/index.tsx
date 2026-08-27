@@ -1,8 +1,10 @@
-import { ZakatCategory } from "@/interface/zakat";
-import { MOCK_ZAKAT_DATA } from "@/services/zakat-mock";
+import { ZakatTrackerDto } from "@/interface/zakat";
+import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
+import { EditPaidDateModal } from "./edit-paid-date-modal";
 import {
+  ActivityIndicator,
   LayoutAnimation,
   Platform,
   ScrollView,
@@ -19,30 +21,42 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const ZAKAT_RATE = 0.025;
-
 export function ZakatTrackerScreen() {
-  const [zakatData, setZakatData] =
-    useState<ZakatCategory[]>(MOCK_ZAKAT_DATA);
-  const [expandedCategory, setExpandedCategory] =
-    useState<string | null>(null);
+  const { data: zakatData, isLoading, isError } = useGetZakatCategories();
+  const updateTracker = useUpdateZakatTracker();
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(
+    null,
+  );
+  const [editingCategory, setEditingCategory] =
+    useState<ZakatTrackerDto | null>(null);
 
   /* ===========================
      Helpers
   ============================ */
 
-  const toggleTracking = (id: string) => {
+  const toggleTracking = (category: ZakatTrackerDto) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-    setZakatData((prev) =>
-      prev.map((cat) =>
-        cat.id === id ? { ...cat, isTracked: !cat.isTracked } : cat,
-      ),
-    );
+    updateTracker.mutate({
+      category: category.category,
+      status: category.is_tracked ? "INACTIVE" : "ACTIVE",
+    });
 
-    if (expandedCategory === id) {
+    if (expandedCategory === category.category) {
       setExpandedCategory(null);
     }
+  };
+
+  const savePaidDate = (isoDate: string) => {
+    if (!editingCategory) return;
+    updateTracker.mutate(
+      {
+        category: editingCategory.category,
+        status: "ACTIVE",
+        last_paid_date: isoDate,
+      },
+      { onSuccess: () => setEditingCategory(null) },
+    );
   };
 
   const toggleExpand = (id: string) => {
@@ -50,10 +64,17 @@ export function ZakatTrackerScreen() {
     setExpandedCategory(expandedCategory === id ? null : id);
   };
 
+  const formatWithHijri = (isoDate: string, hijri: string | null) => {
+    const gregorian = new Date(isoDate).toLocaleDateString("en-MY", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    return hijri ? `${gregorian} • ${hijri}` : gregorian;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "PAID":
-        return "#10b981";
       case "PENDING":
         return "#94a3b8";
       case "DUE":
@@ -70,13 +91,13 @@ export function ZakatTrackerScreen() {
   ============================ */
 
   const totalZakatDue = useMemo(() => {
+    if (!zakatData) return 0;
     return zakatData.reduce((sum, cat) => {
       if (
-        cat.isTracked &&
-        cat.isNisabReached &&
-        (cat.haulStatus === "DUE" || cat.haulStatus === "OVERDUE")
+        cat.is_tracked &&
+        (cat.haul_status === "DUE" || cat.haul_status === "OVERDUE")
       ) {
-        return sum + cat.totalValue * ZAKAT_RATE;
+        return sum + cat.zakat_due;
       }
       return sum;
     }, 0);
@@ -85,6 +106,24 @@ export function ZakatTrackerScreen() {
   /* ===========================
      UI
   ============================ */
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+        <ActivityIndicator color="#10b981" />
+      </View>
+    );
+  }
+
+  if (isError || !zakatData) {
+    return (
+      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 px-6">
+        <Text className="text-slate-300 text-center">
+          Couldn&apos;t load your zakat categories.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -118,20 +157,18 @@ export function ZakatTrackerScreen() {
 
         {/* ================= ZAKAT CARDS ================= */}
         {zakatData.map((category) => {
-          const zakatAmount =
-            category.isNisabReached
-              ? category.totalValue * ZAKAT_RATE
-              : 0;
+          const cardStatus = category.is_tracked
+            ? category.haul_status
+            : "PENDING";
 
           return (
             <View
-              key={category.id}
+              key={category.category}
               className="mb-4 rounded-2xl bg-slate-700/40 border border-slate-600 px-5 py-4"
               style={{
                 shadowColor:
-                  category.haulStatus === "DUE" ||
-                  category.haulStatus === "OVERDUE"
-                    ? getStatusColor(category.haulStatus)
+                  cardStatus === "DUE" || cardStatus === "OVERDUE"
+                    ? getStatusColor(cardStatus)
                     : "transparent",
                 shadowOpacity: 0.12,
                 shadowRadius: 12,
@@ -139,75 +176,75 @@ export function ZakatTrackerScreen() {
             >
               {/* Header */}
               <TouchableOpacity
-                activeOpacity={category.isTracked ? 0.7 : 1}
+                activeOpacity={category.is_tracked ? 0.7 : 1}
                 onPress={() =>
-                  category.isTracked && toggleExpand(category.id)
+                  category.is_tracked && toggleExpand(category.category)
                 }
-                className={`${!category.isTracked ? "opacity-50" : ""}`}
+                className={`${!category.is_tracked ? "opacity-50" : ""}`}
               >
                 <View className="flex-row justify-between items-start">
                   <View>
                     <View className="bg-emerald-500/20 self-start rounded-full px-3 py-1">
                       <Text className="text-[11px] font-bold text-emerald-400">
-                        {category.name}
+                        {category.category}
                       </Text>
                     </View>
 
                     <Text className="text-[20px] font-bold text-emerald-400 mt-2">
-                      RM{category.totalValue.toLocaleString()}
+                      RM{category.value.toLocaleString()}
                     </Text>
 
                     <Text className="text-[11px] text-slate-400 mt-0.5">
-                      Nisab RM{category.nisabAmount.toLocaleString()}
+                      Nisab RM{category.nisab.toLocaleString()}
                     </Text>
                   </View>
 
                   <View className="items-end gap-2">
                     {/* Status */}
-                    <View
-                      className="rounded-xl px-3 py-1.5"
-                      style={{
-                        backgroundColor: `${getStatusColor(
-                          category.haulStatus,
-                        )}20`,
-                      }}
-                    >
-                      <Text
-                        className="text-[10px] font-bold tracking-widest"
+                    {category.is_tracked && (
+                      <View
+                        className="rounded-xl px-3 py-1.5"
                         style={{
-                          color: getStatusColor(category.haulStatus),
+                          backgroundColor: `${getStatusColor(
+                            cardStatus,
+                          )}20`,
                         }}
                       >
-                        {category.haulStatus}
-                      </Text>
-                    </View>
+                        <Text
+                          className="text-[10px] font-bold tracking-widest"
+                          style={{
+                            color: getStatusColor(cardStatus),
+                          }}
+                        >
+                          {cardStatus}
+                        </Text>
+                      </View>
+                    )}
 
                     {/* Tracking Pill */}
                     <TouchableOpacity
-                      onPress={() => toggleTracking(category.id)}
+                      onPress={() => toggleTracking(category)}
                       className={`px-3 py-1.5 rounded-full ${
-                        category.isTracked
+                        category.is_tracked
                           ? "bg-emerald-500/20"
                           : "bg-slate-600/30"
                       }`}
                     >
                       <Text
                         className={`text-[11px] font-bold ${
-                          category.isTracked
+                          category.is_tracked
                             ? "text-emerald-400"
                             : "text-slate-400"
                         }`}
                       >
-                        {category.isTracked
-                          ? "TRACKING"
-                          : "NOT TRACKED"}
+                        {category.is_tracked ? "TRACKING" : "NOT TRACKED"}
                       </Text>
                     </TouchableOpacity>
 
-                    {category.isTracked && (
+                    {category.is_tracked && (
                       <Ionicons
                         name={
-                          expandedCategory === category.id
+                          expandedCategory === category.category
                             ? "chevron-up"
                             : "chevron-down"
                         }
@@ -220,57 +257,59 @@ export function ZakatTrackerScreen() {
               </TouchableOpacity>
 
               {/* ================= EXPANDED ================= */}
-              {category.isTracked &&
-                expandedCategory === category.id && (
+              {category.is_tracked &&
+                expandedCategory === category.category && (
                   <View className="mt-5 gap-3">
                     {/* Info cards */}
                     <View className="flex-row gap-3">
                       <InfoCard
                         label="ZAKAT PAYABLE"
-                        value={`RM${zakatAmount.toFixed(2)}`}
+                        value={`RM${category.zakat_due.toFixed(2)}`}
                         highlight
                       />
                       <InfoCard
                         label="NISAB"
-                        value={`RM${category.nisabAmount.toLocaleString()}`}
+                        value={`RM${category.nisab.toLocaleString()}`}
                       />
                     </View>
 
                     <DetailRow
                       label="Nisab Reached"
-                      value={category.isNisabReached ? "YES" : "NO"}
-                      success={category.isNisabReached}
+                      value={category.nisab_reached ? "YES" : "NO"}
+                      success={category.nisab_reached}
                     />
 
                     <DetailRow
                       label="Last Paid Date"
                       value={
-                        category.lastPaidDate
-                          ? new Date(
-                              category.lastPaidDate,
-                            ).toLocaleDateString("en-MY", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
+                        category.last_paid_date
+                          ? formatWithHijri(
+                              category.last_paid_date,
+                              category.last_paid_date_hijri,
+                            )
                           : "Never"
                       }
+                      onEdit={() => setEditingCategory(category)}
                     />
 
                     <DetailRow
                       label="Next Due Date"
-                      value={new Date(
-                        category.nextDueDate,
-                      ).toLocaleDateString("en-MY", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      value={
+                        category.next_due_date
+                          ? formatWithHijri(
+                              category.next_due_date,
+                              category.next_due_date_hijri,
+                            )
+                          : "Awaiting nisab"
+                      }
                     />
 
-                    {(category.haulStatus === "DUE" ||
-                      category.haulStatus === "OVERDUE") && (
-                      <TouchableOpacity className="mt-4 bg-emerald-500/90 rounded-xl py-4">
+                    {(cardStatus === "DUE" || cardStatus === "OVERDUE") && (
+                      <TouchableOpacity
+                        onPress={() => setEditingCategory(category)}
+                        disabled={updateTracker.isPending}
+                        className="mt-4 bg-emerald-500/90 rounded-xl py-4"
+                      >
                         <Text className="text-center text-white font-bold tracking-wide">
                           Pay Zakat Now
                         </Text>
@@ -285,6 +324,15 @@ export function ZakatTrackerScreen() {
           );
         })}
       </ScrollView>
+
+      <EditPaidDateModal
+        visible={!!editingCategory}
+        category={editingCategory?.category ?? ""}
+        initialDate={editingCategory?.last_paid_date ?? null}
+        onCancel={() => setEditingCategory(null)}
+        onConfirm={savePaidDate}
+        isLoading={updateTracker.isPending}
+      />
     </View>
   );
 }
@@ -322,27 +370,36 @@ function DetailRow({
   label,
   value,
   success,
+  onEdit,
 }: {
   label: string;
   value: string;
   success?: boolean;
+  onEdit?: () => void;
 }) {
   return (
-    <View className="bg-slate-700/20 rounded-xl px-4 py-3 flex-row justify-between items-center">
-      <Text className="text-[11px] text-slate-300">
+    <View className="bg-slate-700/20 rounded-xl px-4 py-3 flex-row justify-between items-start gap-3">
+      <Text className="text-[11px] text-slate-300 pt-0.5">
         {label}
       </Text>
-      <Text
-        className={`text-[12px] font-semibold ${
-          success === undefined
-            ? "text-white"
-            : success
-            ? "text-emerald-400"
-            : "text-red-400"
-        }`}
-      >
-        {value}
-      </Text>
+      <View className="flex-1 flex-row justify-end items-start gap-2">
+        <Text
+          className={`text-[12px] font-semibold text-right flex-1 ${
+            success === undefined
+              ? "text-white"
+              : success
+              ? "text-emerald-400"
+              : "text-red-400"
+          }`}
+        >
+          {value}
+        </Text>
+        {onEdit && (
+          <TouchableOpacity onPress={onEdit} hitSlop={8}>
+            <Ionicons name="pencil" size={13} color="#94a3b8" />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }

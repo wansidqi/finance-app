@@ -3,13 +3,14 @@ package zakat
 import "time"
 
 type ZakatTracker struct {
-	Id           uint       `db:"id" json:"id"`
-	UserId       *uint      `db:"user_id" json:"user_id"`
-	Category     string     `db:"category" json:"category"`
-	LastPaidDate time.Time  `db:"last_paid_date" json:"last_paid_date"`
-	Status       string     `db:"status" json:"status"`
-	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt    *time.Time `db:"updated_at" json:"updated_at"`
+	Id            uint       `db:"id" json:"id"`
+	UserId        *uint      `db:"user_id" json:"user_id"`
+	Category      string     `db:"category" json:"category"`
+	LastPaidDate  *time.Time `db:"last_paid_date" json:"last_paid_date"`
+	HaulStartDate *time.Time `db:"haul_start_date" json:"haul_start_date"`
+	Status        string     `db:"status" json:"status"`
+	CreatedAt     time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt     *time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type TrackerDto struct {
@@ -21,10 +22,15 @@ type TrackerDto struct {
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 
-	HaulStatus        string             `db:"haul_status" json:"haul_status"`
-	NisabReached      bool               `db:"nisab_reached" json:"nisab_reached"`
-	LastPaidDate      *time.Time         `db:"last_paid_date" json:"last_paid_date"`
-	NextDueDate       time.Time          `db:"next_due_date" json:"next_due_date"`
+	IsTracked         bool               `json:"is_tracked"`
+	HaulStatus        string             `json:"haul_status"`
+	Nisab             float64            `json:"nisab"`
+	NisabReached      bool               `json:"nisab_reached"`
+	LastPaidDate      *time.Time         `json:"last_paid_date"`
+	LastPaidDateHijri *string            `json:"last_paid_date_hijri"`
+	HaulStartDate     *time.Time         `json:"haul_start_date"`
+	NextDueDate       *time.Time         `json:"next_due_date"`
+	NextDueDateHijri  *string            `json:"next_due_date_hijri"`
 	ZakatDue          float64            `json:"zakat_due"`
 	PlatformBreakdown []PlatformShareDto `json:"platform_breakdown"`
 }
