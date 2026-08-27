@@ -32,20 +32,20 @@ export default function LiabilityDetailPage() {
 
   if (isLoading)
     return (
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center">
+      <View className="flex-1 bg-slate-950 items-center justify-center">
         <Text className="text-slate-300">Loading...</Text>
       </View>
     );
 
   if (!liability)
     return (
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center">
+      <View className="flex-1 bg-slate-950 items-center justify-center">
         <Text className="text-slate-300">Liability not found</Text>
       </View>
     );
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <View className="flex-1 bg-slate-950">
       <View className="flex-row items-center justify-between px-3 py-12">
         <TouchableOpacity
           onPress={() => router.navigate("/(tabs)/liability")}
@@ -192,10 +192,8 @@ export function LiabilityCard(liability: LiabilityInterface) {
 
       <View
         className={`${
-          isEdit
-            ? "bg-slate-700"
-            : "bg-linear-to-br from-slate-700 to-slate-800"
-        } px-6 py-6 border border-slate-600`}
+          isEdit ? "bg-slate-800" : "bg-slate-900"
+        } px-6 py-6 border border-white/10`}
       >
         {/* Category + Edit/Delete Buttons */}
         <View className="flex-row items-center justify-between mb-4">
@@ -215,7 +213,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
                     className={`flex-1 rounded-lg py-2 ${
                       editLiability.category === item
                         ? "bg-rose-500"
-                        : "bg-slate-600"
+                        : "bg-white/10"
                     }`}
                   >
                     <Text
@@ -245,19 +243,19 @@ export function LiabilityCard(liability: LiabilityInterface) {
           <View className="flex-row">
             <TouchableOpacity
               onPress={() => setIsEdit(!isEdit)}
-              className={`ml-3 p-2.5 rounded-full ${isEdit ? "bg-emerald-500/20" : "bg-slate-600/50"}`}
+              className={`ml-3 p-2.5 rounded-full ${isEdit ? "bg-emerald-500/20" : "bg-white/10"}`}
             >
               <Ionicons
                 name={isEdit ? "checkmark" : "pencil"}
                 size={18}
-                color={isEdit ? "#10b981" : "#cbd5e1"}
+                color={isEdit ? "#34d399" : "#cbd5e1"}
               />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowDeleteConfirm(true)}
-              className={`ml-3 p-2.5 rounded-full bg-slate-600/50`}
+              className={`ml-3 p-2.5 rounded-full bg-white/10`}
             >
-              <Ionicons name="trash-bin" size={18} color="#ef4444" />
+              <Ionicons name="trash-bin" size={18} color="#fb7185" />
             </TouchableOpacity>
           </View>
         </View>
@@ -275,7 +273,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
                 onChangeText={(text) =>
                   setEditLiability({ ...editLiability, name: text })
                 }
-                className="text-[18px] font-bold text-white bg-slate-600/50 px-3 py-2 rounded-lg border border-slate-500"
+                className="text-[18px] font-bold text-white bg-white/5 px-3 py-2 rounded-lg border border-white/10"
               />
             }
           />
@@ -304,7 +302,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
                     })
                   }
                   keyboardType="numeric"
-                  className="text-[16px] font-bold text-rose-400 bg-slate-600/50 px-3 py-2 rounded-lg border border-slate-500"
+                  className="text-[16px] font-bold text-rose-400 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
                 />
               }
             />
@@ -330,7 +328,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
                     })
                   }
                   keyboardType="numeric"
-                  className="text-[16px] font-bold text-slate-100 bg-slate-600/50 px-3 py-2 rounded-lg border border-slate-500"
+                  className="text-[16px] font-bold text-slate-100 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
                 />
               }
             />
@@ -378,12 +376,12 @@ export function LiabilityCard(liability: LiabilityInterface) {
                   placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
                   editable={!isPaying}
-                  className="flex-1 border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                  className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
                 <TouchableOpacity
                   onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
                   disabled={isPaying}
-                  className="bg-slate-600/40 border border-slate-500 rounded-lg px-3 py-2 justify-center"
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
                 >
                   <Text className="text-[11px] font-bold text-slate-300">
                     Reset
@@ -395,7 +393,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
             <TouchableOpacity
               onPress={() => handlePay(Number(paymentAmount))}
               disabled={isPaying || !Number(paymentAmount)}
-              className={`mt-4 bg-linear-to-r from-rose-500 to-rose-600 rounded-lg py-3 shadow-lg ${
+              className={`mt-4 bg-rose-500 rounded-lg py-3 ${
                 isPaying || !Number(paymentAmount) ? "opacity-50" : ""
               }`}
             >
@@ -412,7 +410,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
               onPress={() => {
                 setIsEdit(false);
               }}
-              className="flex-1 bg-slate-600/40 rounded-lg py-3"
+              className="flex-1 bg-white/5 rounded-lg py-3"
             >
               <Text className="text-center font-semibold text-slate-200 text-[13px]">
                 Cancel
@@ -420,9 +418,9 @@ export function LiabilityCard(liability: LiabilityInterface) {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleSave}
-              className="flex-1 bg-linear-to-r from-emerald-500 to-emerald-600 rounded-lg py-3 shadow-lg"
+              className="flex-1 bg-emerald-500 rounded-lg py-3"
             >
-              <Text className="text-center font-semibold text-white text-[13px]">
+              <Text className="text-center font-semibold text-emerald-950 text-[13px]">
                 Save
               </Text>
             </TouchableOpacity>

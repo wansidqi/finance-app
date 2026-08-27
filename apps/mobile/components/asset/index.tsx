@@ -162,7 +162,7 @@ export function Asset() {
     });
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <View className="flex-1 bg-slate-950">
       <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
         <View>
           <Text className="text-[14px] font-medium text-slate-400">
@@ -174,15 +174,17 @@ export function Asset() {
         </View>
         <TouchableOpacity
           onPress={() => openAddModal()}
-          className="rounded-full bg-linear-to-br from-emerald-500 to-emerald-600 px-6 py-3 shadow-lg active:scale-95"
+          className="rounded-full bg-emerald-500 px-5 py-3 active:opacity-80"
         >
           <View className="flex-row items-center gap-1">
-            <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-semibold text-[14px]">Add</Text>
+            <Ionicons name="add" size={20} color="#022c22" />
+            <Text className="text-emerald-950 font-semibold text-[14px]">
+              Add
+            </Text>
           </View>
         </TouchableOpacity>
       </View>
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 py-10 my-5">
+      <View className="flex-1 bg-slate-950 py-10 my-5">
         <ScrollView
           className="px-6 flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -313,7 +315,7 @@ function UpdateBalanceModal({
     <Modal visible={visible} transparent animationType="fade">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
       <View className="flex-1 items-center justify-center bg-black/60 px-6">
-        <View className="w-full rounded-2xl bg-slate-800 border border-slate-600 p-5">
+        <View className="w-full rounded-2xl bg-slate-900 border border-white/10 p-5">
           <Text className="text-[16px] font-bold text-white mb-1">
             Update {group.platform} Balance
           </Text>
@@ -329,12 +331,12 @@ function UpdateBalanceModal({
             placeholder="0.00"
             placeholderTextColor="#64748b"
             autoFocus
-            className="rounded-lg border border-slate-600 px-3 py-2 text-[14px] text-white bg-slate-700/40 mb-4"
+            className="rounded-lg border border-white/10 px-3 py-2 text-[14px] text-white bg-white/5 mb-4"
           />
           <View className="flex-row gap-2.5">
             <TouchableOpacity
               onPress={onClose}
-              className="flex-1 rounded-lg bg-slate-700/50 py-2.5 border border-slate-600"
+              className="flex-1 rounded-lg bg-white/5 py-2.5 border border-white/10"
             >
               <Text className="text-center font-semibold text-slate-200 text-[13px]">
                 Cancel
@@ -345,11 +347,15 @@ function UpdateBalanceModal({
               onPress={handleSave}
               className={`flex-1 rounded-lg py-2.5 ${
                 isSaving || !totalInput
-                  ? "bg-slate-600/30 opacity-50"
-                  : "bg-linear-to-r from-emerald-500 to-emerald-600 shadow-lg"
+                  ? "bg-white/5 opacity-50"
+                  : "bg-emerald-500"
               }`}
             >
-              <Text className="text-center font-semibold text-white text-[13px]">
+              <Text
+                className={`text-center font-semibold text-[13px] ${
+                  isSaving || !totalInput ? "text-slate-400" : "text-emerald-950"
+                }`}
+              >
                 {isSaving ? "Saving..." : "Save"}
               </Text>
             </TouchableOpacity>
@@ -370,7 +376,7 @@ function CategorySectionHeader({ section }: { section: CategorySection }) {
           <Ionicons
             name={CATEGORY_ICON[section.category]}
             size={14}
-            color="#10b981"
+            color="#34d399"
           />
         </View>
         <Text className="text-[13px] font-bold text-slate-200 uppercase tracking-wider">
@@ -407,9 +413,9 @@ function PlatformGroupCard({
   const hasExcluded = group.zakatableTotal !== group.walletTotal;
 
   return (
-    <View className="rounded-2xl bg-slate-800/60 border border-slate-600/50 overflow-hidden">
+    <View className="rounded-2xl bg-white/[0.035] border border-white/10 overflow-hidden">
       {/* Group header */}
-      <View className="px-4 py-3 bg-slate-700/40 border-b border-slate-600/50">
+      <View className="px-4 py-3 bg-white/5 border-b border-white/10">
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-2">
             <Text className="text-[14px] font-bold text-white">
@@ -424,7 +430,7 @@ function PlatformGroupCard({
             <TouchableOpacity
               onPress={onUpdateBalance}
               hitSlop={8}
-              className="p-1.5 mr-2 rounded-full bg-slate-600/40"
+              className="p-1.5 mr-2 rounded-full bg-white/10"
             >
               <Ionicons name="sync" size={16} color="#38bdf8" />
             </TouchableOpacity>
@@ -432,9 +438,9 @@ function PlatformGroupCard({
           <TouchableOpacity
             onPress={onAdd}
             hitSlop={8}
-            className="p-1.5 mr-2 rounded-full bg-slate-600/40"
+            className="p-1.5 mr-2 rounded-full bg-white/10"
           >
-            <Ionicons name="add" size={16} color="#10b981" />
+            <Ionicons name="add" size={16} color="#34d399" />
           </TouchableOpacity>
           <View className="items-end">
             <View className="flex-row items-baseline gap-1.5">
@@ -492,7 +498,7 @@ function StandaloneAssetCard({
   onAdd: () => void;
 }) {
   return (
-    <View className="rounded-2xl bg-slate-800/60 border border-slate-600/50 overflow-hidden">
+    <View className="rounded-2xl bg-white/[0.035] border border-white/10 overflow-hidden">
       <AssetRow
         asset={asset}
         isLast
@@ -540,7 +546,7 @@ function AssetRow({
   return (
     <View
       className={`flex-row items-center px-4 py-3 ${
-        !isLast ? "border-b border-slate-700/60" : ""
+        !isLast ? "border-b border-white/8" : ""
       } ${!is_calculate ? "opacity-60" : ""}`}
     >
       <TouchableOpacity
@@ -592,9 +598,9 @@ function AssetRow({
         <TouchableOpacity
           onPress={onAdd}
           hitSlop={8}
-          className="p-1.5 mr-3 rounded-full bg-slate-600/40"
+          className="p-1.5 mr-3 rounded-full bg-white/10"
         >
-          <Ionicons name="add" size={16} color="#10b981" />
+          <Ionicons name="add" size={16} color="#34d399" />
         </TouchableOpacity>
       )}
 
@@ -602,7 +608,7 @@ function AssetRow({
         key={`${asset.id}-${is_calculate}`}
         value={is_calculate}
         onValueChange={onToggle}
-        trackColor={{ false: "#475569", true: "#10b981" }}
+        trackColor={{ false: "#334155", true: "#34d399" }}
         thumbColor="#ffffff"
       />
     </View>

@@ -18,12 +18,19 @@ const CATEGORY_META: Record<
   AssetCategory,
   { label: string; icon: any; color: string }
 > = {
-  CASH: { label: "Cash & Savings", icon: "cash-outline", color: "#10b981" },
-  GOLD: { label: "Gold", icon: "diamond-outline", color: "#f59e0b" },
-  CRYPTO: { label: "Crypto", icon: "logo-bitcoin", color: "#8b5cf6" },
-  STOCK: { label: "Stock", icon: "trending-up-outline", color: "#06b6d4" },
+  CASH: { label: "Cash & Savings", icon: "cash-outline", color: "#34d399" },
+  GOLD: { label: "Gold", icon: "diamond-outline", color: "#fbbf24" },
+  CRYPTO: { label: "Crypto", icon: "logo-bitcoin", color: "#a78bfa" },
+  STOCK: { label: "Stock", icon: "trending-up-outline", color: "#38bdf8" },
 };
 const CATEGORY_ORDER: AssetCategory[] = ["CASH", "GOLD", "CRYPTO", "STOCK"];
+
+function formatRM(value: number) {
+  return `RM${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 export default function DashboardScreen() {
   const { data: assets, isLoading: assetsLoading } = useGetAssets();
@@ -79,68 +86,68 @@ export default function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-        <ActivityIndicator color="#10b981" />
+      <View className="flex-1 items-center justify-center bg-slate-950">
+        <ActivityIndicator color="#34d399" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-      <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
-        <View>
-          <Text className="text-[14px] font-medium text-slate-400">
-            Overview
-          </Text>
-          <Text className="text-[32px] font-bold text-white mt-1">
-            My Wealth
-          </Text>
-        </View>
+    <View className="flex-1 bg-slate-950">
+      <View className="px-6 pt-16 pb-2">
+        <Text className="text-[13px] font-medium text-slate-500">
+          Overview
+        </Text>
+        <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
+          My Wealth
+        </Text>
       </View>
 
       <ScrollView
-        className="p-6"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        className="px-6"
+        contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Main Net Worth Card */}
-        <View className="mb-4 rounded-2xl bg-linear-to-br from-emerald-400 via-emerald-500 to-teal-600 p-4 shadow-lg border border-emerald-300/30">
-          <Text className="text-[9px] font-bold text-emerald-50 uppercase tracking-widest opacity-90">
-            Net Worth
-          </Text>
-          <Text className="text-[32px] font-black text-white mt-1 tracking-tight">
-            RM{netWorth.toLocaleString()}
+        {/* Net Worth Card */}
+        <View className="mb-5 rounded-[28px] bg-linear-to-br from-emerald-400 to-emerald-600 px-6 py-7 overflow-hidden">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-[11px] font-bold text-emerald-950/70 uppercase tracking-[1.5px]">
+              Net Worth
+            </Text>
+            <View className="h-8 w-8 rounded-full bg-emerald-950/10 items-center justify-center">
+              <Ionicons name="trending-up" size={15} color="#022c22" />
+            </View>
+          </View>
+          <Text className="text-[34px] font-extrabold text-emerald-950 tracking-tight">
+            {formatRM(netWorth)}
           </Text>
         </View>
 
         {/* Quick Stats Row */}
-        <View className="mb-6 flex-row gap-3">
+        <View className="mb-5 flex-row gap-3">
           <StatCard
             icon="wallet-outline"
             label="Total Assets"
-            value={`RM${totalAssets.toLocaleString()}`}
-            color="emerald"
+            value={formatRM(totalAssets)}
+            tint="#34d399"
           />
           <StatCard
             icon="card-outline"
             label="Total Debt"
-            value={`RM${totalLiabilities.toLocaleString()}`}
-            color="rose"
+            value={formatRM(totalLiabilities)}
+            tint="#fb7185"
           />
           <StatCard
             icon="calculator-outline"
             label="Debt Ratio"
             value={`${debtRatio.toFixed(1)}%`}
-            color="amber"
+            tint="#fbbf24"
           />
         </View>
 
         {/* Asset Distribution */}
-        <View className="mb-6">
-          <Text className="text-[14px] font-bold text-white mb-4">
-            Asset Distribution
-          </Text>
-          <View className="rounded-3xl bg-linear-to-br from-slate-700 to-slate-800 border border-slate-500/50 overflow-hidden shadow-xl">
+        <Section title="Asset Distribution">
+          <Card>
             {CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
               const value = categoryTotals[category];
@@ -157,16 +164,13 @@ export default function DashboardScreen() {
                 />
               );
             })}
-          </View>
-        </View>
+          </Card>
+        </Section>
 
-        {/* Zakat Breakdown Section */}
-        <View className="mb-6">
-          <Text className="text-[14px] font-bold text-white mb-4">
-            Zakat Due
-          </Text>
-          <View className="rounded-2xl bg-linear-to-br from-amber-500/10 to-amber-600/10 border border-amber-500/30 p-5">
-            {CATEGORY_ORDER.map((category) => {
+        {/* Zakat Due */}
+        <Section title="Zakat Due">
+          <Card padded>
+            {CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
               const z = zakatByCategory.get(category);
               return (
@@ -175,30 +179,25 @@ export default function DashboardScreen() {
                   label={meta.label}
                   amount={z?.nisab_reached ? z.zakat_due : 0}
                   isNisabReached={z?.nisab_reached ?? false}
+                  isLast={index === CATEGORY_ORDER.length - 1}
                 />
               );
             })}
 
-            <View className="mt-4 pt-4 border-t border-amber-500/30 flex-row justify-between items-center">
-              <Text className="text-white font-bold text-[13px]">
+            <View className="mt-3 pt-4 border-t border-white/10 flex-row justify-between items-center">
+              <Text className="text-slate-300 font-semibold text-[13px]">
                 Total Payable
               </Text>
-              <Text className="text-amber-300 text-[18px] font-bold">
-                RM
-                {totalZakatPayable.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
+              <Text className="text-emerald-400 text-[19px] font-extrabold">
+                {formatRM(totalZakatPayable)}
               </Text>
             </View>
-          </View>
-        </View>
+          </Card>
+        </Section>
 
         {/* Nisab Status */}
-        <View className="mb-6">
-          <Text className="text-[14px] font-bold text-white mb-4">
-            Nisab Status
-          </Text>
-          <View className="rounded-3xl bg-linear-to-br from-slate-700 via-slate-800 to-slate-900 border border-emerald-500/20 overflow-hidden shadow-xl">
+        <Section title="Nisab Status">
+          <Card>
             {CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
               const z = zakatByCategory.get(category);
@@ -206,36 +205,36 @@ export default function DashboardScreen() {
                 <NisabStatusRow
                   key={category}
                   label={meta.label}
+                  color={meta.color}
                   current={z?.value ?? 0}
                   nisab={nisab}
-                  unit="RM"
                   isLast={index === CATEGORY_ORDER.length - 1}
                 />
               );
             })}
-          </View>
-        </View>
+          </Card>
+        </Section>
 
         {/* Quick Actions */}
         <View className="mb-4">
-          <Text className="text-[14px] font-bold text-white mb-4">
+          <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
             Quick Actions
           </Text>
           <View className="flex-row gap-3">
             <QuickActionButton
               icon="wallet-outline"
               label="Assets"
-              color="emerald"
+              tint="#34d399"
             />
             <QuickActionButton
               icon="card-outline"
               label="Liabilities"
-              color="rose"
+              tint="#fb7185"
             />
             <QuickActionButton
-              icon="hand-right-outline"
+              icon="moon-outline"
               label="Zakat"
-              color="amber"
+              tint="#fbbf24"
             />
           </View>
         </View>
@@ -244,49 +243,71 @@ export default function DashboardScreen() {
   );
 }
 
-// Helper Components
+// Layout helpers
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View className="mb-5">
+      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function Card({
+  children,
+  padded = false,
+}: {
+  children: React.ReactNode;
+  padded?: boolean;
+}) {
+  return (
+    <View
+      className={`rounded-3xl bg-white/[0.035] border border-white/10 overflow-hidden ${
+        padded ? "p-5" : ""
+      }`}
+    >
+      {children}
+    </View>
+  );
+}
+
+// Content components
 function StatCard({
   icon,
   label,
   value,
-  color,
+  tint,
 }: {
   icon: any;
   label: string;
   value: string;
-  color: "emerald" | "rose" | "amber";
+  tint: string;
 }) {
-  const colorMap = {
-    emerald: {
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/30",
-      icon: "#10b981",
-    },
-    rose: {
-      bg: "bg-rose-500/10",
-      border: "border-rose-500/30",
-      icon: "#f43f5e",
-    },
-    amber: {
-      bg: "bg-amber-500/10",
-      border: "border-amber-500/30",
-      icon: "#f59e0b",
-    },
-  };
-
-  const colors = colorMap[color];
-
   return (
-    <View
-      className={`flex-1 rounded-3xl ${colors.bg} ${colors.border} border p-4 shadow-lg`}
-    >
-      <View className="flex-row items-center gap-2 mb-2">
-        <Ionicons name={icon} size={16} color={colors.icon} />
+    <View className="flex-1 rounded-2xl bg-white/[0.035] border border-white/10 p-4">
+      <View
+        style={{ backgroundColor: `${tint}1f` }}
+        className="h-8 w-8 rounded-lg items-center justify-center mb-3"
+      >
+        <Ionicons name={icon} size={15} color={tint} />
       </View>
-      <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
         {label}
       </Text>
-      <Text className="mt-1.5 text-[14px] font-bold text-white">{value}</Text>
+      <Text
+        numberOfLines={1}
+        className="mt-1 text-[14px] font-bold text-white"
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -309,25 +330,27 @@ function AssetBreakdownRow({
   return (
     <View
       className={`px-5 py-4 flex-row items-center justify-between ${
-        !isLast ? "border-b border-slate-600" : ""
+        !isLast ? "border-b border-white/8" : ""
       }`}
     >
       <View className="flex-row items-center gap-3 flex-1">
         <View
-          style={{ backgroundColor: `${color}20` }}
-          className="rounded-lg p-2"
+          style={{ backgroundColor: `${color}1f` }}
+          className="h-9 w-9 rounded-xl items-center justify-center"
         >
-          <Ionicons name={icon} size={18} color={color} />
+          <Ionicons name={icon} size={17} color={color} />
         </View>
         <View>
-          <Text className="text-[12px] font-semibold text-white">{label}</Text>
-          <Text className="text-[10px] text-slate-400 mt-0.5">
+          <Text className="text-[13px] font-semibold text-white">
+            {label}
+          </Text>
+          <Text className="text-[11px] text-slate-500 mt-0.5">
             {percent.toFixed(1)}%
           </Text>
         </View>
       </View>
-      <Text className="text-[13px] font-bold text-slate-100">
-        RM{value.toLocaleString()}
+      <Text className="text-[13px] font-bold text-slate-200">
+        {formatRM(value)}
       </Text>
     </View>
   );
@@ -336,37 +359,36 @@ function AssetBreakdownRow({
 function ZakatBreakdownRow({
   label,
   amount,
-  subtext,
   isNisabReached,
+  isLast = false,
 }: {
   label: string;
   amount: number;
-  subtext?: string;
   isNisabReached: boolean;
+  isLast?: boolean;
 }) {
   return (
-    <View className="flex-row justify-between items-center mb-3">
-      <View>
-        <View className="flex-row items-center gap-2">
-          <Text className="text-[12px] font-semibold text-slate-200">
-            {label}
-          </Text>
-          {isNisabReached ? (
-            <Ionicons name="checkmark-circle" size={14} color="#10b981" />
-          ) : (
-            <Ionicons name="close-circle" size={14} color="#ef4444" />
-          )}
-        </View>
-        {subtext && (
-          <Text className="text-[10px] text-slate-400 mt-0.5">{subtext}</Text>
-        )}
+    <View
+      className={`flex-row justify-between items-center py-2.5 ${
+        !isLast ? "border-b border-white/8" : ""
+      }`}
+    >
+      <View className="flex-row items-center gap-2">
+        <Ionicons
+          name={isNisabReached ? "checkmark-circle" : "close-circle"}
+          size={15}
+          color={isNisabReached ? "#34d399" : "#64748b"}
+        />
+        <Text className="text-[13px] font-medium text-slate-200">
+          {label}
+        </Text>
       </View>
       <Text
-        className={`font-bold text-[12px] ${
-          amount > 0 ? "text-white" : "text-slate-500"
+        className={`font-semibold text-[13px] ${
+          amount > 0 ? "text-white" : "text-slate-600"
         }`}
       >
-        RM{amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        {formatRM(amount)}
       </Text>
     </View>
   );
@@ -374,59 +396,57 @@ function ZakatBreakdownRow({
 
 function NisabStatusRow({
   label,
+  color,
   current,
   nisab,
-  unit,
   isLast = false,
 }: {
   label: string;
+  color: string;
   current: number;
   nisab: number;
-  unit: string;
   isLast?: boolean;
 }) {
   const isReached = current >= nisab;
   const percent = nisab > 0 ? (current / nisab) * 100 : 0;
 
   return (
-    <View className={`px-5 py-4 ${!isLast ? "border-b border-slate-600" : ""}`}>
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-[12px] font-semibold text-white">{label}</Text>
+    <View className={`px-5 py-4 ${!isLast ? "border-b border-white/8" : ""}`}>
+      <View className="flex-row justify-between items-center mb-2.5">
+        <Text className="text-[13px] font-semibold text-white">{label}</Text>
         <View
-          className="flex-row items-center gap-1 rounded-full px-2 py-1"
+          className="rounded-full px-2.5 py-1"
           style={{
-            backgroundColor: isReached ? "#10b98120" : "#f5940020",
+            backgroundColor: isReached
+              ? "rgba(52, 211, 153, 0.12)"
+              : "rgba(148, 163, 184, 0.12)",
           }}
         >
-          <Ionicons
-            name={isReached ? "checkmark-circle" : "alert-circle-outline"}
-            size={12}
-            color={isReached ? "#10b981" : "#f59e0b"}
-          />
           <Text
-            className="text-[10px] font-bold"
-            style={{
-              color: isReached ? "#10b981" : "#f59e0b",
-            }}
+            className="text-[10px] font-bold uppercase tracking-wide"
+            style={{ color: isReached ? "#34d399" : "#94a3b8" }}
           >
-            {isReached ? "REACHED" : "PENDING"}
+            {isReached ? "Reached" : "Pending"}
           </Text>
         </View>
       </View>
 
       <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-[11px] text-slate-400">
-          {current.toLocaleString()} / {nisab.toLocaleString()} {unit}
+        <Text className="text-[11px] text-slate-500">
+          {formatRM(current)} / {formatRM(nisab)}
         </Text>
-        <Text className="text-[11px] font-semibold text-slate-300">
-          {percent.toFixed(0)}%
+        <Text className="text-[11px] font-semibold text-slate-400">
+          {Math.min(percent, 999).toFixed(0)}%
         </Text>
       </View>
 
-      <View className="h-2 rounded-full bg-slate-600 overflow-hidden">
+      <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
         <View
-          className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
-          style={{ width: `${Math.min(percent, 100)}%` }}
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.min(percent, 100)}%`,
+            backgroundColor: color,
+          }}
         />
       </View>
     </View>
@@ -436,25 +456,20 @@ function NisabStatusRow({
 function QuickActionButton({
   icon,
   label,
-  color,
+  tint,
 }: {
   icon: any;
   label: string;
-  color: "emerald" | "rose" | "amber";
+  tint: string;
 }) {
   const router = useRouter();
-  const colorMap = {
-    emerald: "from-emerald-500 to-emerald-600",
-    rose: "from-rose-500 to-rose-600",
-    amber: "from-amber-500 to-amber-600",
-  };
 
   const handlePress = () => {
-    if (color === "emerald") {
+    if (label === "Assets") {
       router.push("/(tabs)/asset");
-    } else if (color === "rose") {
+    } else if (label === "Liabilities") {
       router.push("/(tabs)/liability");
-    } else if (color === "amber") {
+    } else if (label === "Zakat") {
       router.push("/(tabs)/zakat-tracker");
     }
   };
@@ -462,10 +477,11 @@ function QuickActionButton({
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className={`flex-1 bg-linear-to-br ${colorMap[color]} rounded-xl py-4 items-center shadow-lg`}
+      activeOpacity={0.7}
+      className="flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-4"
     >
-      <Ionicons name={icon} size={20} color="white" />
-      <Text className="text-[11px] font-bold text-white mt-1 uppercase tracking-wider">
+      <Ionicons name={icon} size={18} color={tint} />
+      <Text className="text-[11px] font-semibold text-slate-300">
         {label}
       </Text>
     </TouchableOpacity>

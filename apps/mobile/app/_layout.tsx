@@ -18,6 +18,7 @@ import "@/global.css";
 
 import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // React Query's refetch-on-focus only fires automatically on web, where it
 // listens to the browser's visibilitychange event. On native it needs to be
@@ -66,23 +67,28 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <KeyboardProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-          <ZakatReminderSync />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="asset/[id]" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="liability/[id]"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </KeyboardProvider>
+    <SafeAreaProvider>
+      <KeyboardProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          >
+            <ZakatReminderSync />
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="asset/[id]"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="liability/[id]"
+                options={{ headerShown: false }}
+              />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </KeyboardProvider>
+    </SafeAreaProvider>
   );
 }

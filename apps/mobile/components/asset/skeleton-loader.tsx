@@ -40,34 +40,34 @@ export function AssetCardSkeleton() {
   return (
     <Animated.View
       style={{ opacity }}
-      className="w-80 rounded-3xl bg-slate-700/30 p-6 mr-4 border border-slate-600/50"
+      className="w-80 rounded-3xl bg-white/[0.035] p-6 mr-4 border border-white/10"
     >
       <View className="mb-4">
-        <View className="h-6 bg-slate-600 rounded-md mb-2 w-24" />
-        <View className="h-8 bg-slate-600 rounded-md w-32" />
+        <View className="h-6 bg-white/10 rounded-md mb-2 w-24" />
+        <View className="h-8 bg-white/10 rounded-md w-32" />
       </View>
 
       <View className="mb-4 gap-2">
-        <View className="h-4 bg-slate-600 rounded-md w-full" />
-        <View className="h-4 bg-slate-600 rounded-md w-3/4" />
+        <View className="h-4 bg-white/10 rounded-md w-full" />
+        <View className="h-4 bg-white/10 rounded-md w-3/4" />
       </View>
 
       <View className="mb-4 flex-row justify-between gap-3">
         <View className="flex-1">
-          <View className="h-3 bg-slate-600 rounded-md mb-2 w-20" />
-          <View className="h-6 bg-slate-600 rounded-md" />
+          <View className="h-3 bg-white/10 rounded-md mb-2 w-20" />
+          <View className="h-6 bg-white/10 rounded-md" />
         </View>
         <View className="flex-1">
-          <View className="h-3 bg-slate-600 rounded-md mb-2 w-20" />
-          <View className="h-6 bg-slate-600 rounded-md" />
+          <View className="h-3 bg-white/10 rounded-md mb-2 w-20" />
+          <View className="h-6 bg-white/10 rounded-md" />
         </View>
       </View>
 
-      <View className="h-2 bg-slate-600 rounded-full mb-3" />
+      <View className="h-2 bg-white/10 rounded-full mb-3" />
 
       <View className="flex-row gap-2">
-        <View className="flex-1 h-10 bg-slate-600 rounded-lg" />
-        <View className="h-10 bg-slate-600 rounded-lg w-16" />
+        <View className="flex-1 h-10 bg-white/10 rounded-lg" />
+        <View className="h-10 bg-white/10 rounded-lg w-16" />
       </View>
     </Animated.View>
   );

@@ -76,7 +76,7 @@ export function SplashScreen() {
   });
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center overflow-hidden">
+    <View className="flex-1 bg-slate-950 items-center justify-center overflow-hidden">
       {/* Background Gradient Orbs */}
       <View
         className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20"

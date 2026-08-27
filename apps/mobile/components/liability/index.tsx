@@ -27,7 +27,7 @@ export function Liability() {
   };
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
       <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
@@ -41,7 +41,7 @@ export function Liability() {
         </View>
         <TouchableOpacity
           onPress={() => setModalVisible(true)}
-          className="rounded-full bg-linear-to-br from-rose-500 to-rose-600 px-6 py-3 shadow-lg active:scale-95"
+          className="rounded-full bg-rose-500 px-5 py-3 active:opacity-80"
         >
           <View className="flex-row items-center gap-1">
             <Ionicons name="add" size={20} color="white" />
@@ -50,7 +50,7 @@ export function Liability() {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 py-10 my-5">
+      <View className="flex-1 bg-slate-950 py-10 my-5">
         <ScrollView
           className="px-6 flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -143,7 +143,7 @@ function LiabilityListItem({
   };
 
   return (
-    <View className="bg-slate-700/50 border border-slate-600/50 rounded-xl px-4 py-4">
+    <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
       <TouchableOpacity
         onPress={onPress}
         className="flex-row items-center justify-between active:opacity-70"
@@ -177,7 +177,7 @@ function LiabilityListItem({
       </TouchableOpacity>
 
       {remainingMonths > 0 && (
-        <View className="mt-3 pt-3 border-t border-slate-600/50">
+        <View className="mt-3 pt-3 border-t border-white/10">
           <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
             Make Payment
           </Text>
@@ -186,17 +186,17 @@ function LiabilityListItem({
               value={paymentAmount}
               onChangeText={setPaymentAmount}
               placeholder="Amount (RM)"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#64748b"
               keyboardType="numeric"
               editable={!isPaying}
-              className="flex-1 border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
             />
             <TouchableOpacity
               onPress={() =>
                 setPaymentAmount(monthly_payment?.toString() || "0")
               }
               disabled={isPaying}
-              className="bg-slate-600/40 border border-slate-500 rounded-lg px-3 py-2 justify-center"
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
             >
               <Text className="text-[11px] font-bold text-slate-300">
                 Reset
@@ -206,7 +206,7 @@ function LiabilityListItem({
           <TouchableOpacity
             onPress={handlePay}
             disabled={isPaying || !Number(paymentAmount)}
-            className={`mt-2.5 bg-linear-to-r from-rose-500 to-rose-600 rounded-lg py-2.5 shadow-lg ${
+            className={`mt-2.5 bg-rose-500 rounded-lg py-2.5 ${
               isPaying || !Number(paymentAmount) ? "opacity-50" : ""
             }`}
           >

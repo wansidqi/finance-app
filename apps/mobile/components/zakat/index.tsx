@@ -1,10 +1,5 @@
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
-import { triggerZakatBackgroundTaskForTesting } from "@/services/zakat-background-task";
-import {
-  sendTestDueSequence,
-  sendTestNotification,
-} from "@/services/zakat-notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { EditPaidDateModal } from "./edit-paid-date-modal";
@@ -34,41 +29,6 @@ export function ZakatTrackerScreen() {
   );
   const [editingCategory, setEditingCategory] =
     useState<ZakatTrackerDto | null>(null);
-  const [testNotificationState, setTestNotificationState] = useState<
-    "idle" | "sending" | "sent" | "denied"
-  >("idle");
-  const [testSequenceState, setTestSequenceState] = useState<
-    "idle" | "sending" | "sent" | "denied"
-  >("idle");
-  const [bgSyncState, setBgSyncState] = useState<
-    "idle" | "sending" | "sent" | "denied"
-  >("idle");
-
-  const handleTriggerBackgroundSync = async () => {
-    setBgSyncState("sending");
-    try {
-      await triggerZakatBackgroundTaskForTesting();
-      setBgSyncState("sent");
-    } catch (err) {
-      console.warn("Failed to trigger background sync", err);
-      setBgSyncState("denied");
-    }
-    setTimeout(() => setBgSyncState("idle"), 3000);
-  };
-
-  const handleSendTestNotification = async () => {
-    setTestNotificationState("sending");
-    const granted = await sendTestNotification();
-    setTestNotificationState(granted ? "sent" : "denied");
-    setTimeout(() => setTestNotificationState("idle"), 3000);
-  };
-
-  const handleSendTestSequence = async () => {
-    setTestSequenceState("sending");
-    const granted = await sendTestDueSequence();
-    setTestSequenceState(granted ? "sent" : "denied");
-    setTimeout(() => setTestSequenceState("idle"), 20000);
-  };
 
   /* ===========================
      Helpers
@@ -118,9 +78,9 @@ export function ZakatTrackerScreen() {
       case "PENDING":
         return "#94a3b8";
       case "DUE":
-        return "#f59e0b";
+        return "#fbbf24";
       case "OVERDUE":
-        return "#ef4444";
+        return "#fb7185";
       default:
         return "#94a3b8";
     }
@@ -149,15 +109,15 @@ export function ZakatTrackerScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-        <ActivityIndicator color="#10b981" />
+      <View className="flex-1 items-center justify-center bg-slate-950">
+        <ActivityIndicator color="#34d399" />
       </View>
     );
   }
 
   if (isError || !zakatData) {
     return (
-      <View className="flex-1 items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 px-6">
+      <View className="flex-1 items-center justify-center bg-slate-950 px-6">
         <Text className="text-slate-300 text-center">
           Couldn&apos;t load your zakat categories.
         </Text>
@@ -166,118 +126,13 @@ export function ZakatTrackerScreen() {
   }
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <View className="flex-1 bg-slate-950">
       {/* Header */}
-      <View className="px-6 pt-10 pb-4 flex-row items-start justify-between">
-        <View>
-          <Text className="text-[14px] text-slate-400">
-            Islamic Finance
-          </Text>
-          <Text className="text-[32px] font-bold text-white mt-1">
-            Zakat Tracker
-          </Text>
-        </View>
-
-        <View className="mt-2 items-end gap-2">
-          <TouchableOpacity
-            onPress={handleSendTestNotification}
-            disabled={testNotificationState === "sending"}
-            className="flex-row items-center gap-1.5 bg-slate-700/40 border border-slate-600 rounded-full px-3 py-2"
-          >
-            <Ionicons
-              name={
-                testNotificationState === "sent"
-                  ? "checkmark-circle"
-                  : testNotificationState === "denied"
-                    ? "close-circle"
-                    : "notifications-outline"
-              }
-              size={14}
-              color={
-                testNotificationState === "sent"
-                  ? "#10b981"
-                  : testNotificationState === "denied"
-                    ? "#ef4444"
-                    : "#94a3b8"
-              }
-            />
-            <Text className="text-[10px] font-bold text-slate-300">
-              {testNotificationState === "sending"
-                ? "Sending…"
-                : testNotificationState === "sent"
-                  ? "Sent!"
-                  : testNotificationState === "denied"
-                    ? "No permission"
-                    : "Test"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleSendTestSequence}
-            disabled={testSequenceState === "sending"}
-            className="flex-row items-center gap-1.5 bg-slate-700/40 border border-slate-600 rounded-full px-3 py-2"
-          >
-            <Ionicons
-              name={
-                testSequenceState === "sent"
-                  ? "checkmark-circle"
-                  : testSequenceState === "denied"
-                    ? "close-circle"
-                    : "layers-outline"
-              }
-              size={14}
-              color={
-                testSequenceState === "sent"
-                  ? "#10b981"
-                  : testSequenceState === "denied"
-                    ? "#ef4444"
-                    : "#94a3b8"
-              }
-            />
-            <Text className="text-[10px] font-bold text-slate-300">
-              {testSequenceState === "sending"
-                ? "Running…"
-                : testSequenceState === "sent"
-                  ? "Started!"
-                  : testSequenceState === "denied"
-                    ? "No permission"
-                    : "7/5/3/1/0"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleTriggerBackgroundSync}
-            disabled={bgSyncState === "sending"}
-            className="flex-row items-center gap-1.5 bg-slate-700/40 border border-slate-600 rounded-full px-3 py-2"
-          >
-            <Ionicons
-              name={
-                bgSyncState === "sent"
-                  ? "checkmark-circle"
-                  : bgSyncState === "denied"
-                    ? "close-circle"
-                    : "sync-outline"
-              }
-              size={14}
-              color={
-                bgSyncState === "sent"
-                  ? "#10b981"
-                  : bgSyncState === "denied"
-                    ? "#ef4444"
-                    : "#94a3b8"
-              }
-            />
-            <Text className="text-[10px] font-bold text-slate-300">
-              {bgSyncState === "sending"
-                ? "Running…"
-                : bgSyncState === "sent"
-                  ? "Triggered!"
-                  : bgSyncState === "denied"
-                    ? "Failed"
-                    : "BG Sync"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <View className="px-6 pt-10 pb-4">
+        <Text className="text-[14px] text-slate-400">Islamic Finance</Text>
+        <Text className="text-[32px] font-bold text-white mt-1">
+          Zakat Tracker
+        </Text>
       </View>
 
       <ScrollView
@@ -286,14 +141,14 @@ export function ZakatTrackerScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ================= TOTAL SUMMARY ================= */}
-        <View className="mb-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 px-5 py-4">
-          <Text className="text-[11px] text-emerald-300 tracking-wider">
-            TOTAL ZAKAT DUE
+        <View className="mb-6 rounded-[24px] bg-linear-to-br from-emerald-400 to-emerald-600 px-5 py-5">
+          <Text className="text-[11px] font-bold text-emerald-950/70 uppercase tracking-wider">
+            Total Zakat Due
           </Text>
-          <Text className="text-[28px] font-bold text-emerald-400 mt-1">
+          <Text className="text-[28px] font-extrabold text-emerald-950 mt-1">
             RM{totalZakatDue.toFixed(2)}
           </Text>
-          <Text className="text-[11px] text-emerald-200 mt-1">
+          <Text className="text-[11px] text-emerald-950/60 mt-1">
             Calculated at 2.5% of eligible assets
           </Text>
         </View>
@@ -307,7 +162,7 @@ export function ZakatTrackerScreen() {
           return (
             <View
               key={category.category}
-              className="mb-4 rounded-2xl bg-slate-700/40 border border-slate-600 px-5 py-4"
+              className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-5 py-4"
               style={{
                 shadowColor:
                   cardStatus === "DUE" || cardStatus === "OVERDUE"
@@ -370,7 +225,7 @@ export function ZakatTrackerScreen() {
                       className={`px-3 py-1.5 rounded-full ${
                         category.is_tracked
                           ? "bg-emerald-500/20"
-                          : "bg-slate-600/30"
+                          : "bg-white/8"
                       }`}
                     >
                       <Text
@@ -451,12 +306,12 @@ export function ZakatTrackerScreen() {
                       <TouchableOpacity
                         onPress={() => setEditingCategory(category)}
                         disabled={updateTracker.isPending}
-                        className="mt-4 bg-emerald-500/90 rounded-xl py-4"
+                        className="mt-4 bg-emerald-500 rounded-xl py-4"
                       >
-                        <Text className="text-center text-white font-bold tracking-wide">
+                        <Text className="text-center text-emerald-950 font-bold tracking-wide">
                           Pay Zakat Now
                         </Text>
-                        <Text className="text-center text-[11px] text-emerald-100 mt-0.5">
+                        <Text className="text-center text-[11px] text-emerald-950/70 mt-0.5">
                           Fulfill your obligation
                         </Text>
                       </TouchableOpacity>
@@ -494,7 +349,7 @@ function InfoCard({
   highlight?: boolean;
 }) {
   return (
-    <View className="flex-1 bg-slate-700/30 rounded-xl px-4 py-3">
+    <View className="flex-1 bg-white/[0.03] rounded-xl px-4 py-3">
       <Text className="text-[10px] text-slate-400 tracking-wider">
         {label}
       </Text>
@@ -521,7 +376,7 @@ function DetailRow({
   onEdit?: () => void;
 }) {
   return (
-    <View className="bg-slate-700/20 rounded-xl px-4 py-3 flex-row justify-between items-start gap-3">
+    <View className="bg-white/[0.03] rounded-xl px-4 py-3 flex-row justify-between items-start gap-3">
       <Text className="text-[11px] text-slate-300 pt-0.5">
         {label}
       </Text>
@@ -532,7 +387,7 @@ function DetailRow({
               ? "text-white"
               : success
               ? "text-emerald-400"
-              : "text-red-400"
+              : "text-rose-400"
           }`}
         >
           {value}

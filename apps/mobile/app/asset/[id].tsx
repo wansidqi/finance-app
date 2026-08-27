@@ -34,20 +34,20 @@ export default function AssetDetailPage() {
 
   if (isLoading)
     return (
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center">
+      <View className="flex-1 bg-slate-950 items-center justify-center">
         <Text className="text-slate-300">Loading...</Text>
       </View>
     );
 
   if (!asset)
     return (
-      <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 items-center justify-center">
+      <View className="flex-1 bg-slate-950 items-center justify-center">
         <Text className="text-slate-300">Asset not found</Text>
       </View>
     );
 
   return (
-    <View className="flex-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <View className="flex-1 bg-slate-950">
       <View className="flex-row items-center justify-between px-3 py-12">
         <TouchableOpacity
           onPress={() => router.navigate("/(tabs)/asset")}
@@ -200,10 +200,8 @@ export function AssetCard(asset: AssetInterface) {
 
       <View
         className={`${
-          isEdit
-            ? "bg-slate-700"
-            : "bg-linear-to-br from-slate-700 to-slate-800"
-        } px-6 py-6 border border-slate-600`}
+          isEdit ? "bg-slate-800" : "bg-slate-900"
+        } px-6 py-6 border border-white/10`}
       >
         {/* Category & Edit/Delete Buttons */}
         <View className="flex-row items-center justify-between mb-4">
@@ -220,7 +218,7 @@ export function AssetCard(asset: AssetInterface) {
                     className={`flex-1 rounded-lg py-2 ${
                       editAsset.category === item
                         ? "bg-emerald-500"
-                        : "bg-slate-600"
+                        : "bg-white/10"
                     }`}
                   >
                     <Text
@@ -244,14 +242,14 @@ export function AssetCard(asset: AssetInterface) {
                   </Text>
                 </View>
                 {platform && (
-                  <View className="bg-slate-500/20 rounded-full px-3 py-1">
+                  <View className="bg-white/10 rounded-full px-3 py-1">
                     <Text className="text-[10px] font-semibold text-slate-300">
                       {platform}
                     </Text>
                   </View>
                 )}
                 {status && (
-                  <View className="bg-slate-500/20 rounded-full px-3 py-1">
+                  <View className="bg-white/10 rounded-full px-3 py-1">
                     <Text className="text-[10px] font-semibold text-slate-300">
                       {status}
                     </Text>
@@ -279,23 +277,23 @@ export function AssetCard(asset: AssetInterface) {
             <TouchableOpacity
               onPress={() => setIsEdit(!isEdit)}
               className={`ml-3 p-2.5 rounded-full ${
-                isEdit ? "bg-red-500/20" : "bg-slate-600/50"
+                isEdit ? "bg-rose-500/20" : "bg-white/10"
               }`}
             >
               <Ionicons
                 name={isEdit ? "close" : "pencil"}
                 size={18}
-                color={isEdit ? "#ef4444" : "#cbd5e1"}
+                color={isEdit ? "#fb7185" : "#cbd5e1"}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setShowDeleteConfirm(true)}
               className={`ml-3 p-2.5 rounded-full ${
-                isEdit ? "bg-red-500/20" : "bg-slate-600/50"
+                isEdit ? "bg-rose-500/20" : "bg-white/10"
               }`}
             >
-              <Ionicons name="trash-bin" size={18} color="#ef4444" />
+              <Ionicons name="trash-bin" size={18} color="#fb7185" />
             </TouchableOpacity>
           </View>
         </View>
@@ -315,7 +313,7 @@ export function AssetCard(asset: AssetInterface) {
                 }
                 placeholder="Asset Name"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
             }
           />
@@ -341,7 +339,7 @@ export function AssetCard(asset: AssetInterface) {
                 }
                 placeholder="e.g., Maybank, Touch 'n Go, Luno"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
             }
           />
@@ -401,13 +399,13 @@ export function AssetCard(asset: AssetInterface) {
               </Text>
               {editAsset.platform_total !== null &&
               editAsset.platform_total !== undefined ? (
-                <View className="border border-slate-600 rounded-lg py-2 px-2.5 bg-slate-700/40">
+                <View className="border border-white/10 rounded-lg py-2 px-2.5 bg-white/5">
                   <Text className="text-[12px] text-slate-400">
                     Auto-computed from platform total below
                   </Text>
                 </View>
               ) : editAsset.use_live_gold_price ? (
-                <View className="border border-slate-600 rounded-lg py-2 px-2.5 bg-slate-700/40">
+                <View className="border border-white/10 rounded-lg py-2 px-2.5 bg-white/5">
                   <Text className="text-[12px] text-slate-400">
                     Auto-computed from live gold price × weight
                   </Text>
@@ -421,7 +419,7 @@ export function AssetCard(asset: AssetInterface) {
                   placeholder="0.00"
                   placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
-                  className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               )}
             </View>
@@ -441,7 +439,7 @@ export function AssetCard(asset: AssetInterface) {
                   placeholder="e.g., 15"
                   placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
-                  className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               </View>
               <View className="flex-1">
@@ -455,7 +453,7 @@ export function AssetCard(asset: AssetInterface) {
                   }
                   placeholder="e.g., gram, BTC, shares"
                   placeholderTextColor="#94a3b8"
-                  className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               </View>
             </View>
@@ -476,7 +474,7 @@ export function AssetCard(asset: AssetInterface) {
                 className={`flex-row items-center justify-between rounded-lg border px-3 py-2.5 ${
                   editAsset.use_live_gold_price
                     ? "border-emerald-500 bg-emerald-500/10"
-                    : "border-slate-500 bg-slate-600/40"
+                    : "border-white/10 bg-white/5"
                 } ${!editAsset.quantity ? "opacity-50" : ""}`}
               >
                 <View className="flex-1 pr-3">
@@ -499,7 +497,7 @@ export function AssetCard(asset: AssetInterface) {
                     })
                   }
                   disabled={!editAsset.quantity}
-                  trackColor={{ false: "#475569", true: "#10b981" }}
+                  trackColor={{ false: "#334155", true: "#34d399" }}
                   thumbColor="#ffffff"
                 />
               </TouchableOpacity>
@@ -520,7 +518,7 @@ export function AssetCard(asset: AssetInterface) {
                 placeholder="How much you paid in total (RM)"
                 placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
               <Text className="text-[10px] text-slate-400 mt-1.5">
                 {isGrouped
@@ -544,7 +542,7 @@ export function AssetCard(asset: AssetInterface) {
                 placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
                 editable={!!editAsset.platform}
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
               <Text className="text-[10px] text-slate-400 mt-1.5">
                 {editAsset.platform
@@ -565,7 +563,7 @@ export function AssetCard(asset: AssetInterface) {
                 placeholderTextColor="#94a3b8"
                 multiline
                 numberOfLines={2}
-                className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 style={{ minHeight: 56, textAlignVertical: "top" }}
               />
             </View>
@@ -583,7 +581,7 @@ export function AssetCard(asset: AssetInterface) {
                 {Math.round(progress)}%
               </Text>
             </View>
-            <View className="h-2.5 w-full rounded-full bg-slate-600 overflow-hidden">
+            <View className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
               <Animated.View
                 className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
                 style={{ width: `${Math.min(progress, 100)}%` }}
@@ -612,14 +610,14 @@ export function AssetCard(asset: AssetInterface) {
               placeholder="Target amount"
               placeholderTextColor="#94a3b8"
               keyboardType="numeric"
-              className="border border-slate-500 rounded-lg py-2 px-2.5 text-white bg-slate-600/40 text-[12px]"
+              className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
             />
           </View>
         )}
 
         {/* Include in Zakat Calculation (Edit Mode) */}
         {isEdit && (
-          <View className="mb-5 flex-row items-center justify-between rounded-lg border border-slate-500 bg-slate-600/40 px-3 py-3">
+          <View className="mb-5 flex-row items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-3">
             <View className="flex-1 pr-3">
               <Text className="text-[12px] font-bold text-slate-200">
                 Include in Zakat Calculation
@@ -633,7 +631,7 @@ export function AssetCard(asset: AssetInterface) {
               onValueChange={(value) =>
                 setEditAsset({ ...editAsset, is_calculate: value })
               }
-              trackColor={{ false: "#475569", true: "#10b981" }}
+              trackColor={{ false: "#334155", true: "#34d399" }}
               thumbColor="#ffffff"
             />
           </View>
@@ -641,7 +639,7 @@ export function AssetCard(asset: AssetInterface) {
 
         {/* Timestamps */}
         {!isEdit && (
-          <View className="mt-4 pt-4 border-t border-slate-600/50">
+          <View className="mt-4 pt-4 border-t border-white/10">
             <View className="flex-row justify-between items-center">
               <Text className="text-[10px] text-slate-400">
                 Created: {new Date(asset.created_at).toLocaleDateString()}
@@ -677,7 +675,7 @@ export function AssetCard(asset: AssetInterface) {
                   use_live_gold_price,
                 });
               }}
-              className="flex-1 bg-slate-600/40 rounded-lg py-3"
+              className="flex-1 bg-white/5 rounded-lg py-3"
             >
               <Text className="text-center font-semibold text-slate-200 text-[13px]">
                 Cancel
@@ -685,9 +683,9 @@ export function AssetCard(asset: AssetInterface) {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={updateAsset}
-              className="flex-1 bg-linear-to-r from-emerald-500 to-emerald-600 rounded-lg py-3 shadow-lg"
+              className="flex-1 bg-emerald-500 rounded-lg py-3"
             >
-              <Text className="text-center font-semibold text-white text-[13px]">
+              <Text className="text-center font-semibold text-emerald-950 text-[13px]">
                 Save
               </Text>
             </TouchableOpacity>
