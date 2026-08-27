@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { AddDebtModal } from "./add-liability";
 import { LiabilitySkeletonLoader } from "./skeleton-loader";
 
@@ -50,7 +51,7 @@ export function Liability() {
         </TouchableOpacity>
       </View>
 
-      <View className="flex-1 bg-slate-950 py-10 my-5">
+      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-slate-950 py-10 my-5">
         <ScrollView
           className="px-6 flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -86,7 +87,7 @@ export function Liability() {
             </View>
           )}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
 
       <AddDebtModal
         visible={modalVisible}

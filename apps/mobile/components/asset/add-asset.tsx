@@ -11,8 +11,13 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ErrorModal } from "../modal/error-modal";
 import { useErrorModal } from "../modal/useErrorModal";
+
+// Matches the floating tab bar height in app/(tabs)/_layout.tsx, so the
+// sheet's bottom row of buttons doesn't sit underneath it.
+const TAB_BAR_BASE_HEIGHT = 52;
 
 type Props = {
   visible: boolean;
@@ -129,13 +134,17 @@ export function AddAssetModal({
     (!platformTotal && !value && !useLiveGoldPrice) ||
     (!!platformTotal && !platform) ||
     (useLiveGoldPrice && !quantity);
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <View className="flex-1 justify-end bg-black/50">
-          <View className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]">
+          <View
+            className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]"
+            style={{ marginBottom: TAB_BAR_BASE_HEIGHT + insets.bottom }}
+          >
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 mb-4">
               <View>
