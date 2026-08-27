@@ -33,6 +33,7 @@ function formatRM(value: number) {
 }
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { data: assets, isLoading: assetsLoading } = useGetAssets();
   const { data: liabilities, isLoading: liabilitiesLoading } =
     useGetLiabilities();
@@ -108,13 +109,21 @@ export default function DashboardScreen() {
 
   return (
     <View className="flex-1 bg-slate-950">
-      <View className="px-6 pt-16 pb-2">
-        <Text className="text-[13px] font-medium text-slate-500">
-          Overview
-        </Text>
-        <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-          My Wealth
-        </Text>
+      <View className="flex-row items-start justify-between px-6 pt-16 pb-2">
+        <View>
+          <Text className="text-[13px] font-medium text-slate-500">
+            Overview
+          </Text>
+          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
+            My Wealth
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.push("/backup")}
+          className="p-2 rounded-full bg-white/5 active:opacity-70"
+        >
+          <Ionicons name="settings-outline" size={20} color="#cbd5e1" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView

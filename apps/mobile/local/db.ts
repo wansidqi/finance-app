@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite";
 
-const DB_NAME = "finance-notifier.db";
+export const DB_NAME = "finance-notifier.db";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS assets (
@@ -93,6 +93,33 @@ CREATE TABLE IF NOT EXISTS payment_reminders (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+CREATE TABLE IF NOT EXISTS backup_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  auto_backup_enabled INTEGER NOT NULL DEFAULT 0,
+  encryption_enabled INTEGER NOT NULL DEFAULT 0,
+  retention_daily INTEGER NOT NULL DEFAULT 30,
+  retention_weekly INTEGER NOT NULL DEFAULT 12,
+  retention_monthly INTEGER NOT NULL DEFAULT 12,
+  google_account_email TEXT NULL,
+  last_backup_at TEXT NULL,
+  last_backup_status TEXT NULL,
+  last_backup_error TEXT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS backup_metadata (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  drive_file_id TEXT NULL,
+  filename TEXT NOT NULL,
+  schema_version INTEGER NOT NULL,
+  app_version TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL DEFAULT 0,
+  encrypted INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  error_message TEXT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 `;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -147,6 +174,9 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
   },
 ];
 
+/** The schema version this build of the app understands — a restored backup newer than this can't be safely opened. */
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.reduce((max, m) => Math.max(max, m.version), 0);
+
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   const [{ user_version: currentVersion }] = await db.getAllAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -172,4 +202,27 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
     });
   }
   return dbPromise;
+}
+
+/**
+ * Flushes WAL-mode writes into the main database file and truncates the WAL,
+ * so a plain file copy of the main .db file (no matching -wal/-shm sidecar
+ * needed) reflects every committed write — used before creating a backup
+ * snapshot.
+ */
+export async function checkpointWal(): Promise<void> {
+  const db = await getDb();
+  await db.execAsync("PRAGMA wal_checkpoint(TRUNCATE);");
+}
+
+/**
+ * Closes the current connection and forgets it, so the next `getDb()` call
+ * opens a fresh one — needed before a restore overwrites the underlying
+ * file out from under an already-open native connection.
+ */
+export async function closeDb(): Promise<void> {
+  if (!dbPromise) return;
+  const db = await dbPromise;
+  dbPromise = null;
+  await db.closeAsync();
 }

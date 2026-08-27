@@ -1235,6 +1235,21 @@ Permissions:
 
 # Phase 10 — Data Backup & Restore
 
+## Status: Code complete, blocked on Google Cloud OAuth setup
+
+All app-side code for this phase is on `main`: `@react-native-google-signin/google-signin`
+(drive.appdata scope) + Drive v3 REST client, AES-256 local encryption with a
+device-held key and recovery-key export/import, GFS retention (daily/weekly/
+monthly), restore with integrity-check + schema-version compatibility check
+(reusing the versioned migration runner) + a local safety snapshot, and a
+`backup.tsx` settings screen (gear icon on the dashboard).
+
+Not runnable yet: needs a Google Cloud project + OAuth client IDs, which only
+the app owner can create (see the setup checklist handed off alongside this
+change). Once `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set in `.env` and a new
+dev client is built (this is a native module — Expo Go won't pick it up),
+it should work end-to-end.
+
 ## Goal
 
 The application must remain local-first while protecting users against device loss or database corruption.

@@ -13,6 +13,7 @@ import "react-native-reanimated";
 import { PaymentReminderSync } from "@/components/reminders/reminder-sync";
 import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { registerBackupBackgroundTask } from "@/services/backup-background-task";
 import { registerReminderBackgroundTask } from "@/services/reminder-background-task";
 import { registerZakatBackgroundTask } from "@/services/zakat-background-task";
 
@@ -69,6 +70,9 @@ export default function RootLayout() {
     registerReminderBackgroundTask().catch((err) =>
       console.warn("Failed to register payment reminder background task", err),
     );
+    registerBackupBackgroundTask().catch((err) =>
+      console.warn("Failed to register backup background task", err),
+    );
   }, []);
 
   return (
@@ -90,6 +94,7 @@ export default function RootLayout() {
                 name="liability/[id]"
                 options={{ headerShown: false }}
               />
+              <Stack.Screen name="backup" options={{ headerShown: false }} />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>
