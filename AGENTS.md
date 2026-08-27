@@ -1,0 +1,1 @@
+dont build eas development/preview without my permission
