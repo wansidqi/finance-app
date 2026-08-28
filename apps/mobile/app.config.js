@@ -57,6 +57,13 @@ module.exports = {
       "expo-sqlite",
       "expo-secure-store",
       "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Allow Finance App to access your photos to attach receipts.",
+          cameraPermission: "Allow Finance App to use your camera to photograph receipts.",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

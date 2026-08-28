@@ -2,6 +2,7 @@ import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { SQLiteBindValue, SQLiteDatabase } from "expo-sqlite";
 import { adjustAccountBalance, getAccountById } from "./account-service";
 import { getDb } from "./db";
+import { deleteReceiptsByTransaction } from "./receipt-service";
 import { primaryAccountDelta } from "./transaction-effect";
 
 interface TransactionRow {
@@ -219,4 +220,6 @@ export async function deleteTransaction(id: number): Promise<void> {
     );
     await txn.runAsync("DELETE FROM transactions WHERE id = ?", id);
   });
+
+  await deleteReceiptsByTransaction(id);
 }

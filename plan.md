@@ -591,7 +591,41 @@ Support:
 
 # Phase 4 — Receipts & Tax Relief
 
-## Status: Not started
+## Status: MVP (Receipt Capture) implemented
+
+Receipts attach to a transaction (Phase 3), matching the design intent
+below. New `receipt_attachments` SQLite table
+(`id, transaction_id, file_name, mime_type, size_bytes, data BLOB,
+created_at`) — bytes are stored as a BLOB directly in the app's SQLite
+database rather than as files on disk, so the existing Google Drive backup
+(`services/backup.ts`, Phase 11) captures receipts automatically with zero
+changes, at the cost of the .db file growing with photo/PDF sizes.
+`local/receipt-service.ts` keeps metadata reads (list) separate from a
+`getReceiptData(id)` byte read, so listing a transaction's receipts never
+pulls BLOB data. `local/transaction-service.ts`'s `deleteTransaction`
+explicitly deletes a transaction's receipts first — there's no DB-level
+`ON DELETE CASCADE` since the `foreign_keys` pragma is off.
+
+`components/transactions/receipts-section.tsx` (via `services/receipt.ts`
+React Query hooks) is embedded in `AddTransactionModal`, shown only once a
+transaction has been saved (a receipt needs a `transaction_id`). Lets
+users: capture a photo (`expo-image-picker` camera), pick photos from the
+library (multi-select), or pick documents/PDFs (`expo-document-picker`,
+multi-select); view an image full-screen with pinch-to-zoom
+(`expo-image` + `ScrollView` zoom); open a non-image file (e.g. PDF)
+through the system share sheet (`expo-sharing`) since there's no in-app
+PDF viewer; and delete an attachment with the existing
+`ConfirmDeleteModal`. Thumbnails aren't rendered in the list (would mean
+reading every attachment's full BLOB just to render a list row) — each row
+shows a file-type icon, name, and size instead, with bytes only fetched on
+tap. Verified with a real-SQLite Jest suite
+(`local/__tests__/receipt-service.test.ts`) covering BLOB round-trip
+fidelity, metadata-only list reads, and cascade delete on transaction
+removal.
+
+**Not yet built** (deferred to the "Full — Tax Relief Calculation"
+section below): LHDN relief-category tagging, assessment-year tracking,
+cap/headroom calculation, the Tax Relief dashboard, and evidence export.
 
 ## Goal
 

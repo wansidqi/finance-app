@@ -1,6 +1,7 @@
 import { dateToFields, DateFields, fieldsToIsoDate } from "@/components/reminders/date-fields";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { ReceiptsSection } from "@/components/transactions/receipts-section";
 import { AccountInterface } from "@/interface/account";
 import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { isOutflowType } from "@/local/transaction-effect";
@@ -241,6 +242,8 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
                   className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
                 />
               </View>
+
+              {isEditing && transaction && <ReceiptsSection transactionId={transaction.id} />}
 
               <View className="flex-row gap-3">
                 <TouchableOpacity
