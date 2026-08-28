@@ -21,6 +21,10 @@ export interface TransactionInterface {
   occurred_at: string;
   description: string | null;
   note: string | null;
+  // LHDN tax relief tagging (Phase 4) — only meaningful when set together;
+  // most transactions leave both null.
+  tax_relief_category: string | null;
+  assessment_year: number | null;
   // Derived, joined in for display — not stored on this row.
   account_name?: string;
   transfer_account_name?: string | null;

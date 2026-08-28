@@ -591,7 +591,7 @@ Support:
 
 # Phase 4 — Receipts & Tax Relief
 
-## Status: MVP (Receipt Capture) implemented
+## Status: Receipt Capture + Tax Relief Calculation implemented
 
 Receipts attach to a transaction (Phase 3), matching the design intent
 below. New `receipt_attachments` SQLite table
@@ -623,9 +623,46 @@ tap. Verified with a real-SQLite Jest suite
 fidelity, metadata-only list reads, and cascade delete on transaction
 removal.
 
-**Not yet built** (deferred to the "Full — Tax Relief Calculation"
-section below): LHDN relief-category tagging, assessment-year tracking,
-cap/headroom calculation, the Tax Relief dashboard, and evidence export.
+The "Full — Tax Relief Calculation" half is now built too.
+`transactions` gained `tax_relief_category` and `assessment_year` columns
+(migration v3/v4 in `local/db.ts`, `ensureColumn`-based so existing
+installs pick them up via `ALTER TABLE`). A static category taxonomy
+(`interface/tax-relief.ts`, `TAX_RELIEF_CATEGORIES` — Lifestyle, Lifestyle
+Sports, Medical Self/Spouse/Child, Parents' Medical, Education Fees, Life
+Insurance & EPF, PRS, SSPN, Disabled Equipment, Breastfeeding Equipment,
+Child Care, EV Charging) ships with `DEFAULT_TAX_RELIEF_CAPS` — starting-
+point amounts based on recent LHDN individual reliefs. Caps themselves are
+per-assessment-year and editable: a new `tax_relief_caps` table
+(`assessment_year, category_key, cap_amount`) is lazily seeded from the
+defaults the first time a year is opened (`local/tax-relief-service.ts`'s
+`getCapsForYear`); after that the DB row is authoritative, so editing a
+cap in the Tax Relief screen is never clobbered by re-seeding. This
+matters because LHDN revises the relief list and caps with each annual
+Budget — the defaults are a starting point to verify/adjust per year, not
+a guarantee of accuracy for any given YA.
+
+`AddTransactionModal` gained a "Tax Relief (optional)" section
+(`components/transactions/tax-relief-picker.tsx`), shown only for
+`type === "expense"` — a category chip picker plus an assessment-year
+field that defaults to the current calendar year once a category is
+picked. A new `app/tax-relief.tsx` screen (reached from the Dashboard's
+Quick Actions, not the tab bar — see the tab-bar decluttering note under
+Phase 3) shows, per assessment year: total claimed, each category's
+claimed/cap/remaining with an over-cap warning, tap-to-edit caps, and an
+"Export Evidence" button that generates a CSV (category totals +
+transaction-level detail with receipt counts) and hands it off via the
+system share sheet (`expo-sharing`) — the transaction-level detail comes
+from `getReliefTransactions`, fetched lazily only on export rather than
+held for the whole screen's lifetime. Verified with a real-SQLite Jest
+suite (`local/__tests__/tax-relief-service.test.ts`) covering default-cap
+seeding, cap edits surviving re-seeding, and per-year claimed-amount
+aggregation (including that a different year's or an untagged
+transaction's amount never leaks into a year's summary).
+
+**Not yet built:** true evidence *bundling* (the CSV export lists receipt
+counts per transaction but doesn't package the receipt files themselves
+into the export — each receipt is still only viewable/shareable
+individually from its transaction, per the MVP section above).
 
 ## Goal
 

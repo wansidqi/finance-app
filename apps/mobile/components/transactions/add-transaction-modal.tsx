@@ -2,7 +2,9 @@ import { dateToFields, DateFields, fieldsToIsoDate } from "@/components/reminder
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { ReceiptsSection } from "@/components/transactions/receipts-section";
+import { TaxReliefPicker } from "@/components/transactions/tax-relief-picker";
 import { AccountInterface } from "@/interface/account";
+import { TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { isOutflowType } from "@/local/transaction-effect";
 import { useGetAccounts } from "@/services/account";
@@ -33,9 +35,11 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
   const [transferAccountId, setTransferAccountId] = useState<number | null>(null);
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
-  const [year, setYear] = useState("");
+  const [occurredYear, setOccurredYear] = useState("");
   const [description, setDescription] = useState("");
   const [note, setNote] = useState("");
+  const [taxReliefCategory, setTaxReliefCategory] = useState<TaxReliefCategoryKey | null>(null);
+  const [assessmentYear, setAssessmentYear] = useState("");
 
   const { data: accounts = [] } = useGetAccounts();
   const { mutateAsync: createTransaction, isPending: isCreating } = useCreateTransaction();
@@ -55,20 +59,25 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
     const fields = dateToFields(base);
     setDay(fields.day);
     setMonth(fields.month);
-    setYear(fields.year);
+    setOccurredYear(fields.year);
 
     setType(transaction?.type ?? "expense");
     setAmount(transaction ? String(transaction.amount) : "");
     setTransferAccountId(transaction?.transfer_account_id ?? transferTargets[0]?.id ?? null);
     setDescription(transaction?.description ?? "");
     setNote(transaction?.note ?? "");
+    setTaxReliefCategory((transaction?.tax_relief_category as TaxReliefCategoryKey | null) ?? null);
+    setAssessmentYear(transaction?.assessment_year ? String(transaction.assessment_year) : "");
   }, [visible, transaction]);
 
   const handleSave = async () => {
-    const isoDate = fieldsToIsoDate(day, month, year);
+    const isoDate = fieldsToIsoDate(day, month, occurredYear);
     const numericAmount = Number(amount);
     if (!isoDate || !numericAmount || numericAmount <= 0) return;
     if (type === "transfer" && !transferAccountId) return;
+
+    const isExpense = type === "expense";
+    const parsedAssessmentYear = Number(assessmentYear);
 
     const data = {
       account_id: account.id,
@@ -78,6 +87,9 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
       occurred_at: isoDate,
       description: description.trim() || null,
       note: note.trim() || null,
+      tax_relief_category: isExpense ? taxReliefCategory : null,
+      assessment_year:
+        isExpense && taxReliefCategory && parsedAssessmentYear > 0 ? parsedAssessmentYear : null,
     };
 
     try {
@@ -93,7 +105,7 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
   };
 
   const isSaving = isCreating || isUpdating;
-  const isoPreview = fieldsToIsoDate(day, month, year);
+  const isoPreview = fieldsToIsoDate(day, month, occurredYear);
   const isComplete =
     !!amount && Number(amount) > 0 && !!isoPreview && (type !== "transfer" || !!transferAccountId);
   const outflow = isOutflowType(type);
@@ -210,10 +222,10 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
                 <DateFields
                   day={day}
                   month={month}
-                  year={year}
+                  year={occurredYear}
                   onChangeDay={setDay}
                   onChangeMonth={setMonth}
-                  onChangeYear={setYear}
+                  onChangeYear={setOccurredYear}
                 />
               </View>
 
@@ -242,6 +254,18 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
                   className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
                 />
               </View>
+
+              {type === "expense" && (
+                <TaxReliefPicker
+                  categoryKey={taxReliefCategory}
+                  assessmentYear={assessmentYear}
+                  onChangeCategory={(key) => {
+                    setTaxReliefCategory(key);
+                    if (key && !assessmentYear) setAssessmentYear(String(new Date().getFullYear()));
+                  }}
+                  onChangeAssessmentYear={setAssessmentYear}
+                />
+              )}
 
               {isEditing && transaction && <ReceiptsSection transactionId={transaction.id} />}
 

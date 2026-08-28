@@ -133,8 +133,20 @@ CREATE TABLE IF NOT EXISTS transactions (
   occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   description TEXT NULL,
   note TEXT NULL,
+  tax_relief_category TEXT NULL,
+  assessment_year INTEGER NULL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS tax_relief_caps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessment_year INTEGER NOT NULL,
+  category_key TEXT NOT NULL,
+  cap_amount REAL NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE (assessment_year, category_key)
 );
 
 CREATE TABLE IF NOT EXISTS receipt_attachments (
@@ -210,6 +222,14 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
   {
     version: 2,
     run: (db) => ensureColumn(db, "liability_payments", "note", "note TEXT"),
+  },
+  {
+    version: 3,
+    run: (db) => ensureColumn(db, "transactions", "tax_relief_category", "tax_relief_category TEXT"),
+  },
+  {
+    version: 4,
+    run: (db) => ensureColumn(db, "transactions", "assessment_year", "assessment_year INTEGER"),
   },
 ];
 

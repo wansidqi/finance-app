@@ -14,6 +14,8 @@ interface TransactionRow {
   occurred_at: string;
   description: string | null;
   note: string | null;
+  tax_relief_category: string | null;
+  assessment_year: number | null;
   created_at: string;
   updated_at: string | null;
   account_name: string;
@@ -40,6 +42,8 @@ function rowToDto(row: TransactionRow): TransactionInterface {
     occurred_at: row.occurred_at,
     description: row.description,
     note: row.note,
+    tax_relief_category: row.tax_relief_category,
+    assessment_year: row.assessment_year,
     account_name: row.account_name,
     transfer_account_name: row.transfer_account_name,
     created_at: row.created_at,
@@ -84,6 +88,8 @@ type CreateInput = {
   occurred_at?: string;
   description?: string | null;
   note?: string | null;
+  tax_relief_category?: string | null;
+  assessment_year?: number | null;
 };
 
 async function validate(data: CreateInput): Promise<void> {
@@ -108,8 +114,8 @@ export async function createTransaction(data: CreateInput): Promise<TransactionI
   await db.withExclusiveTransactionAsync(async (txn) => {
     const result = await txn.runAsync(
       `INSERT INTO transactions
-         (account_id, transfer_account_id, type, amount, occurred_at, description, note)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (account_id, transfer_account_id, type, amount, occurred_at, description, note, tax_relief_category, assessment_year)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       data.account_id,
       data.type === "transfer" ? (data.transfer_account_id ?? null) : null,
       data.type,
@@ -117,6 +123,8 @@ export async function createTransaction(data: CreateInput): Promise<TransactionI
       data.occurred_at ?? new Date().toISOString(),
       data.description ?? null,
       data.note ?? null,
+      data.tax_relief_category ?? null,
+      data.assessment_year ?? null,
     );
     insertedId = result.lastInsertRowId;
     await applyEffect(
@@ -154,6 +162,9 @@ export async function updateTransaction(
     occurred_at: data.occurred_at ?? existing.occurred_at,
     description: data.description !== undefined ? data.description : existing.description,
     note: data.note !== undefined ? data.note : existing.note,
+    tax_relief_category:
+      data.tax_relief_category !== undefined ? data.tax_relief_category : existing.tax_relief_category,
+    assessment_year: data.assessment_year !== undefined ? data.assessment_year : existing.assessment_year,
   };
   await validate(merged);
 
@@ -184,6 +195,8 @@ export async function updateTransaction(
     setField("occurred_at", merged.occurred_at ?? new Date().toISOString());
     setField("description", merged.description ?? null);
     setField("note", merged.note ?? null);
+    setField("tax_relief_category", merged.tax_relief_category ?? null);
+    setField("assessment_year", merged.assessment_year ?? null);
 
     await txn.runAsync(`UPDATE transactions SET ${set.join(", ")} WHERE id = ?`, ...params, id);
 

@@ -273,6 +273,11 @@ export default function DashboardScreen() {
               label="Zakat"
               tint="#fbbf24"
             />
+            <QuickActionButton
+              icon="receipt-outline"
+              label="Tax Relief"
+              tint="#a78bfa"
+            />
           </View>
         </View>
       </ScrollView>
@@ -517,6 +522,8 @@ function QuickActionButton({
       router.push("/(tabs)/liability");
     } else if (label === "Zakat") {
       router.push("/(tabs)/zakat-tracker");
+    } else if (label === "Tax Relief") {
+      router.push("/tax-relief");
     }
   };
 

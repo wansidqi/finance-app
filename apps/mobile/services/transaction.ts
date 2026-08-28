@@ -26,6 +26,10 @@ export const useGetTransactionsByAccount = (accountId: number) => {
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["transactions"] });
   queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+  // A transaction's tax-relief tag/amount/year can change here too, so any
+  // Tax Relief screen showing a summary for an affected year needs to refetch.
+  queryClient.invalidateQueries({ queryKey: ["tax-relief-summary"] });
+  queryClient.invalidateQueries({ queryKey: ["tax-relief-transactions"] });
 }
 
 export const useCreateTransaction = () => {
