@@ -456,6 +456,43 @@ Background execution must be treated as best effort because iOS and Android may 
 
 # Phase 3 — Accounts & Transactions
 
+## Status: MVP implemented, kept fully separate from Assets
+
+Accounts + Transactions now exist as their own local-first feature —
+`accounts`/`transactions` SQLite tables, `interface/account.ts` +
+`interface/transaction.ts`, `local/account-service.ts` +
+`local/transaction-service.ts` + `local/transaction-effect.ts`,
+`services/account.ts` + `services/transaction.ts` (React Query hooks), a
+new **Accounts** tab (`app/(tabs)/accounts.tsx`) listing accounts with a
+total-balance summary, and `app/account/[id].tsx` showing one account's
+balance + transaction history with an add/edit transaction sheet.
+`account/[id]` is registered in the root `Stack` (`app/_layout.tsx`) with
+`headerShown: false`, same as `asset/[id]` and `liability/[id]`, so only
+the screen's own custom header shows — the route was missed initially,
+which briefly showed a native "account/[id]" header above it.
+
+Deliberately kept separate from the existing Asset feature's `CASH`
+category (which already models "cash at a platform" informally) — no
+shared table, no migration between them. If/when linking is wanted, that's
+a separate follow-up.
+
+Account types: bank, cash, savings, e-wallet, ASB, brokerage, crypto.
+Transaction types: income, expense, transfer (between two accounts),
+investment buy/sell, dividend, interest, debt payment, zakat payment.
+`accounts.balance` is a running total maintained exclusively by
+transaction-service inside an exclusive SQLite transaction (create/update/
+delete all reverse-then-reapply the balance delta), so it can never be
+edited directly — verified with a real-SQLite Jest suite
+(`local/__tests__/account-transaction.test.ts`) covering income/expense,
+transfers debiting one side and crediting the other, edits that change
+amount/type, and deletes reversing their effect.
+
+**Not yet built** (deferred from the full Phase 3 spec below): the
+dedicated Cash Flow view/summaries, Financial Commitment Intelligence
+(monthly-equivalent/reserved/required math), recurring/scheduled
+transactions, category/tag taxonomy on transactions, and any backend
+involvement (this, like Reminders, is mobile-only local SQLite).
+
 ## Financial Accounts
 
 Introduce:

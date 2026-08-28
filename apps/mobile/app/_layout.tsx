@@ -94,6 +94,10 @@ export default function RootLayout() {
                 name="liability/[id]"
                 options={{ headerShown: false }}
               />
+              <Stack.Screen
+                name="account/[id]"
+                options={{ headerShown: false }}
+              />
               <Stack.Screen name="backup" options={{ headerShown: false }} />
             </Stack>
             <StatusBar style="auto" />

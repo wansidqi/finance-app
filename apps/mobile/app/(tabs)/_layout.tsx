@@ -51,6 +51,15 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="accounts"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="business-outline" activeIcon="business" focused={focused} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="asset"
         options={{
           tabBarIcon: ({ focused }) => (
