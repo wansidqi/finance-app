@@ -1,10 +1,5 @@
 import { UpdateZakatTrackerRequest } from "@/interface/zakat";
-import {
-  getAllCategories,
-  getZakatSettings,
-  setCombineCategories,
-  upsertTracker,
-} from "@/local/zakat-service";
+import { getAllCategories, upsertTracker } from "@/local/zakat-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetZakatCategories = () => {
@@ -24,29 +19,6 @@ export const useUpdateZakatTracker = () => {
       return upsertTracker(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
-    },
-  });
-};
-
-export const useGetZakatSettings = () => {
-  return useQuery({
-    queryKey: ["zakat-settings"],
-    queryFn: async () => {
-      return getZakatSettings();
-    },
-  });
-};
-
-export const useSetZakatCombineMode = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (combine: boolean) => {
-      return setCombineCategories(combine);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["zakat-settings"] });
       queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
     },
   });

@@ -31,7 +31,3 @@ export interface UpdateZakatTrackerRequest {
   last_paid_date?: string | null;
   status: "ACTIVE" | "INACTIVE";
 }
-
-export interface ZakatSettingsDto {
-  combine_categories: boolean;
-}

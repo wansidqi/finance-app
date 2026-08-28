@@ -2,7 +2,7 @@ import { AssetCategory } from "@/interface/asset";
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetAssets } from "@/services/asset";
 import { useGetLiabilities } from "@/services/liability";
-import { useGetZakatCategories, useGetZakatSettings } from "@/services/zakat";
+import { useGetZakatCategories } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
@@ -39,8 +39,6 @@ export default function DashboardScreen() {
     useGetLiabilities();
   const { data: zakatCategories, isLoading: zakatLoading } =
     useGetZakatCategories();
-  const { data: zakatSettings } = useGetZakatSettings();
-  const combineZakat = !!zakatSettings?.combine_categories;
 
   const isLoading = assetsLoading || liabilitiesLoading || zakatLoading;
 
@@ -204,33 +202,19 @@ export default function DashboardScreen() {
         {/* Zakat Due */}
         <Section title="Zakat Due">
           <Card padded>
-            {combineZakat ? (
-              (() => {
-                const z = zakatByCategory.get("ALL");
-                return (
-                  <ZakatBreakdownRow
-                    label="All Assets"
-                    amount={z?.nisab_reached ? z.zakat_due : 0}
-                    isNisabReached={z?.nisab_reached ?? false}
-                    isLast
-                  />
-                );
-              })()
-            ) : (
-              CATEGORY_ORDER.map((category, index) => {
-                const meta = CATEGORY_META[category];
-                const z = zakatByCategory.get(category);
-                return (
-                  <ZakatBreakdownRow
-                    key={category}
-                    label={meta.label}
-                    amount={z?.nisab_reached ? z.zakat_due : 0}
-                    isNisabReached={z?.nisab_reached ?? false}
-                    isLast={index === CATEGORY_ORDER.length - 1}
-                  />
-                );
-              })
-            )}
+            {CATEGORY_ORDER.map((category, index) => {
+              const meta = CATEGORY_META[category];
+              const z = zakatByCategory.get(category);
+              return (
+                <ZakatBreakdownRow
+                  key={category}
+                  label={meta.label}
+                  amount={z?.nisab_reached ? z.zakat_due : 0}
+                  isNisabReached={z?.nisab_reached ?? false}
+                  isLast={index === CATEGORY_ORDER.length - 1}
+                />
+              );
+            })}
 
             <View className="mt-3 pt-4 border-t border-white/10 flex-row justify-between items-center">
               <Text className="text-slate-300 font-semibold text-[13px]">
@@ -246,21 +230,7 @@ export default function DashboardScreen() {
         {/* Nisab Status */}
         <Section title="Nisab Status">
           <Card>
-            {combineZakat ? (
-              (() => {
-                const z = zakatByCategory.get("ALL");
-                return (
-                  <NisabStatusRow
-                    label="All Assets"
-                    color="#34d399"
-                    current={z?.value ?? 0}
-                    nisab={nisab}
-                    isLast
-                  />
-                );
-              })()
-            ) : (
-              CATEGORY_ORDER.map((category, index) => {
+            {CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
               const z = zakatByCategory.get(category);
               return (
@@ -273,8 +243,7 @@ export default function DashboardScreen() {
                   isLast={index === CATEGORY_ORDER.length - 1}
                 />
               );
-              })
-            )}
+            })}
           </Card>
         </Section>
 
