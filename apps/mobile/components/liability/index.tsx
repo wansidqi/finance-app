@@ -242,7 +242,7 @@ function LiabilityListItem({
                 onChangeText={setPaymentAmount}
                 placeholder="Amount (RM)"
                 placeholderTextColor="#64748b"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 editable={!isPaying}
                 className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />

@@ -103,6 +103,17 @@ export function LiabilityCard(liability: LiabilityInterface) {
     monthly_payment,
   });
 
+  // Raw text, not parsed to Number, while typing — a controlled input bound
+  // to a parsed numeric value snaps "10." back to "10" the instant the
+  // decimal point is typed, since (10).toString() drops it. Only converted
+  // to a number at save time.
+  const [totalBalanceText, setTotalBalanceText] = useState(
+    total_balance?.toString() ?? "",
+  );
+  const [monthlyPaymentText, setMonthlyPaymentText] = useState(
+    monthly_payment?.toString() ?? "",
+  );
+
   const { mutateAsync: updateLiability } = useUpdateLiabilityById(id);
   const { mutateAsync: deleteLiability } = useDeleteLiability(id);
 
@@ -150,7 +161,11 @@ export function LiabilityCard(liability: LiabilityInterface) {
     try {
       await updateLiability({
         id,
-        data: editLiability,
+        data: {
+          ...editLiability,
+          total_balance: totalBalanceText.trim() ? Number(totalBalanceText) : null,
+          monthly_payment: monthlyPaymentText.trim() ? Number(monthlyPaymentText) : 0,
+        },
       });
       setIsEdit(false);
     } catch (error: any) {
@@ -306,14 +321,9 @@ export function LiabilityCard(liability: LiabilityInterface) {
                 }
                 editOn={
                   <TextInput
-                    value={editLiability.total_balance?.toString() || ""}
-                    onChangeText={(text) =>
-                      setEditLiability({
-                        ...editLiability,
-                        total_balance: Number(text) || 0,
-                      })
-                    }
-                    keyboardType="numeric"
+                    value={totalBalanceText}
+                    onChangeText={setTotalBalanceText}
+                    keyboardType="decimal-pad"
                     className="text-[16px] font-bold text-rose-400 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
                   />
                 }
@@ -333,14 +343,9 @@ export function LiabilityCard(liability: LiabilityInterface) {
               }
               editOn={
                 <TextInput
-                  value={editLiability.monthly_payment?.toString() || ""}
-                  onChangeText={(text) =>
-                    setEditLiability({
-                      ...editLiability,
-                      monthly_payment: Number(text) || 0,
-                    })
-                  }
-                  keyboardType="numeric"
+                  value={monthlyPaymentText}
+                  onChangeText={setMonthlyPaymentText}
+                  keyboardType="decimal-pad"
                   className="text-[16px] font-bold text-slate-100 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
                 />
               }
@@ -396,7 +401,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
                       onChangeText={setPaymentAmount}
                       placeholder="Amount (RM)"
                       placeholderTextColor="#94a3b8"
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                       editable={!isPaying}
                       className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                     />

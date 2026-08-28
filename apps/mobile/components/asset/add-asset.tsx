@@ -396,7 +396,7 @@ export function AddAssetModal({
                     </Text>
                     <TextInput
                       placeholder="Target amount to reach"
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                       value={goal}
                       onChangeText={setGoal}
                       placeholderTextColor="#64748b"

@@ -146,7 +146,7 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
                       <Text className="text-slate-400 mr-2">RM</Text>
                       <TextInput
                         placeholder="0.00"
-                        keyboardType="numeric"
+                        keyboardType="decimal-pad"
                         value={totalBalance}
                         onChangeText={setTotalBalance}
                         placeholderTextColor="#64748b"
@@ -166,7 +166,7 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
                   <Text className="text-slate-400 mr-2">RM</Text>
                   <TextInput
                     placeholder="0.00"
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     value={monthlyPayment}
                     onChangeText={setMonthlyPayment}
                     placeholderTextColor="#64748b"

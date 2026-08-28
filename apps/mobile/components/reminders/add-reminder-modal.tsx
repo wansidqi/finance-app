@@ -170,7 +170,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                   <Text className="text-slate-400 mr-2">RM</Text>
                   <TextInput
                     placeholder="0.00"
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     value={amount}
                     onChangeText={setAmount}
                     placeholderTextColor="#64748b"

@@ -113,6 +113,18 @@ export function AssetCard(asset: AssetInterface) {
     use_live_gold_price,
   });
 
+  // Kept as raw text (not parsed to Number) while typing — a controlled
+  // input bound to a parsed numeric value snaps "10." back to "10" the
+  // instant the decimal point is typed, since (10).toString() drops it.
+  // Only converted to a number at save time.
+  const [priceText, setPriceText] = useState(price?.toString() ?? "");
+  const [quantityText, setQuantityText] = useState(quantity?.toString() ?? "");
+  const [costBasisText, setCostBasisText] = useState(cost_basis?.toString() ?? "");
+  const [goalText, setGoalText] = useState(goal?.toString() ?? "");
+  const [platformTotalText, setPlatformTotalText] = useState(
+    platform_total?.toString() ?? "",
+  );
+
   const { error, isVisible, hideError, showError } = useErrorModal();
 
   // True when this asset shares its category+platform with another entry
@@ -150,8 +162,18 @@ export function AssetCard(asset: AssetInterface) {
 
   const updateAsset = async () => {
     try {
-      const payload: BaseAsset = { ...editAsset };
-      if (platform_total !== null && editAsset.platform_total === null) {
+      const parsedPlatformTotal = platformTotalText.trim()
+        ? Number(platformTotalText)
+        : null;
+      const payload: BaseAsset = {
+        ...editAsset,
+        price: priceText.trim() ? Number(priceText) : null,
+        quantity: quantityText.trim() ? Number(quantityText) : null,
+        cost_basis: costBasisText.trim() ? Number(costBasisText) : null,
+        goal: goalText.trim() ? Number(goalText) : null,
+        platform_total: parsedPlatformTotal,
+      };
+      if (platform_total !== null && parsedPlatformTotal === null) {
         payload.clear_platform_total = true;
       }
       await mutateAsync(payload);
@@ -397,8 +419,7 @@ export function AssetCard(asset: AssetInterface) {
               <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                 Current Value (RM)
               </Text>
-              {editAsset.platform_total !== null &&
-              editAsset.platform_total !== undefined ? (
+              {platformTotalText.trim() !== "" ? (
                 <View className="border border-white/10 rounded-lg py-2 px-2.5 bg-white/5">
                   <Text className="text-[12px] text-slate-400">
                     Auto-computed from platform total below
@@ -412,10 +433,8 @@ export function AssetCard(asset: AssetInterface) {
                 </View>
               ) : (
                 <TextInput
-                  value={editAsset.price?.toString() || ""}
-                  onChangeText={(text) =>
-                    setEditAsset({ ...editAsset, price: Number(text) || null })
-                  }
+                  value={priceText}
+                  onChangeText={setPriceText}
                   placeholder="0.00"
                   placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
@@ -429,13 +448,8 @@ export function AssetCard(asset: AssetInterface) {
                   Quantity (Optional)
                 </Text>
                 <TextInput
-                  value={editAsset.quantity?.toString() || ""}
-                  onChangeText={(text) =>
-                    setEditAsset({
-                      ...editAsset,
-                      quantity: text ? Number(text) : null,
-                    })
-                  }
+                  value={quantityText}
+                  onChangeText={setQuantityText}
                   placeholder="e.g., 15"
                   placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
@@ -461,7 +475,7 @@ export function AssetCard(asset: AssetInterface) {
             {editAsset.category === "GOLD" && (
               <TouchableOpacity
                 onPress={() =>
-                  editAsset.quantity &&
+                  quantityText.trim() &&
                   setEditAsset({
                     ...editAsset,
                     use_live_gold_price: !editAsset.use_live_gold_price,
@@ -470,19 +484,19 @@ export function AssetCard(asset: AssetInterface) {
                       : editAsset.unit,
                   })
                 }
-                disabled={!editAsset.quantity}
+                disabled={!quantityText.trim()}
                 className={`flex-row items-center justify-between rounded-lg border px-3 py-2.5 ${
                   editAsset.use_live_gold_price
                     ? "border-emerald-500 bg-emerald-500/10"
                     : "border-white/10 bg-white/5"
-                } ${!editAsset.quantity ? "opacity-50" : ""}`}
+                } ${!quantityText.trim() ? "opacity-50" : ""}`}
               >
                 <View className="flex-1 pr-3">
                   <Text className="text-[12px] font-bold text-slate-200">
                     Use Live Gold Price
                   </Text>
                   <Text className="text-[10px] text-slate-400 mt-0.5">
-                    {editAsset.quantity
+                    {quantityText.trim()
                       ? "Value updates daily from Bank Negara Malaysia's gold price"
                       : "Set a quantity (grams) above first"}
                   </Text>
@@ -496,7 +510,7 @@ export function AssetCard(asset: AssetInterface) {
                       unit: val ? "gram" : editAsset.unit,
                     })
                   }
-                  disabled={!editAsset.quantity}
+                  disabled={!quantityText.trim()}
                   trackColor={{ false: "#334155", true: "#34d399" }}
                   thumbColor="#ffffff"
                 />
@@ -508,13 +522,8 @@ export function AssetCard(asset: AssetInterface) {
                 Cost Basis (Optional)
               </Text>
               <TextInput
-                value={editAsset.cost_basis?.toString() || ""}
-                onChangeText={(text) =>
-                  setEditAsset({
-                    ...editAsset,
-                    cost_basis: text ? Number(text) : null,
-                  })
-                }
+                value={costBasisText}
+                onChangeText={setCostBasisText}
                 placeholder="How much you paid in total (RM)"
                 placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
@@ -531,13 +540,8 @@ export function AssetCard(asset: AssetInterface) {
                 Platform Total (Optional)
               </Text>
               <TextInput
-                value={editAsset.platform_total?.toString() || ""}
-                onChangeText={(text) =>
-                  setEditAsset({
-                    ...editAsset,
-                    platform_total: text ? Number(text) : null,
-                  })
-                }
+                value={platformTotalText}
+                onChangeText={setPlatformTotalText}
                 placeholder="e.g., 433 — this platform's real balance"
                 placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
@@ -600,16 +604,11 @@ export function AssetCard(asset: AssetInterface) {
               GOAL AMOUNT (Optional)
             </Text>
             <TextInput
-              value={editAsset.goal?.toString() || ""}
-              onChangeText={(text) =>
-                setEditAsset({
-                  ...editAsset,
-                  goal: text ? Number(text) : null,
-                })
-              }
+              value={goalText}
+              onChangeText={setGoalText}
               placeholder="Target amount"
               placeholderTextColor="#94a3b8"
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
             />
           </View>
@@ -674,6 +673,11 @@ export function AssetCard(asset: AssetInterface) {
                   platform_total,
                   use_live_gold_price,
                 });
+                setPriceText(price?.toString() ?? "");
+                setQuantityText(quantity?.toString() ?? "");
+                setCostBasisText(cost_basis?.toString() ?? "");
+                setGoalText(goal?.toString() ?? "");
+                setPlatformTotalText(platform_total?.toString() ?? "");
               }}
               className="flex-1 bg-white/5 rounded-lg py-3"
             >
