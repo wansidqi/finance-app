@@ -252,7 +252,12 @@ export default function DashboardScreen() {
           <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
             Quick Actions
           </Text>
-          <View className="flex-row gap-3">
+          <View className="flex-row flex-wrap gap-3">
+            <QuickActionButton
+              icon="business-outline"
+              label="Accounts"
+              tint="#38bdf8"
+            />
             <QuickActionButton
               icon="wallet-outline"
               label="Assets"
@@ -504,7 +509,9 @@ function QuickActionButton({
   const router = useRouter();
 
   const handlePress = () => {
-    if (label === "Assets") {
+    if (label === "Accounts") {
+      router.push("/(tabs)/accounts");
+    } else if (label === "Assets") {
       router.push("/(tabs)/asset");
     } else if (label === "Liabilities") {
       router.push("/(tabs)/liability");
@@ -517,7 +524,8 @@ function QuickActionButton({
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.7}
-      className="flex-1 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-4"
+      style={{ flexBasis: "47%" }}
+      className="items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-4"
     >
       <Ionicons name={icon} size={18} color={tint} />
       <Text className="text-[11px] font-semibold text-slate-300">
