@@ -1235,20 +1235,39 @@ Permissions:
 
 # Phase 10 — Data Backup & Restore
 
-## Status: Code complete, blocked on Google Cloud OAuth setup
+## Status: Working end-to-end in development
 
-All app-side code for this phase is on `main`: `@react-native-google-signin/google-signin`
-(drive.appdata scope) + Drive v3 REST client, AES-256 local encryption with a
-device-held key and recovery-key export/import, GFS retention (daily/weekly/
-monthly), restore with integrity-check + schema-version compatibility check
-(reusing the versioned migration runner) + a local safety snapshot, and a
+Google Cloud OAuth setup (Android + Web clients, Drive API enabled, test
+users added) is complete, and connect / Backup Now / Load Backup / Restore
+have all been verified working on the `development` build. See
+`apps/mobile/env.md` for the full credentials/package/keystore reference —
+keep it updated whenever any of that changes, since it's what avoids
+signature-mismatch install failures.
+
+App-side code: `@react-native-google-signin/google-signin` (drive.appdata
+scope) + Drive v3 REST client, AES-256 local encryption with a device-held
+key and recovery-key export/import, GFS retention (daily/weekly/monthly),
+restore with integrity-check + schema-version compatibility check (reusing
+the versioned migration runner) + a local safety snapshot, and a
 `backup.tsx` settings screen (gear icon on the dashboard).
 
-Not runnable yet: needs a Google Cloud project + OAuth client IDs, which only
-the app owner can create (see the setup checklist handed off alongside this
-change). Once `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set in `.env` and a new
-dev client is built (this is a native module — Expo Go won't pick it up),
-it should work end-to-end.
+`development` now builds as a separate Android package
+(`com.lumvyr.zakattracker.dev`, via `app.config.js` + `APP_VARIANT`) so it
+can be installed alongside `preview`/`production` on the same device — each
+package has its own Google OAuth Android client and signing keystore (see
+env.md).
+
+Known gap: dev and preview/production backups currently share the same
+Drive `appDataFolder` when signed into the same Google account (Drive's
+`appdata` scope isolates by Google Cloud project + account, not by which
+app package made the request) — not yet fixed, would need an
+environment-tagged filename or subfolder scheme.
+
+**Not yet rebuilt:** `preview` still has an older bug (`SQLite.defaultDatabaseDirectory`
+returning a non-absolute path, breaking `FileSystemFile.copy`) that was
+fixed in `development` via live reload but needs a fresh preview build to
+pick up, since preview bundles JS at build time rather than connecting to
+Metro.
 
 ## Goal
 

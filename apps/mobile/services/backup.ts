@@ -28,6 +28,11 @@ const SCRATCH_DIR = new Directory(Paths.cache, "backup-scratch");
 // kept (not scratch) so a botched restore is still recoverable by hand.
 const SAFETY_DIR = new Directory(Paths.document, "backup-safety");
 const SAFETY_SNAPSHOT_NAME = "pre-restore-safety.sqlite";
+// expo-sqlite's own `defaultDatabaseDirectory` returns a plain filesystem
+// path (no `file://` scheme), which the new File/Directory API rejects as
+// "URI is not absolute" — build the equivalent path ourselves instead,
+// matching expo-sqlite's documented default location.
+const SQLITE_DIR = new Directory(Paths.document, "SQLite");
 
 function ensureDir(dir: Directory) {
   if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
@@ -42,7 +47,7 @@ function deleteQuietly(file: File) {
 }
 
 function liveDbFile(): File {
-  return new File(SQLite.defaultDatabaseDirectory, DB_NAME);
+  return new File(SQLITE_DIR, DB_NAME);
 }
 
 /**
@@ -203,7 +208,7 @@ export async function restoreFromBackup(driveFileId: string): Promise<void> {
 
     // Validate as a real SQLite connection — must live in expo-sqlite's own
     // database directory for openDatabaseAsync to find it by name.
-    candidateInDbDir = new File(SQLite.defaultDatabaseDirectory, "restore-candidate.db");
+    candidateInDbDir = new File(SQLITE_DIR, "restore-candidate.db");
     deleteQuietly(candidateInDbDir);
     decryptedFile.copy(candidateInDbDir);
 
@@ -237,7 +242,7 @@ export async function restoreFromBackup(driveFileId: string): Promise<void> {
 
     await closeDb();
     for (const suffix of ["", "-wal", "-shm"]) {
-      deleteQuietly(new File(SQLite.defaultDatabaseDirectory, `${DB_NAME}${suffix}`));
+      deleteQuietly(new File(SQLITE_DIR, `${DB_NAME}${suffix}`));
     }
     candidateInDbDir.copy(liveDbFile());
 
