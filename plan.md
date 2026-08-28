@@ -244,11 +244,15 @@ The backend should remain optional for the local-first mobile experience.
 (zakat + reminders each with their own identifier prefix and background
 sync task), and the `reminders.tsx` tab (Upcoming/Due Today/Overdue/
 Completed, add/edit, mark-paid, pause/resume) are live on `main`. Reminder
-offsets are 7/3/1/0 days before due date, fired at 9am local time.
+offsets default to 7/3/1/0 days before due date at 9am local time, and are
+now user-configurable globally (Reminders tab → Notification Timing):
+switch to Custom for your own comma-separated day-offsets and a specific
+HH:MM time, applied to every reminder. Verified working end-to-end on the
+development build.
 
 Not yet done from this phase's spec: currency field (app is RM-only
-throughout, so skipped as unnecessary for now) and configurable
-per-reminder offsets (hardcoded to 7/3/1/0 like zakat's fixed set).
+throughout, so skipped as unnecessary for now) and per-reminder offsets
+(the customizable schedule above is global, not per individual reminder).
 
 ## Goal
 

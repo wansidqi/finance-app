@@ -32,3 +32,17 @@ export interface ReminderInterface {
   created_at?: string;
   updated_at?: string;
 }
+
+export type ReminderNotificationMode = "default" | "custom";
+
+/**
+ * Always resolved to concrete, effective values — when mode is "default"
+ * these are the hardcoded defaults; when "custom" they're the user's saved
+ * values. Consumers (notification sync) never need to branch on mode.
+ */
+export interface ReminderNotificationSettingsInterface {
+  mode: ReminderNotificationMode;
+  offsets_days: number[];
+  hour: number;
+  minute: number;
+}

@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { AddReminderModal } from "./add-reminder-modal";
 import { REMINDER_CATEGORY_LABELS, REMINDER_RECURRENCE_LABELS } from "./category";
+import { NotificationTimingCard } from "./notification-timing-card";
 
 type Tab = "upcoming" | "due_today" | "overdue" | "completed";
 
@@ -150,6 +151,8 @@ export function Reminders() {
             </Text>
           </View>
         )}
+
+        <NotificationTimingCard />
 
         <View className="flex-row gap-2 mb-4">
           {TABS.map((t) => (

@@ -1,4 +1,5 @@
 import { ReminderInterface } from "@/interface/reminder";
+import { getReminderNotificationSettings } from "@/local/reminder-notification-settings-service";
 import * as Notifications from "expo-notifications";
 import {
   cancelNotificationsWithPrefix,
@@ -6,10 +7,8 @@ import {
   ensureNotificationPermissions,
 } from "./notifications-core";
 
-const REMINDER_OFFSETS_DAYS = [7, 3, 1, 0];
 const NOTIFICATION_PREFIX = "payment-reminder-due-";
 const ANDROID_CHANNEL_ID = "payment-reminders";
-const REMINDER_HOUR = 9; // local time the reminder fires
 
 async function ensureChannel() {
   await ensureAndroidChannel({
@@ -55,6 +54,7 @@ export async function syncReminderNotifications(reminders: ReminderInterface[]) 
   await ensureChannel();
   await cancelNotificationsWithPrefix(NOTIFICATION_PREFIX);
 
+  const settings = await getReminderNotificationSettings();
   const now = new Date();
 
   for (const reminder of reminders) {
@@ -62,10 +62,10 @@ export async function syncReminderNotifications(reminders: ReminderInterface[]) 
 
     const dueDate = new Date(reminder.next_due_date);
 
-    for (const offsetDays of REMINDER_OFFSETS_DAYS) {
+    for (const offsetDays of settings.offsets_days) {
       const triggerDate = new Date(dueDate);
       triggerDate.setDate(triggerDate.getDate() - offsetDays);
-      triggerDate.setHours(REMINDER_HOUR, 0, 0, 0);
+      triggerDate.setHours(settings.hour, settings.minute, 0, 0);
 
       if (triggerDate.getTime() <= now.getTime()) continue;
 

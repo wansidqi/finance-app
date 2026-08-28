@@ -88,6 +88,15 @@ CREATE TABLE IF NOT EXISTS payment_reminders (
   updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS reminder_notification_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  mode TEXT NOT NULL DEFAULT 'default',
+  custom_offsets_days TEXT NULL,
+  custom_hour INTEGER NULL,
+  custom_minute INTEGER NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS backup_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   auto_backup_enabled INTEGER NOT NULL DEFAULT 0,

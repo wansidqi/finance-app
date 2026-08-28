@@ -1,4 +1,8 @@
-import { ReminderInterface } from "@/interface/reminder";
+import { ReminderInterface, ReminderNotificationMode } from "@/interface/reminder";
+import {
+  getReminderNotificationSettings,
+  setReminderNotificationSettings,
+} from "@/local/reminder-notification-settings-service";
 import {
   createReminder as localCreateReminder,
   deleteReminder as localDeleteReminder,
@@ -12,6 +16,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const REMINDERS_KEY = ["reminders"];
+const NOTIFICATION_SETTINGS_KEY = ["reminder-notification-settings"];
 
 export const useGetReminders = () => {
   return useQuery({
@@ -76,6 +81,39 @@ export const useSetReminderPaused = () => {
     mutationFn: ({ id, paused }: { id: number; paused: boolean }) =>
       paused ? localPauseReminder(id) : localResumeReminder(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: REMINDERS_KEY });
+    },
+  });
+};
+
+export const useReminderNotificationSettings = () => {
+  return useQuery({
+    queryKey: NOTIFICATION_SETTINGS_KEY,
+    queryFn: getReminderNotificationSettings,
+  });
+};
+
+export const useSetReminderNotificationSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      mode,
+      offsetsDays,
+      hour,
+      minute,
+    }: {
+      mode: ReminderNotificationMode;
+      offsetsDays: number[];
+      hour: number;
+      minute: number;
+    }) => setReminderNotificationSettings(mode, offsetsDays, hour, minute),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_SETTINGS_KEY });
+      // Reminders themselves didn't change, but PaymentReminderSync only
+      // re-syncs scheduled notifications when the reminders list query
+      // changes — invalidating it too forces that resync to pick up the
+      // new offsets/time immediately instead of waiting for some unrelated
+      // reminder mutation.
       queryClient.invalidateQueries({ queryKey: REMINDERS_KEY });
     },
   });

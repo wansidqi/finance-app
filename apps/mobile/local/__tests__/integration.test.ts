@@ -29,6 +29,10 @@ jest.mock("expo-sqlite", () => {
 });
 
 import { createAsset, getAllAssets, updateAsset } from "../asset-service";
+import {
+  getReminderNotificationSettings,
+  setReminderNotificationSettings,
+} from "../reminder-notification-settings-service";
 import { getAllCategories, upsertTracker } from "../zakat-service";
 
 describe("local-first integration (real SQLite via node:sqlite)", () => {
@@ -120,4 +124,19 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     expect(cash!.haul_start_date).toBe(paidDate);
     expect(cash!.next_due_date).not.toBeNull();
   }, 15000);
+
+  test("reminder notification settings default until a custom config is saved", async () => {
+    const initial = await getReminderNotificationSettings();
+    expect(initial).toEqual({ mode: "default", offsets_days: [7, 3, 1, 0], hour: 9, minute: 0 });
+
+    const saved = await setReminderNotificationSettings("custom", [14, 1], 20, 30);
+    expect(saved).toEqual({ mode: "custom", offsets_days: [14, 1], hour: 20, minute: 30 });
+
+    const reloaded = await getReminderNotificationSettings();
+    expect(reloaded).toEqual(saved);
+
+    // Switching back to default should stop reporting the saved custom values.
+    const reverted = await setReminderNotificationSettings("default", [14, 1], 20, 30);
+    expect(reverted).toEqual({ mode: "default", offsets_days: [7, 3, 1, 0], hour: 9, minute: 0 });
+  });
 });
