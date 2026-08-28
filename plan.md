@@ -1298,11 +1298,17 @@ can be installed alongside `preview`/`production` on the same device — each
 package has its own Google OAuth Android client and signing keystore (see
 env.md).
 
-Known gap: dev and preview/production backups currently share the same
-Drive `appDataFolder` when signed into the same Google account (Drive's
-`appdata` scope isolates by Google Cloud project + account, not by which
-app package made the request) — not yet fixed, would need an
-environment-tagged filename or subfolder scheme.
+Fixed: dev and preview/production backups no longer collide in the shared
+Drive `appDataFolder` (Drive's `appdata` scope isolates by Google Cloud
+project + account, not by which app package made the request). Development
+builds now write/list/prune backups named `FinanceApp-Backup-DEV-...`
+(`services/backup-naming.ts`), determined at runtime from
+`Constants.expoConfig.android.package` (`services/backup.ts`); preview/
+production keep the original untagged filename for backward compatibility
+with backups already in users' Drive folders. `listAvailableBackups` and
+`pruneRetention` both filter to the current environment's tag, so a dev
+build never lists, restores, or prunes a preview/production backup or vice
+versa.
 
 **Not yet rebuilt:** `preview` still has an older bug (`SQLite.defaultDatabaseDirectory`
 returning a non-absolute path, breaking `FileSystemFile.copy`) that was

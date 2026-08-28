@@ -1,4 +1,10 @@
 const FILENAME_PREFIX = "FinanceApp-Backup-";
+// Tag inserted only for the `development` build so its backups don't mix
+// with preview/production ones in the same Drive appDataFolder (Drive's
+// `appdata` scope isolates by Google Cloud project + account, not by
+// Android package). Preview/production stay untagged for backward
+// compatibility with backups already sitting in users' Drive folders.
+const DEV_TAG = "DEV-";
 
 function pad(n: number, width = 2) {
   return n.toString().padStart(width, "0");
@@ -7,9 +13,11 @@ function pad(n: number, width = 2) {
 /**
  * `FinanceApp-Backup-2026-08-27-020000.sqlite` (or `.enc` when encrypted) —
  * a predictable, human-readable name so a user poking around their own
- * Drive folder can tell backups apart without opening the app.
+ * Drive folder can tell backups apart without opening the app. Development
+ * builds get a `FinanceApp-Backup-DEV-...` name instead, so dev and
+ * preview/production backups never collide.
  */
-export function formatBackupFilename(date: Date, encrypted: boolean): string {
+export function formatBackupFilename(date: Date, encrypted: boolean, isDev = false): string {
   const datePart = [date.getUTCFullYear(), pad(date.getUTCMonth() + 1), pad(date.getUTCDate())].join(
     "-",
   );
@@ -17,23 +25,24 @@ export function formatBackupFilename(date: Date, encrypted: boolean): string {
     "",
   );
   const ext = encrypted ? "enc" : "sqlite";
-  return `${FILENAME_PREFIX}${datePart}-${timePart}.${ext}`;
+  const tag = isDev ? DEV_TAG : "";
+  return `${FILENAME_PREFIX}${tag}${datePart}-${timePart}.${ext}`;
 }
 
 const FILENAME_PATTERN =
-  /^FinanceApp-Backup-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})\.(sqlite|enc)$/;
+  /^FinanceApp-Backup-(DEV-)?(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})\.(sqlite|enc)$/;
 
 export function parseBackupFilename(
   filename: string,
-): { createdAt: Date; encrypted: boolean } | null {
+): { createdAt: Date; encrypted: boolean; isDev: boolean } | null {
   const match = FILENAME_PATTERN.exec(filename);
   if (!match) return null;
 
-  const [, year, month, day, hour, minute, second, ext] = match;
+  const [, devTag, year, month, day, hour, minute, second, ext] = match;
   const createdAt = new Date(
     Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)),
   );
-  return { createdAt, encrypted: ext === "enc" };
+  return { createdAt, encrypted: ext === "enc", isDev: devTag != null };
 }
 
 /** ISO 8601 week number, used to bucket backups into "one per week" for retention. */

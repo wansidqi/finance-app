@@ -20,6 +20,10 @@ import {
 } from "./google-drive-client";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
+// Same signal `app.config.js` uses to pick the `.dev` Android package —
+// reused here so dev-build backups get a distinct filename tag and never
+// mix with preview/production backups in the shared Drive appDataFolder.
+const IS_DEV_BUILD = Constants.expoConfig?.android?.package === "com.lumvyr.zakattracker.dev";
 
 // Scratch space for snapshots/downloads in progress — cleared as each
 // operation finishes, never relied on to persist across app restarts.
@@ -73,7 +77,7 @@ async function createSnapshot(destination: Directory, filename: string): Promise
 export async function backupNow(): Promise<BackupMetadataInterface> {
   const settings = await getBackupSettings();
   const now = new Date();
-  const filename = formatBackupFilename(now, settings.encryption_enabled);
+  const filename = formatBackupFilename(now, settings.encryption_enabled, IS_DEV_BUILD);
 
   let snapshot: File | null = null;
   let uploadFile: File | null = null;
@@ -146,7 +150,8 @@ export async function pruneRetention(): Promise<void> {
   const candidates = driveFiles
     .map((f) => {
       const parsed = parseBackupFilename(f.filename);
-      return parsed ? { id: f.driveFileId, createdAt: parsed.createdAt } : null;
+      if (!parsed || parsed.isDev !== IS_DEV_BUILD) return null;
+      return { id: f.driveFileId, createdAt: parsed.createdAt };
     })
     .filter((c): c is { id: string; createdAt: Date } => c !== null);
 
@@ -168,8 +173,13 @@ export async function pruneRetention(): Promise<void> {
   }
 }
 
+/** Lists this environment's Drive backups only — a dev build never shows/restores preview/production backups sharing the same Drive appDataFolder, or vice versa. */
 export async function listAvailableBackups(): Promise<DriveBackupFile[]> {
-  return listBackupFiles();
+  const driveFiles = await listBackupFiles();
+  return driveFiles.filter((f) => {
+    const parsed = parseBackupFilename(f.filename);
+    return parsed != null && parsed.isDev === IS_DEV_BUILD;
+  });
 }
 
 /**
