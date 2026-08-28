@@ -215,9 +215,20 @@ export async function restoreFromBackup(driveFileId: string): Promise<void> {
     const candidateDb = await SQLite.openDatabaseAsync("restore-candidate.db");
     let schemaVersion: number;
     try {
-      const integrity = await candidateDb.getFirstAsync<{ integrity_check: string }>(
-        "PRAGMA integrity_check",
-      );
+      let integrity: { integrity_check: string } | null;
+      try {
+        integrity = await candidateDb.getFirstAsync<{ integrity_check: string }>(
+          "PRAGMA integrity_check",
+        );
+      } catch {
+        // expo-sqlite can't even parse the file as SQLite — the classic
+        // cause is a wrong encryption key turning it into random bytes.
+        throw new Error(
+          encrypted
+            ? "Couldn't decrypt this backup. If it was made on a different device (or after reinstalling), import that device's recovery key first — Backup & Restore → View / Import Recovery Key — then try again."
+            : "This backup file is corrupted and can't be read.",
+        );
+      }
       if (!integrity || integrity.integrity_check !== "ok") {
         throw new Error("This backup failed integrity validation — it may be corrupted.");
       }
