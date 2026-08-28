@@ -589,7 +589,89 @@ Support:
 
 ---
 
-# Phase 4 — Money Management
+# Phase 4 — Receipts & Tax Relief
+
+## Status: Not started
+
+## Goal
+
+Give users a durable, LHDN-ready evidence trail for purchases that qualify
+for personal income tax relief — starting with simply capturing proof,
+evolving into full relief-category calculation.
+
+Keep receipts attached at the transaction level (Phase 3) rather than as
+an unrelated feature — a receipt is evidence for a specific expense, and
+relief-category tagging can reuse whatever category/tag taxonomy
+Transactions eventually gets.
+
+---
+
+## MVP — Receipt Capture
+
+Allow users to attach evidence to a transaction:
+
+- Photo capture (camera) or image picker
+- PDF/document picker, for e-invoices and emailed receipts
+- Multiple attachments per transaction
+- View/zoom a stored receipt
+- Delete an attachment
+
+Local storage:
+
+- Store attachments as files referenced by path/URI in SQLite, or as
+  BLOBs directly in SQLite — needs a decision, since file-based storage
+  would need its own path added to Phase 11's backup process for the
+  existing Google Drive backup to capture attachments automatically.
+- No cloud upload required for the MVP — local-first, same as every other
+  feature.
+
+---
+
+## Full — Tax Relief Calculation
+
+Once attachments exist, extend transactions with:
+
+- LHDN tax relief category (e.g. Lifestyle, Medical — self/spouse/child,
+  Parents' medical & care, Education fees, Life insurance/EPF, PRS, SSPN,
+  Disabled individual/equipment, and other LHDN categories)
+- Assessment year (YA) the transaction applies to
+
+Relief categories and their caps should be configurable/versioned per
+year, since LHDN typically revises the relief list and caps with each
+annual Budget.
+
+Calculate:
+
+- Total claimed per relief category, per assessment year
+- Remaining headroom under each category's cap
+- Warn when a category is at or over its cap
+
+Provide:
+
+- A Tax Relief dashboard per assessment year — category totals vs caps,
+  ready to reference during e-Filing
+- Evidence export per assessment year (receipts + a summary bundle) for
+  LHDN audit purposes
+
+Example:
+
+```text
+Tax Relief — YA2026
+
+Lifestyle
+Claimed:    RM1,850
+Cap:        RM2,500
+Remaining:  RM650
+
+Medical (Self/Spouse/Child)
+Claimed:    RM4,200
+Cap:        RM10,000
+Remaining:  RM5,800
+```
+
+---
+
+# Phase 5 — Money Management
 
 # Budgeting
 
@@ -717,7 +799,7 @@ Provide:
 
 ---
 
-# Phase 5 — Financial Goals & Planning
+# Phase 6 — Financial Goals & Planning
 
 # Financial Goals
 
@@ -870,7 +952,7 @@ Calculate:
 
 ---
 
-# Phase 6 — Investment Platform
+# Phase 7 — Investment Platform
 
 Investment tracking should integrate with the existing asset system.
 
@@ -1057,7 +1139,7 @@ The screening system should remain separate from the core investment model.
 
 ---
 
-# Phase 7 — Zakat Expansion
+# Phase 8 — Zakat Expansion
 
 Continue expanding the existing zakat system.
 
@@ -1098,7 +1180,7 @@ Zakat should integrate with:
 
 ---
 
-# Phase 8 — Financial Intelligence
+# Phase 9 — Financial Intelligence
 
 # Financial Health Score
 
@@ -1240,7 +1322,7 @@ When using an external AI provider:
 
 ---
 
-# Phase 9 — Household / Family Finance
+# Phase 10 — Household / Family Finance
 
 Eventually support shared financial spaces.
 
@@ -1274,7 +1356,7 @@ Permissions:
 
 ---
 
-# Phase 10 — Data Backup & Restore
+# Phase 11 — Data Backup & Restore
 
 ## Status: Working end-to-end in development
 
@@ -1706,7 +1788,7 @@ Therefore:
 
 ---
 
-# Phase 11 — Reports
+# Phase 12 — Reports
 
 Provide:
 
@@ -1727,7 +1809,7 @@ Potential export formats:
 
 ---
 
-# Phase 12 — External Integrations
+# Phase 13 — External Integrations
 
 Potential integrations:
 
@@ -1816,6 +1898,7 @@ The following must continue working without internet:
 - Assets
 - Liabilities
 - Transactions
+- Receipts and tax relief tracking
 - Budgeting
 - Payment reminders
 - Local notifications
@@ -1878,7 +1961,15 @@ Because the application contains financial information:
 - Mark paid
 - Local notifications
 
-## Milestone 3 — Financial Management
+## Milestone 3 — Receipts & Tax Relief
+
+- Receipt/document capture and storage
+- Attach evidence to transactions
+- Tax relief category tagging
+- Relief cap tracking and summary
+- Assessment-year evidence export
+
+## Milestone 4 — Financial Management
 
 - Accounts
 - Transactions
@@ -1888,7 +1979,7 @@ Because the application contains financial information:
 - Budgeting
 - Subscription tracking
 
-## Milestone 4 — Planning
+## Milestone 5 — Planning
 
 - Financial goals
 - Emergency fund
@@ -1897,7 +1988,7 @@ Because the application contains financial information:
 - Forecasting
 - What-if simulator
 
-## Milestone 5 — Investment
+## Milestone 6 — Investment
 
 - Investment domain model
 - Manual investments
@@ -1907,7 +1998,7 @@ Because the application contains financial information:
 - Dividend tracking
 - Shariah screening
 
-## Milestone 6 — Backup & Restore
+## Milestone 7 — Backup & Restore
 
 - Google OAuth
 - Google Drive connection
@@ -1921,7 +2012,7 @@ Because the application contains financial information:
 - Backup retention
 - Optional encryption
 
-## Milestone 7 — Financial Intelligence
+## Milestone 8 — Financial Intelligence
 
 - Financial health
 - Automatic insights
@@ -1929,7 +2020,7 @@ Because the application contains financial information:
 - AI financial assistant
 - AI action suggestions
 
-## Milestone 8 — Household
+## Milestone 9 — Household
 
 - Household
 - Shared accounts
@@ -1937,7 +2028,7 @@ Because the application contains financial information:
 - Shared goals
 - Permissions
 
-## Milestone 9 — Optional Ecosystem
+## Milestone 10 — Optional Ecosystem
 
 - Cloud synchronization
 - Multi-device support
@@ -1962,6 +2053,9 @@ Payment Reminders
         │
         ▼
 Accounts + Transactions
+        │
+        ▼
+Receipts + Tax Relief
         │
         ▼
 Cash Flow + Budget
@@ -2011,13 +2105,14 @@ The initial priority should be:
 1. Keep SQLite/local-first architecture strong.
 2. Complete payment reminders.
 3. Build accounts and transactions.
-4. Build cash flow and budgeting.
-5. Build goals and forecasting.
-6. Add Google Drive backup/restore.
-7. Add Moomoo integration.
-8. Add financial health and simulations.
-9. Add AI.
-10. Add household and optional synchronization later.
+4. Build receipts and tax relief tracking.
+5. Build cash flow and budgeting.
+6. Build goals and forecasting.
+7. Add Google Drive backup/restore.
+8. Add Moomoo integration.
+9. Add financial health and simulations.
+10. Add AI.
+11. Add household and optional synchronization later.
 
 The most important architectural decision is to establish a strong financial domain model and transaction/cash-flow layer before adding AI or many external integrations.
 
