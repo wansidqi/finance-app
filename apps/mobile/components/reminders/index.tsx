@@ -12,8 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { AddReminderModal } from "./add-reminder-modal";
-import { REMINDER_CATEGORY_LABELS, REMINDER_RECURRENCE_LABELS } from "./category";
 import { NotificationTimingCard } from "./notification-timing-card";
+import { REMINDER_RECURRENCE_LABELS } from "./reminder-options";
 
 type Tab = "upcoming" | "due_today" | "overdue" | "completed";
 
@@ -66,14 +66,6 @@ export function Reminders() {
     overdue: groups.overdue,
     completed: groups.completed,
   };
-
-  const totalUpcomingCommitment = useMemo(
-    () =>
-      [...groups.overdue, ...groups.dueToday, ...groups.upcoming]
-        .filter((r) => r.status === "ACTIVE")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [groups],
-  );
 
   const activeCount = groups.overdue.length + groups.dueToday.length + groups.upcoming.length;
 
@@ -137,17 +129,9 @@ export function Reminders() {
 
       <View className="px-6">
         {!isLoading && activeCount > 0 && (
-          <View className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5 flex-row items-center justify-between">
-            <View>
-              <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                Upcoming Commitments
-              </Text>
-              <Text className="text-[10px] text-slate-500 mt-0.5">
-                Across {activeCount} {activeCount === 1 ? "reminder" : "reminders"}
-              </Text>
-            </View>
-            <Text className="text-[20px] font-extrabold text-amber-400">
-              RM{totalUpcomingCommitment.toLocaleString()}
+          <View className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5">
+            <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              {activeCount} active {activeCount === 1 ? "reminder" : "reminders"}
             </Text>
           </View>
         )}
@@ -200,7 +184,7 @@ export function Reminders() {
                 {tab === "completed" ? "No completed reminders yet" : "Nothing here"}
               </Text>
               <Text className="mt-1 text-[13px] text-slate-500">
-                {tab === "upcoming" ? "Add your first payment reminder to get started" : ""}
+                {tab === "upcoming" ? "Add your first reminder to get started" : ""}
               </Text>
             </View>
           )
@@ -238,7 +222,7 @@ function ReminderListItem({
   onTogglePause: () => void;
   onDelete: () => void;
 }) {
-  const { name, category, amount, recurrence, status, next_due_date, days_until_due } = reminder;
+  const { name, note, recurrence, status, next_due_date, days_until_due, notification_mode } = reminder;
   const isPaused = status === "PAUSED";
   const isCompleted = status === "COMPLETED";
   const isOverdue = status === "ACTIVE" && days_until_due < 0;
@@ -282,21 +266,25 @@ function ReminderListItem({
       <TouchableOpacity onPress={onPress} className="flex-row items-center justify-between active:opacity-70">
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
-            <View className="bg-amber-500/20 rounded-full px-2.5 py-0.5">
-              <Text className="text-[10px] font-bold text-amber-400">
-                {REMINDER_CATEGORY_LABELS[category]}
-              </Text>
-            </View>
             <View className={`rounded-full px-2.5 py-0.5 ${badgeBg}`}>
               <Text className={`text-[10px] font-bold ${badgeText}`}>{badgeLabel}</Text>
             </View>
+            {notification_mode === "custom" && (
+              <View className="bg-white/10 rounded-full px-2.5 py-0.5">
+                <Text className="text-[10px] font-bold text-slate-300">Custom timing</Text>
+              </View>
+            )}
           </View>
           <Text className="text-[16px] font-semibold text-white mb-1">{name}</Text>
           <Text className="text-[12px] text-slate-400">
             {REMINDER_RECURRENCE_LABELS[recurrence]} · Due {dueLabel}
           </Text>
+          {!!note && (
+            <Text className="text-[12px] text-slate-500 mt-1" numberOfLines={2}>
+              {note}
+            </Text>
+          )}
         </View>
-        <Text className="text-[16px] font-bold text-amber-400 ml-4">RM{amount.toLocaleString()}</Text>
       </TouchableOpacity>
 
       {!isCompleted && (
@@ -306,7 +294,7 @@ function ReminderListItem({
             className="flex-1 bg-amber-500 rounded-lg py-2.5 flex-row items-center justify-center gap-1"
           >
             <Ionicons name="checkmark-circle-outline" size={15} color="white" />
-            <Text className="text-center font-semibold text-white text-[12px]">Mark Paid</Text>
+            <Text className="text-center font-semibold text-white text-[12px]">Mark Done</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onTogglePause}

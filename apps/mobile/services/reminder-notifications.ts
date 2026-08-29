@@ -13,31 +13,42 @@ const ANDROID_CHANNEL_ID = "payment-reminders";
 async function ensureChannel() {
   await ensureAndroidChannel({
     id: ANDROID_CHANNEL_ID,
-    name: "Payment Reminders",
+    name: "Reminders",
     color: "#f59e0b",
   });
 }
 
 function reminderContent(reminder: ReminderInterface, offsetDays: number) {
-  const amount = `RM${reminder.amount.toLocaleString()}`;
-
-  if (offsetDays === 0) {
-    return {
-      title: `${reminder.name} is due today`,
-      body: `${amount} is due today.`,
-    };
-  }
-
   const dueDateLabel = new Date(reminder.next_due_date).toLocaleDateString("en-MY", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 
-  return {
-    title: `${reminder.name} due in ${offsetDays} day${offsetDays > 1 ? "s" : ""}`,
-    body: `${amount} will be due on ${dueDateLabel}.`,
-  };
+  const title =
+    offsetDays === 0
+      ? `${reminder.name} is due today`
+      : `${reminder.name} due in ${offsetDays} day${offsetDays > 1 ? "s" : ""}`;
+
+  const bodyParts = [offsetDays === 0 ? "Due today." : `Due on ${dueDateLabel}.`];
+  if (reminder.note?.trim()) bodyParts.push(reminder.note.trim());
+
+  return { title, body: bodyParts.join(" ") };
+}
+
+/** Resolves the effective offsets/hour/minute for one reminder — its own override when set, otherwise the app-wide default. */
+function resolveTiming(
+  reminder: ReminderInterface,
+  globalSettings: { offsets_days: number[]; hour: number; minute: number },
+) {
+  if (reminder.notification_mode === "custom" && reminder.notification_offsets_days) {
+    return {
+      offsets_days: reminder.notification_offsets_days,
+      hour: reminder.notification_hour ?? globalSettings.hour,
+      minute: reminder.notification_minute ?? globalSettings.minute,
+    };
+  }
+  return globalSettings;
 }
 
 /**
@@ -54,13 +65,14 @@ export async function syncReminderNotifications(reminders: ReminderInterface[]) 
   await ensureChannel();
   await cancelNotificationsWithPrefix(NOTIFICATION_PREFIX);
 
-  const settings = await getReminderNotificationSettings();
+  const globalSettings = await getReminderNotificationSettings();
   const now = new Date();
 
   for (const reminder of reminders) {
     if (reminder.status !== "ACTIVE") continue;
 
     const dueDate = new Date(reminder.next_due_date);
+    const settings = resolveTiming(reminder, globalSettings);
 
     for (const offsetDays of settings.offsets_days) {
       const triggerDate = new Date(dueDate);

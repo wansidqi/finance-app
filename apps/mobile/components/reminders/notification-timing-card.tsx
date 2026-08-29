@@ -22,7 +22,7 @@ function describeOffsets(offsets: number[]): string {
     .join(", ");
 }
 
-/** Settings card controlling when payment-reminder notifications fire — a global default (7/3/1/0 days at 9:00 AM) or a custom offsets/time schedule. */
+/** Settings card controlling the app-wide default for when reminder notifications fire (7/3/1/0 days at 9:00 AM, or a custom offsets/time schedule) — individual reminders can still override this with their own timing. */
 export function NotificationTimingCard() {
   const { data: settings } = useReminderNotificationSettings();
   const { mutateAsync: save, isPending } = useSetReminderNotificationSettings();

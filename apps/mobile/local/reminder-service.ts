@@ -1,5 +1,6 @@
 import { ReminderInterface } from "@/interface/reminder";
 import { SQLiteBindValue } from "expo-sqlite";
+import { clampHour, clampMinute, sanitizeOffsets } from "./reminder-notification-settings-service";
 import { getDb } from "./db";
 import { computeNextDueDate, daysUntilDue } from "./reminder-recurrence";
 
@@ -7,14 +8,16 @@ interface ReminderRow {
   id: number;
   user_id: number | null;
   name: string;
-  category: string;
-  amount: number;
   recurrence: string;
   recurrence_interval_days: number | null;
   next_due_date: string;
   last_paid_date: string | null;
   note: string | null;
   status: string;
+  notification_mode: string;
+  notification_offsets_days: string | null;
+  notification_hour: number | null;
+  notification_minute: number | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -23,18 +26,30 @@ function rowToDto(row: ReminderRow, now: Date): ReminderInterface {
   const dueDate = new Date(row.next_due_date);
   const days = daysUntilDue(dueDate, now);
 
+  let offsets: number[] | null = null;
+  if (row.notification_mode === "custom" && row.notification_offsets_days) {
+    try {
+      const parsed = JSON.parse(row.notification_offsets_days);
+      offsets = Array.isArray(parsed) ? sanitizeOffsets(parsed) : null;
+    } catch {
+      offsets = null;
+    }
+  }
+
   return {
     id: row.id,
     user_id: row.user_id ?? undefined,
     name: row.name,
-    category: row.category as ReminderInterface["category"],
-    amount: row.amount,
     recurrence: row.recurrence as ReminderInterface["recurrence"],
     recurrence_interval_days: row.recurrence_interval_days,
     next_due_date: row.next_due_date,
     last_paid_date: row.last_paid_date,
     note: row.note,
     status: row.status as ReminderInterface["status"],
+    notification_mode: row.notification_mode === "custom" ? "custom" : "global",
+    notification_offsets_days: offsets,
+    notification_hour: row.notification_hour != null ? clampHour(row.notification_hour) : null,
+    notification_minute: row.notification_minute != null ? clampMinute(row.notification_minute) : null,
     days_until_due: days,
     is_overdue: row.status === "ACTIVE" && days < 0,
     is_due_today: row.status === "ACTIVE" && days === 0,
@@ -67,19 +82,30 @@ export async function createReminder(
   if (!data.name) throw new Error("name is required");
   if (!data.next_due_date) throw new Error("next_due_date is required");
 
+  const notificationMode = data.notification_mode === "custom" ? "custom" : "global";
+
   const db = await getDb();
   const result = await db.runAsync(
     `INSERT INTO payment_reminders
-       (user_id, name, category, amount, recurrence, recurrence_interval_days, next_due_date, note, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
+       (user_id, name, recurrence, recurrence_interval_days, next_due_date, note, status,
+        notification_mode, notification_offsets_days, notification_hour, notification_minute)
+     VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?)`,
     data.user_id ?? null,
     data.name,
-    data.category ?? "other",
-    data.amount ?? 0,
     data.recurrence ?? "monthly",
     data.recurrence_interval_days ?? null,
     data.next_due_date,
     data.note ?? null,
+    notificationMode,
+    notificationMode === "custom" && data.notification_offsets_days
+      ? JSON.stringify(sanitizeOffsets(data.notification_offsets_days))
+      : null,
+    notificationMode === "custom" && data.notification_hour != null
+      ? clampHour(data.notification_hour)
+      : null,
+    notificationMode === "custom" && data.notification_minute != null
+      ? clampMinute(data.notification_minute)
+      : null,
   );
 
   const created = await getReminderById(result.lastInsertRowId);
@@ -103,14 +129,32 @@ export async function updateReminder(
   }
 
   if (data.name !== undefined) setField("name", data.name);
-  if (data.category !== undefined) setField("category", data.category);
-  if (data.amount !== undefined) setField("amount", data.amount);
   if (data.recurrence !== undefined) setField("recurrence", data.recurrence);
   if (data.recurrence_interval_days !== undefined)
     setField("recurrence_interval_days", data.recurrence_interval_days);
   if (data.next_due_date !== undefined) setField("next_due_date", data.next_due_date);
   if (data.note !== undefined) setField("note", data.note);
   if (data.status !== undefined) setField("status", data.status);
+  if (data.notification_mode !== undefined) {
+    const mode = data.notification_mode === "custom" ? "custom" : "global";
+    setField("notification_mode", mode);
+    setField(
+      "notification_offsets_days",
+      mode === "custom" && data.notification_offsets_days
+        ? JSON.stringify(sanitizeOffsets(data.notification_offsets_days))
+        : null,
+    );
+    setField(
+      "notification_hour",
+      mode === "custom" && data.notification_hour != null ? clampHour(data.notification_hour) : null,
+    );
+    setField(
+      "notification_minute",
+      mode === "custom" && data.notification_minute != null
+        ? clampMinute(data.notification_minute)
+        : null,
+    );
+  }
 
   if (set.length === 1) return existing;
 

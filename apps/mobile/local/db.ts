@@ -304,6 +304,25 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
       await ensureColumn(db, "nisab_state_sync_state", "last_notified_source_state", "last_notified_source_state TEXT");
     },
   },
+  {
+    // Reminders (Phase: General Reminders) stopped being payment-only —
+    // `category`/`amount` are left in place but unused going forward (same
+    // approach as the old `accounts` table) rather than fighting SQLite's
+    // limited DROP COLUMN story. These columns let each reminder either
+    // follow the app-wide notification schedule or override it.
+    version: 7,
+    run: async (db) => {
+      await ensureColumn(
+        db,
+        "payment_reminders",
+        "notification_mode",
+        "notification_mode TEXT NOT NULL DEFAULT 'global'",
+      );
+      await ensureColumn(db, "payment_reminders", "notification_offsets_days", "notification_offsets_days TEXT");
+      await ensureColumn(db, "payment_reminders", "notification_hour", "notification_hour INTEGER");
+      await ensureColumn(db, "payment_reminders", "notification_minute", "notification_minute INTEGER");
+    },
+  },
 ];
 
 /** The schema version this build of the app understands — a restored backup newer than this can't be safely opened. */

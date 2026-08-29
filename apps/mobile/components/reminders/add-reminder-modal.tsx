@@ -1,23 +1,27 @@
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
-import { ReminderCategory, ReminderInterface, ReminderRecurrence } from "@/interface/reminder";
+import { ReminderInterface, ReminderRecurrence, ReminderTimingMode } from "@/interface/reminder";
+import {
+  DEFAULT_REMINDER_HOUR,
+  DEFAULT_REMINDER_MINUTE,
+  DEFAULT_REMINDER_OFFSETS_DAYS,
+} from "@/local/reminder-notification-settings-service";
 import { useCreateReminder, useUpdateReminder } from "@/services/reminder";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  REMINDER_CATEGORIES,
-  REMINDER_CATEGORY_LABELS,
-  REMINDER_RECURRENCES,
-  REMINDER_RECURRENCE_LABELS,
-} from "./category";
 import { DateFields, dateToFields, fieldsToIsoDate } from "./date-fields";
+import { REMINDER_RECURRENCES, REMINDER_RECURRENCE_LABELS } from "./reminder-options";
 
 // Matches the floating tab bar height in app/(tabs)/_layout.tsx, so the
 // sheet's bottom row of buttons doesn't sit underneath it.
 const TAB_BAR_BASE_HEIGHT = 52;
+
+function pad(n: number) {
+  return n.toString().padStart(2, "0");
+}
 
 type Props = {
   visible: boolean;
@@ -29,14 +33,18 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   const isEditing = !!reminder;
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<ReminderCategory>("other");
-  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
   const [recurrence, setRecurrence] = useState<ReminderRecurrence>("monthly");
   const [intervalDays, setIntervalDays] = useState("30");
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
-  const [note, setNote] = useState("");
+
+  const [timingMode, setTimingMode] = useState<ReminderTimingMode>("global");
+  const [offsetsText, setOffsetsText] = useState(DEFAULT_REMINDER_OFFSETS_DAYS.join(", "));
+  const [hourText, setHourText] = useState(String(DEFAULT_REMINDER_HOUR));
+  const [minuteText, setMinuteText] = useState(pad(DEFAULT_REMINDER_MINUTE));
+  const [timingError, setTimingError] = useState<string | null>(null);
 
   const { mutateAsync: createReminder, isPending: isCreating } = useCreateReminder();
   const { mutateAsync: updateReminder, isPending: isUpdating } = useUpdateReminder();
@@ -53,11 +61,15 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     setYear(fields.year);
 
     setName(reminder?.name ?? "");
-    setCategory(reminder?.category ?? "other");
-    setAmount(reminder ? String(reminder.amount) : "");
+    setNote(reminder?.note ?? "");
     setRecurrence(reminder?.recurrence ?? "monthly");
     setIntervalDays(reminder?.recurrence_interval_days?.toString() ?? "30");
-    setNote(reminder?.note ?? "");
+
+    setTimingMode(reminder?.notification_mode ?? "global");
+    setOffsetsText((reminder?.notification_offsets_days ?? DEFAULT_REMINDER_OFFSETS_DAYS).join(", "));
+    setHourText(String(reminder?.notification_hour ?? DEFAULT_REMINDER_HOUR));
+    setMinuteText(pad(reminder?.notification_minute ?? DEFAULT_REMINDER_MINUTE));
+    setTimingError(null);
   }, [visible, reminder]);
 
   const resetAndClose = () => {
@@ -68,14 +80,41 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     const isoDate = fieldsToIsoDate(day, month, year);
     if (!name.trim() || !isoDate) return;
 
+    let offsets: number[] = [];
+    if (timingMode === "custom") {
+      offsets = offsetsText
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .map(Number);
+      const hour = Number(hourText);
+      const minute = Number(minuteText);
+
+      if (offsets.length === 0 || offsets.some((n) => Number.isNaN(n) || n < 0)) {
+        setTimingError("Enter one or more non-negative day counts, separated by commas");
+        return;
+      }
+      if (Number.isNaN(hour) || hour < 0 || hour > 23) {
+        setTimingError("Hour must be between 0 and 23");
+        return;
+      }
+      if (Number.isNaN(minute) || minute < 0 || minute > 59) {
+        setTimingError("Minute must be between 0 and 59");
+        return;
+      }
+      setTimingError(null);
+    }
+
     const data: Partial<ReminderInterface> = {
       name: name.trim(),
-      category,
-      amount: Number(amount) || 0,
       recurrence,
       recurrence_interval_days: recurrence === "custom" ? Number(intervalDays) || 30 : null,
       next_due_date: isoDate,
       note: note.trim() || null,
+      notification_mode: timingMode,
+      notification_offsets_days: timingMode === "custom" ? offsets : null,
+      notification_hour: timingMode === "custom" ? Number(hourText) : null,
+      notification_minute: timingMode === "custom" ? Number(minuteText) : null,
     };
 
     try {
@@ -92,7 +131,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
   const isSaving = isCreating || isUpdating;
   const isoPreview = fieldsToIsoDate(day, month, year);
-  const isComplete = !!name.trim() && !!amount && !!isoPreview;
+  const isComplete = !!name.trim() && !!isoPreview;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -109,7 +148,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                   {isEditing ? "Edit Reminder" : "Add Reminder"}
                 </Text>
                 <Text className="text-[11px] text-slate-400 mt-0.5">
-                  Track a recurring or one-time payment
+                  Anything you want to be reminded about
                 </Text>
               </View>
               <TouchableOpacity onPress={resetAndClose} className="p-2 rounded-full bg-slate-700/50">
@@ -127,7 +166,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                   Name
                 </Text>
                 <TextInput
-                  placeholder="e.g., Rent, Car Insurance, Netflix"
+                  placeholder="e.g., Rent, Service Car, Visit Clinic"
                   value={name}
                   onChangeText={setName}
                   placeholderTextColor="#64748b"
@@ -137,46 +176,16 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
               <View className="mb-4">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Category
+                  Description (optional)
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {REMINDER_CATEGORIES.map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      onPress={() => setCategory(c)}
-                      className={`rounded-lg px-3 py-2 border-2 ${
-                        category === c
-                          ? "border-amber-500 bg-amber-500/10"
-                          : "border-slate-600 bg-slate-700/30"
-                      }`}
-                    >
-                      <Text
-                        className={`font-bold text-[12px] ${
-                          category === c ? "text-amber-400" : "text-slate-300"
-                        }`}
-                      >
-                        {REMINDER_CATEGORY_LABELS[c]}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Amount (RM)
-                </Text>
-                <View className="flex-row items-center border border-slate-600 rounded-lg bg-slate-700/30 px-3 py-3">
-                  <Text className="text-slate-400 mr-2">RM</Text>
-                  <TextInput
-                    placeholder="0.00"
-                    keyboardType="decimal-pad"
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholderTextColor="#64748b"
-                    className="flex-1 text-[13px] text-white"
-                  />
-                </View>
+                <TextInput
+                  placeholder="Any extra detail"
+                  value={note}
+                  onChangeText={setNote}
+                  placeholderTextColor="#64748b"
+                  multiline
+                  className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
+                />
               </View>
 
               <View className="mb-4">
@@ -238,15 +247,72 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
               <View className="mb-6">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Note (optional)
+                  Notification Timing
                 </Text>
-                <TextInput
-                  placeholder="Any extra detail"
-                  value={note}
-                  onChangeText={setNote}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
-                />
+                <View className="flex-row gap-2 mb-3">
+                  {(["global", "custom"] as ReminderTimingMode[]).map((mode) => (
+                    <TouchableOpacity
+                      key={mode}
+                      onPress={() => setTimingMode(mode)}
+                      className={`flex-1 rounded-lg py-2 items-center border-2 ${
+                        timingMode === mode
+                          ? "border-amber-500 bg-amber-500/10"
+                          : "border-slate-600 bg-slate-700/30"
+                      }`}
+                    >
+                      <Text
+                        className={`text-[11px] font-bold ${
+                          timingMode === mode ? "text-amber-400" : "text-slate-300"
+                        }`}
+                      >
+                        {mode === "global" ? "Use Global Setting" : "Customize"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {timingMode === "custom" && (
+                  <>
+                    <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
+                      Days before due (comma-separated, 0 = due day)
+                    </Text>
+                    <TextInput
+                      value={offsetsText}
+                      onChangeText={setOffsetsText}
+                      placeholder="7, 3, 1, 0"
+                      placeholderTextColor="#64748b"
+                      keyboardType="numbers-and-punctuation"
+                      className="rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] mb-3"
+                    />
+
+                    <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
+                      Time (24-hour)
+                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      <TextInput
+                        value={hourText}
+                        onChangeText={setHourText}
+                        placeholder="HH"
+                        placeholderTextColor="#64748b"
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
+                      />
+                      <Text className="text-slate-400 font-bold">:</Text>
+                      <TextInput
+                        value={minuteText}
+                        onChangeText={setMinuteText}
+                        placeholder="MM"
+                        placeholderTextColor="#64748b"
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
+                      />
+                    </View>
+                  </>
+                )}
+
+                {timingError && <Text className="text-red-400 text-[11px] mt-2">{timingError}</Text>}
               </View>
 
               <View className="flex-row gap-3">
