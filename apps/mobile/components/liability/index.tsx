@@ -1,5 +1,6 @@
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { LiabilityInterface } from "@/interface/liability";
 import { useGetLiabilities, useUpdateLiabilityById } from "@/services/liability";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { LiabilitySkeletonLoader } from "./skeleton-loader";
 import { LogPaymentPanel } from "./log-payment-panel";
 
 export function Liability() {
+  const { formatRM } = useFormatRM();
   const { data = [], isLoading } = useGetLiabilities();
   const router = useRouter();
 
@@ -37,6 +39,11 @@ export function Liability() {
     [data],
   );
 
+  const totalDebtBalance = useMemo(
+    () => data.reduce((sum, l) => sum + (l.total_balance ?? 0), 0),
+    [data],
+  );
+
   return (
     <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
@@ -52,7 +59,7 @@ export function Liability() {
         </View>
         <TouchableOpacity
           onPress={() => setModalVisible(true)}
-          className="rounded-full bg-rose-500 px-5 py-3 active:opacity-80"
+          className="rounded-full bg-red-700 px-5 py-3 active:opacity-80"
         >
           <View className="flex-row items-center gap-1">
             <Ionicons name="add" size={20} color="white" />
@@ -68,39 +75,55 @@ export function Liability() {
           showsVerticalScrollIndicator={false}
         >
           {!isLoading && data.length > 0 && (
-            <View className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5 flex-row items-center justify-between">
-              <View>
-                <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Avg Monthly Commitment
+            <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
+                  Total Debt
                 </Text>
-                <Text className="text-[10px] text-slate-500 mt-0.5">
-                  Across {data.length}{" "}
-                  {data.length === 1 ? "liability" : "liabilities"}
-                </Text>
+                <View className="h-8 w-8 rounded-full bg-red-950/60 items-center justify-center">
+                  <Ionicons name="trending-down" size={15} color="#b91c1c" />
+                </View>
               </View>
-              <Text className="text-[20px] font-extrabold text-rose-400">
-                RM{totalAvgMonthlyCommitment.toLocaleString()}
+              <Text className="text-[36px] font-extrabold text-white tracking-tight">
+                {formatRM(totalDebtBalance, { decimals: true })}
               </Text>
+
+              <View className="h-px bg-white/8 mt-6 mb-5" />
+
+              <View className="flex-row justify-between">
+                <HeroStat
+                  label="Monthly Commitment"
+                  value={formatRM(totalAvgMonthlyCommitment, { decimals: true })}
+                />
+                <HeroStat
+                  label="Active"
+                  value={`${data.length}`}
+                  align="right"
+                />
+              </View>
             </View>
           )}
+
           {isLoading ? (
             <LiabilitySkeletonLoader />
           ) : data && data.length > 0 ? (
-            <View className="gap-3">
-              {data.map((liability) => (
-                <LiabilityListItem
-                  key={liability.id}
-                  liability={liability}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/liability/[id]",
-                      params: { id: String(liability.id) },
-                    })
-                  }
-                  onError={showError}
-                />
-              ))}
-            </View>
+            <Section title="All Liabilities">
+              <View className="gap-3">
+                {data.map((liability) => (
+                  <LiabilityListItem
+                    key={liability.id}
+                    liability={liability}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/liability/[id]",
+                        params: { id: String(liability.id) },
+                      })
+                    }
+                    onError={showError}
+                  />
+                ))}
+              </View>
+            </Section>
           ) : (
             <View className="mt-20 items-center justify-center">
               <Ionicons name="document-outline" size={48} color="#64748b" />
@@ -124,6 +147,36 @@ export function Liability() {
   );
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mb-5">
+      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function HeroStat({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
+      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+        {label}
+      </Text>
+      <Text className="text-[15px] font-bold text-white mt-0.5">{value}</Text>
+    </View>
+  );
+}
+
 function LiabilityListItem({
   liability,
   onPress,
@@ -133,6 +186,7 @@ function LiabilityListItem({
   onPress: () => void;
   onError: (error: any) => void;
 }) {
+  const { formatRM } = useFormatRM();
   const {
     id,
     category,
@@ -201,18 +255,16 @@ function LiabilityListItem({
           <Text className="text-[12px] text-slate-400">
             {isCommitment
               ? hasVariablePayments
-                ? `RM${avgPayment.toLocaleString()}/month avg`
-                : `RM${monthly_payment?.toLocaleString() || "0"}/month`
-              : `RM${monthly_payment?.toLocaleString() || "0"}/month • ${remainingMonths} ${
+                ? `${formatRM(avgPayment)}/month avg`
+                : `${formatRM(monthly_payment ?? 0)}/month`
+              : `${formatRM(monthly_payment ?? 0)}/month • ${remainingMonths} ${
                   remainingMonths === 1 ? "month" : "months"
                 }`}
           </Text>
         </View>
         <View className="items-end gap-2 ml-4">
           <Text className="text-[16px] font-bold text-rose-400">
-            {isCommitment
-              ? `RM${avgPayment.toLocaleString()}`
-              : `RM${total_balance?.toLocaleString() || "0"}`}
+            {isCommitment ? formatRM(avgPayment) : formatRM(total_balance ?? 0)}
           </Text>
           {!isCommitment && (
             <View className="bg-rose-500/20 rounded-lg px-2 py-1">
@@ -261,7 +313,7 @@ function LiabilityListItem({
             <TouchableOpacity
               onPress={handlePay}
               disabled={isPaying || !Number(paymentAmount)}
-              className={`mt-2.5 bg-rose-500 rounded-lg py-2.5 ${
+              className={`mt-2.5 bg-red-700 rounded-lg py-2.5 ${
                 isPaying || !Number(paymentAmount) ? "opacity-50" : ""
               }`}
             >

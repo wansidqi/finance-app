@@ -1,3 +1,4 @@
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { TAX_RELIEF_CATEGORY_LABELS, TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { shouldRunScheduledCheck } from "@/local/lhdn-relief-sync-service";
 import {
@@ -18,16 +19,13 @@ import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "reac
 
 const EXPORT_DIR = new Directory(Paths.cache, "tax-relief-export");
 
-function formatRM(value: number) {
-  return `RM${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
 export default function TaxReliefScreen() {
   const router = useRouter();
+  const { formatRM } = useFormatRM();
   const [year, setYear] = useState(new Date().getFullYear());
   const [editingCategory, setEditingCategory] = useState<TaxReliefCategoryKey | null>(null);
   const [capInput, setCapInput] = useState("");
@@ -165,8 +163,12 @@ export default function TaxReliefScreen() {
           <Text className="text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
             Total Claimed
           </Text>
-          <Text className="text-[26px] font-black text-sky-400">{formatRM(totalClaimed)}</Text>
-          <Text className="text-[12px] text-slate-500 mt-1">of {formatRM(totalCap)} across all categories</Text>
+          <Text className="text-[26px] font-black text-sky-400">
+            {formatRM(totalClaimed, { decimals: true })}
+          </Text>
+          <Text className="text-[12px] text-slate-500 mt-1">
+            of {formatRM(totalCap, { decimals: true })} across all categories
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -250,10 +252,11 @@ export default function TaxReliefScreen() {
                 </View>
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-[11px] text-slate-500">
-                    {formatRM(s.claimed)} / {formatRM(s.cap)}
+                    {formatRM(s.claimed, { decimals: true })} /{" "}
+                    {formatRM(s.cap, { decimals: true })}
                   </Text>
                   <Text className="text-[11px] font-semibold text-slate-400">
-                    {formatRM(s.remaining)} left
+                    {formatRM(s.remaining, { decimals: true })} left
                   </Text>
                 </View>
                 <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
@@ -333,7 +336,8 @@ export default function TaxReliefScreen() {
                             {TAX_RELIEF_CATEGORY_LABELS[d.category_key]}
                           </Text>
                           <Text className="text-[11px] text-slate-400 mt-0.5">
-                            {formatRM(d.current_cap)} → {formatRM(d.scraped_amount)}
+                            {formatRM(d.current_cap, { decimals: true })} →{" "}
+                            {formatRM(d.scraped_amount, { decimals: true })}
                           </Text>
                         </View>
                       </TouchableOpacity>

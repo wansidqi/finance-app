@@ -3,15 +3,19 @@ import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { AddTransactionModal } from "@/components/transactions/add-transaction-modal";
 import { TRANSACTION_TYPE_LABELS } from "@/components/transactions/category";
-import { TransactionInterface } from "@/interface/transaction";
+import { useFormatRM } from "@/hooks/use-format-rm";
+import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { useDeleteTransaction, useGetTransactions } from "@/services/transaction";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+const INFLOW_TYPES: TransactionType[] = ["income", "dividend", "interest", "investment_sale"];
 
 export function Transactions() {
   const router = useRouter();
+  const { formatRM, hideAmounts } = useFormatRM();
   const { data: transactions = [], isLoading } = useGetTransactions();
 
   const [addVisible, setAddVisible] = useState(false);
@@ -20,6 +24,28 @@ export function Transactions() {
 
   const { error, isVisible, hideError, showError } = useErrorModal();
   const { mutateAsync: deleteTransaction, isPending: isDeleting } = useDeleteTransaction();
+
+  const { totalIn, totalOut, thisMonthCount } = useMemo(() => {
+    const now = new Date();
+    let inSum = 0;
+    let outSum = 0;
+    let monthCount = 0;
+    for (const t of transactions) {
+      if (INFLOW_TYPES.includes(t.type)) inSum += t.amount;
+      else outSum += t.amount;
+
+      const occurred = new Date(t.occurred_at);
+      if (
+        occurred.getFullYear() === now.getFullYear() &&
+        occurred.getMonth() === now.getMonth()
+      ) {
+        monthCount += 1;
+      }
+    }
+    return { totalIn: inSum, totalOut: outSum, thisMonthCount: monthCount };
+  }, [transactions]);
+
+  const netFlow = totalIn - totalOut;
 
   const handleDelete = async () => {
     if (deletingTxnId == null) return;
@@ -71,20 +97,58 @@ export function Transactions() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {!isLoading && transactions.length > 0 ? (
-          <View className="gap-3">
-            {transactions.map((txn) => (
-              <TransactionListItem
-                key={txn.id}
-                transaction={txn}
-                onPress={() => {
-                  setEditingTxn(txn);
-                  setAddVisible(true);
-                }}
-                onDelete={() => setDeletingTxnId(txn.id)}
+        {!isLoading && transactions.length > 0 && (
+          <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
+                Net Flow
+              </Text>
+              <View className="h-8 w-8 rounded-full bg-sky-500/15 items-center justify-center">
+                <Ionicons name="swap-vertical" size={15} color="#38bdf8" />
+              </View>
+            </View>
+            <Text
+              className={`text-[36px] font-extrabold tracking-tight ${
+                netFlow >= 0 || hideAmounts ? "text-white" : "text-rose-400"
+              }`}
+            >
+              {netFlow < 0 && !hideAmounts ? "-" : ""}
+              {formatRM(Math.abs(netFlow), { decimals: true })}
+            </Text>
+
+            <View className="h-px bg-white/8 mt-6 mb-5" />
+
+            <View className="flex-row justify-between mb-4">
+              <HeroStat label="Total In" value={formatRM(totalIn, { decimals: true })} />
+              <HeroStat
+                label="Total Out"
+                value={formatRM(totalOut, { decimals: true })}
+                align="right"
               />
-            ))}
+            </View>
+            <View className="flex-row justify-between">
+              <HeroStat label="Transactions" value={`${transactions.length}`} />
+              <HeroStat label="This Month" value={`${thisMonthCount}`} align="right" />
+            </View>
           </View>
+        )}
+
+        {!isLoading && transactions.length > 0 ? (
+          <Section title="All Transactions">
+            <View className="gap-3">
+              {transactions.map((txn) => (
+                <TransactionListItem
+                  key={txn.id}
+                  transaction={txn}
+                  onPress={() => {
+                    setEditingTxn(txn);
+                    setAddVisible(true);
+                  }}
+                  onDelete={() => setDeletingTxnId(txn.id)}
+                />
+              ))}
+            </View>
+          </Section>
         ) : (
           !isLoading && (
             <View className="mt-16 items-center justify-center">
@@ -113,6 +177,36 @@ export function Transactions() {
   );
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mb-5">
+      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function HeroStat({
+  label,
+  value,
+  align = "left",
+}: {
+  label: string;
+  value: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
+      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+        {label}
+      </Text>
+      <Text className="text-[15px] font-bold text-white mt-0.5">{value}</Text>
+    </View>
+  );
+}
+
 function TransactionListItem({
   transaction,
   onPress,
@@ -122,6 +216,7 @@ function TransactionListItem({
   onPress: () => void;
   onDelete: () => void;
 }) {
+  const { formatRM } = useFormatRM();
   const { type, amount, occurred_at, description, note } = transaction;
   const label = description || TRANSACTION_TYPE_LABELS[type];
   const dateLabel = new Date(occurred_at).toLocaleDateString("en-MY", {
@@ -144,7 +239,7 @@ function TransactionListItem({
             <Text className="text-[12px] text-slate-400">{dateLabel}</Text>
             {note && <Text className="text-[11px] text-slate-500 mt-1">{note}</Text>}
           </View>
-          <Text className="text-[16px] font-bold ml-4 text-white">RM{amount.toLocaleString()}</Text>
+          <Text className="text-[16px] font-bold ml-4 text-white">{formatRM(amount)}</Text>
         </View>
       </TouchableOpacity>
 

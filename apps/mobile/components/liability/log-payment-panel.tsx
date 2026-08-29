@@ -1,3 +1,4 @@
+import { useFormatRM } from "@/hooks/use-format-rm";
 import {
   useAddLiabilityPayment,
   useDeleteLiabilityPayment,
@@ -26,6 +27,7 @@ export function LogPaymentPanel({
   onError,
   historyLimit = 3,
 }: Props) {
+  const { formatRM } = useFormatRM();
   const [amount, setAmount] = useState("");
   const [isLogging, setIsLogging] = useState(false);
   const { data: payments } = useGetLiabilityPayments(liabilityId);
@@ -93,7 +95,7 @@ export function LogPaymentPanel({
               </Text>
               <View className="flex-row items-center gap-2.5">
                 <Text className="text-[12px] font-semibold text-slate-200">
-                  RM{p.amount.toLocaleString()}
+                  {formatRM(p.amount)}
                 </Text>
                 <TouchableOpacity
                   onPress={() => removePayment(p.id)}

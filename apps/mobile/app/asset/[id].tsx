@@ -4,6 +4,7 @@ import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetInterface, BaseAsset } from "@/interface/asset";
 import {
   useDeleteAsset,
@@ -73,6 +74,7 @@ export default function AssetDetailPage() {
 }
 
 export function AssetCard(asset: AssetInterface) {
+  const { formatRM } = useFormatRM();
   const {
     category,
     goal,
@@ -375,7 +377,7 @@ export function AssetCard(asset: AssetInterface) {
             </Text>
             <View className="flex-row items-baseline gap-2">
               <Text className="text-[20px] font-bold text-emerald-400">
-                RM{price.toLocaleString()}
+                {formatRM(price)}
               </Text>
               {profitPercent !== null && (
                 <Text
@@ -395,8 +397,8 @@ export function AssetCard(asset: AssetInterface) {
             )}
             {platform_total !== null && (
               <Text className="text-[11px] text-sky-400 mt-1">
-                = RM{platform_total.toLocaleString()} platform total − other
-                entries on {platform}
+                = {formatRM(platform_total)} platform total − other entries on{" "}
+                {platform}
               </Text>
             )}
             {isGrouped && cost_basis && cost_basis > 0 && (
@@ -592,7 +594,7 @@ export function AssetCard(asset: AssetInterface) {
               />
             </View>
             <Text className="mt-2 text-[10px] text-slate-400">
-              RM{price.toLocaleString()} / RM{goal.toLocaleString()}
+              {formatRM(price)} / {formatRM(goal)}
             </Text>
           </View>
         )}

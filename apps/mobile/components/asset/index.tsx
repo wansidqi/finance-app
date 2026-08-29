@@ -1,6 +1,7 @@
 import { AddAssetModal } from "@/components/asset/add-asset";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetCategory, AssetInterface } from "@/interface/asset";
 import {
   useCreateAsset,
@@ -45,6 +46,14 @@ const CATEGORY_ICON: Record<AssetCategory, keyof typeof Ionicons.glyphMap> = {
   GOLD: "diamond",
   CRYPTO: "logo-bitcoin",
   STOCK: "trending-up",
+};
+
+const CATEGORY_DIST_ORDER: AssetCategory[] = ["CASH", "GOLD", "CRYPTO", "STOCK"];
+const CATEGORY_DIST_META: Record<AssetCategory, { label: string; color: string }> = {
+  CASH: { label: "Cash & Savings", color: "#34d399" },
+  GOLD: { label: "Gold", color: "#fbbf24" },
+  CRYPTO: { label: "Crypto", color: "#a78bfa" },
+  STOCK: { label: "Stock", color: "#38bdf8" },
 };
 
 // Groups a set of assets (already scoped to one category) into platform
@@ -111,6 +120,7 @@ function groupByPlatform(assets: AssetInterface[]): DisplayItem[] {
 }
 
 export function Asset() {
+  const { formatRM } = useFormatRM();
   const { data: assets, isLoading } = useGetAssets();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalPlatform, setModalPlatform] = useState<string | undefined>();
@@ -156,6 +166,21 @@ export function Asset() {
     return result.sort((a, b) => b.total - a.total);
   }, [assets]);
 
+  const totalZakatable = sections.reduce((sum, s) => sum + s.zakatableTotal, 0);
+  const totalExcluded = sections.reduce((sum, s) => sum + (s.total - s.zakatableTotal), 0);
+
+  const categoryZakatableTotals = useMemo(() => {
+    const totals: Record<AssetCategory, number> = { CASH: 0, GOLD: 0, CRYPTO: 0, STOCK: 0 };
+    for (const s of sections) totals[s.category] = s.zakatableTotal;
+    return totals;
+  }, [sections]);
+
+  const categoryEntryCounts = useMemo(() => {
+    const counts: Record<AssetCategory, number> = { CASH: 0, GOLD: 0, CRYPTO: 0, STOCK: 0 };
+    for (const a of assets ?? []) counts[a.category] = (counts[a.category] ?? 0) + 1;
+    return counts;
+  }, [assets]);
+
   const toggleCalculate = (asset: AssetInterface) => {
     updateAsset({ id: asset.id, is_calculate: !asset.is_calculate });
   };
@@ -198,41 +223,125 @@ export function Asset() {
           {isLoading ? (
             <AssetSkeletonLoader />
           ) : sections.length > 0 ? (
-            <View className="gap-6">
-              {sections.map((section) => (
-                <View key={section.category} className="gap-2.5">
-                  <CategorySectionHeader section={section} />
-                  <View className="gap-3">
-                    {section.items.map((item) =>
-                      item.type === "group" ? (
-                        <PlatformGroupCard
-                          key={`group-${item.group.platform}`}
-                          group={item.group}
-                          onToggle={toggleCalculate}
-                          onPressEntry={goToDetail}
-                          onAdd={() => openAddModal(item.group.platform)}
-                          onUpdateBalance={
-                            item.group.entries.length > 1
-                              ? () => setBalanceGroup(item.group)
-                              : undefined
-                          }
-                        />
-                      ) : (
-                        <StandaloneAssetCard
-                          key={`single-${item.asset.id}`}
-                          asset={item.asset}
-                          onToggle={() => toggleCalculate(item.asset)}
-                          onPress={() => goToDetail(item.asset.id)}
-                          onAdd={() =>
-                            openAddModal(item.asset.name, item.asset.id)
-                          }
-                        />
-                      ),
-                    )}
+            <>
+              <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
+                    Total Assets
+                  </Text>
+                  <View className="h-8 w-8 rounded-full bg-emerald-500/15 items-center justify-center">
+                    <Ionicons name="wallet" size={15} color="#34d399" />
                   </View>
                 </View>
-              ))}
-            </View>
+                <Text className="text-[36px] font-extrabold text-white tracking-tight">
+                  {formatRM(totalZakatable, { decimals: true })}
+                </Text>
+                {totalExcluded > 0 && (
+                  <Text className="text-[11px] text-slate-500 mt-1">
+                    +{formatRM(totalExcluded, { decimals: true })} excluded
+                  </Text>
+                )}
+
+                <View className="h-px bg-white/8 mt-6 mb-5" />
+
+                {/* Asset Distribution — moved here from the Dashboard */}
+                <View>
+                  <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px] mb-4">
+                    Asset Distribution
+                  </Text>
+                  <View className="flex-row h-2 rounded-full overflow-hidden bg-white/8">
+                    {CATEGORY_DIST_ORDER.map((category, index) => {
+                      const percent =
+                        totalZakatable > 0
+                          ? (categoryZakatableTotals[category] / totalZakatable) * 100
+                          : 0;
+                      if (percent <= 0) return null;
+                      return (
+                        <View
+                          key={category}
+                          style={{
+                            width: `${percent}%`,
+                            backgroundColor: CATEGORY_DIST_META[category].color,
+                            marginRight: index < CATEGORY_DIST_ORDER.length - 1 ? 2 : 0,
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+
+                  <View className="flex-row flex-wrap mt-5">
+                    {CATEGORY_DIST_ORDER.map((category) => {
+                      const meta = CATEGORY_DIST_META[category];
+                      const value = categoryZakatableTotals[category];
+                      const percent =
+                        totalZakatable > 0 ? (value / totalZakatable) * 100 : 0;
+                      return (
+                        <View key={category} style={{ width: "50%" }} className="pr-2 mb-4">
+                          <View className="flex-row items-center gap-2 mb-1">
+                            <View
+                              style={{ backgroundColor: meta.color }}
+                              className="h-2 w-2 rounded-full"
+                            />
+                            <Text className="text-[11px] text-slate-400">
+                              {meta.label} ({categoryEntryCounts[category]})
+                            </Text>
+                          </View>
+                          <Text className="text-[14px] font-bold text-white">
+                            {formatRM(value, { decimals: true })}
+                          </Text>
+                          <Text className="text-[10px] text-slate-500 mt-0.5">
+                            {percent.toFixed(1)}%
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+
+              <Section title="Holdings">
+                <View className="gap-6">
+                  {sections.map((section) => {
+                    const categoryColor = CATEGORY_DIST_META[section.category].color;
+                    return (
+                      <View key={section.category} className="gap-2.5">
+                        <CategorySectionHeader section={section} />
+                        <View className="gap-3">
+                          {section.items.map((item) =>
+                            item.type === "group" ? (
+                              <PlatformGroupCard
+                                key={`group-${item.group.platform}`}
+                                group={item.group}
+                                color={categoryColor}
+                                onToggle={toggleCalculate}
+                                onPressEntry={goToDetail}
+                                onAdd={() => openAddModal(item.group.platform)}
+                                onUpdateBalance={
+                                  item.group.entries.length > 1
+                                    ? () => setBalanceGroup(item.group)
+                                    : undefined
+                                }
+                              />
+                            ) : (
+                              <StandaloneAssetCard
+                                key={`single-${item.asset.id}`}
+                                asset={item.asset}
+                                color={categoryColor}
+                                onToggle={() => toggleCalculate(item.asset)}
+                                onPress={() => goToDetail(item.asset.id)}
+                                onAdd={() =>
+                                  openAddModal(item.asset.name, item.asset.id)
+                                }
+                              />
+                            ),
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Section>
+            </>
           ) : (
             <View className="mt-20 items-center justify-center">
               <Ionicons name="wallet-outline" size={48} color="#64748b" />
@@ -259,6 +368,17 @@ export function Asset() {
         group={balanceGroup}
         onClose={() => setBalanceGroup(null)}
       />
+    </View>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mb-5">
+      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
+        {title}
+      </Text>
+      {children}
     </View>
   );
 }
@@ -372,29 +492,34 @@ function UpdateBalanceModal({
 }
 
 function CategorySectionHeader({ section }: { section: CategorySection }) {
+  const { formatRM } = useFormatRM();
   const hasExcluded = section.zakatableTotal !== section.total;
+  const meta = CATEGORY_DIST_META[section.category];
 
   return (
     <View className="flex-row items-center justify-between px-1">
       <View className="flex-row items-center gap-2">
-        <View className="p-1.5 rounded-full bg-emerald-500/15">
+        <View className="p-1.5 rounded-full" style={{ backgroundColor: `${meta.color}26` }}>
           <Ionicons
             name={CATEGORY_ICON[section.category]}
             size={14}
-            color="#34d399"
+            color={meta.color}
           />
         </View>
-        <Text className="text-[13px] font-bold text-slate-200 uppercase tracking-wider">
+        <Text
+          className="text-[13px] font-bold uppercase tracking-wider"
+          style={{ color: meta.color }}
+        >
           {section.category}
         </Text>
       </View>
       <View className="items-end">
         <Text className="text-[14px] font-bold text-white">
-          RM{section.zakatableTotal.toLocaleString()}
+          {formatRM(section.zakatableTotal)}
         </Text>
         {hasExcluded && (
           <Text className="text-[10px] font-semibold text-slate-500">
-            +RM{(section.total - section.zakatableTotal).toLocaleString()} excluded
+            +{formatRM(section.total - section.zakatableTotal)} excluded
           </Text>
         )}
       </View>
@@ -404,21 +529,32 @@ function CategorySectionHeader({ section }: { section: CategorySection }) {
 
 function PlatformGroupCard({
   group,
+  color,
   onToggle,
   onPressEntry,
   onAdd,
   onUpdateBalance,
 }: {
   group: PlatformGroup;
+  color: string;
   onToggle: (asset: AssetInterface) => void;
   onPressEntry: (id: number) => void;
   onAdd: () => void;
   onUpdateBalance?: () => void;
 }) {
+  const { formatRM } = useFormatRM();
   const hasExcluded = group.zakatableTotal !== group.walletTotal;
 
   return (
-    <View className="rounded-2xl bg-white/[0.035] border border-white/10 overflow-hidden">
+    <View
+      className="rounded-2xl bg-white/[0.035] overflow-hidden"
+      style={{
+        borderWidth: 1,
+        borderColor: `${color}33`,
+        borderLeftWidth: 3,
+        borderLeftColor: color,
+      }}
+    >
       {/* Group header */}
       <View className="px-4 py-3 bg-white/5 border-b border-white/10">
         <View className="flex-row items-center justify-between">
@@ -445,12 +581,12 @@ function PlatformGroupCard({
             hitSlop={8}
             className="p-1.5 mr-2 rounded-full bg-white/10"
           >
-            <Ionicons name="add" size={16} color="#34d399" />
+            <Ionicons name="add" size={16} color={color} />
           </TouchableOpacity>
           <View className="items-end">
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-[16px] font-bold text-white">
-                RM{group.zakatableTotal.toLocaleString()}
+              <Text className="text-[16px] font-bold" style={{ color }}>
+                {formatRM(group.zakatableTotal)}
               </Text>
               {group.profitPercent !== null && (
                 <Text
@@ -467,7 +603,7 @@ function PlatformGroupCard({
             </View>
             {hasExcluded && (
               <Text className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                +RM{(group.walletTotal - group.zakatableTotal).toLocaleString()} excluded
+                +{formatRM(group.walletTotal - group.zakatableTotal)} excluded
               </Text>
             )}
           </View>
@@ -480,6 +616,7 @@ function PlatformGroupCard({
           <AssetRow
             key={asset.id}
             asset={asset}
+            color={color}
             isLast={idx === group.entries.length - 1}
             onToggle={() => onToggle(asset)}
             onPress={() => onPressEntry(asset.id)}
@@ -493,19 +630,30 @@ function PlatformGroupCard({
 
 function StandaloneAssetCard({
   asset,
+  color,
   onToggle,
   onPress,
   onAdd,
 }: {
   asset: AssetInterface;
+  color: string;
   onToggle: () => void;
   onPress: () => void;
   onAdd: () => void;
 }) {
   return (
-    <View className="rounded-2xl bg-white/[0.035] border border-white/10 overflow-hidden">
+    <View
+      className="rounded-2xl bg-white/[0.035] overflow-hidden"
+      style={{
+        borderWidth: 1,
+        borderColor: `${color}33`,
+        borderLeftWidth: 3,
+        borderLeftColor: color,
+      }}
+    >
       <AssetRow
         asset={asset}
+        color={color}
         isLast
         onToggle={onToggle}
         onPress={onPress}
@@ -517,6 +665,7 @@ function StandaloneAssetCard({
 
 function AssetRow({
   asset,
+  color,
   isLast,
   onToggle,
   onPress,
@@ -524,6 +673,7 @@ function AssetRow({
   showProfit = true,
 }: {
   asset: AssetInterface;
+  color: string;
   isLast: boolean;
   onToggle: () => void;
   onPress: () => void;
@@ -532,6 +682,7 @@ function AssetRow({
   // is shown once, aggregated, on the group header instead.
   showProfit?: boolean;
 }) {
+  const { formatRM } = useFormatRM();
   const {
     name,
     quantity,
@@ -588,8 +739,8 @@ function AssetRow({
             )}
           </View>
           <View className="items-end">
-            <Text className="text-[14px] font-bold text-emerald-400">
-              {price !== null ? `RM${price.toLocaleString()}` : "N/A"}
+            <Text className="text-[14px] font-bold" style={{ color }}>
+              {price !== null ? formatRM(price) : "N/A"}
             </Text>
             {profitPercent !== null && (
               <Text
@@ -610,7 +761,7 @@ function AssetRow({
             hitSlop={8}
             className="p-1.5 mr-3 rounded-full bg-white/10"
           >
-            <Ionicons name="add" size={16} color="#34d399" />
+            <Ionicons name="add" size={16} color={color} />
           </TouchableOpacity>
         )}
 
@@ -618,7 +769,7 @@ function AssetRow({
           key={`${asset.id}-${is_calculate}`}
           value={is_calculate}
           onValueChange={onToggle}
-          trackColor={{ false: "#334155", true: "#34d399" }}
+          trackColor={{ false: "#334155", true: color }}
           thumbColor="#ffffff"
         />
       </View>
@@ -627,7 +778,7 @@ function AssetRow({
         <View className="mt-2.5">
           <View className="flex-row justify-between mb-1">
             <Text className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
-              Goal RM{goal!.toLocaleString()}
+              Goal {formatRM(goal!)}
             </Text>
             <Text className="text-[9px] font-bold text-emerald-400">
               {Math.round(goalPercent)}%

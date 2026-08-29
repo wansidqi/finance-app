@@ -3,6 +3,7 @@ import { LogPaymentPanel } from "@/components/liability/log-payment-panel";
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { LiabilityInterface } from "@/interface/liability";
 import {
   useDeleteLiability,
@@ -73,6 +74,7 @@ export default function LiabilityDetailPage() {
 }
 
 export function LiabilityCard(liability: LiabilityInterface) {
+  const { formatRM } = useFormatRM();
   const {
     category,
     id,
@@ -309,14 +311,14 @@ export function LiabilityCard(liability: LiabilityInterface) {
             </Text>
             {isCommitment ? (
               <Text className="text-[16px] font-bold text-rose-400">
-                RM{avgPayment.toLocaleString()}
+                {formatRM(avgPayment)}
               </Text>
             ) : (
               <BooleanRenderer
                 condition={isEdit}
                 editOff={
                   <Text className="text-[16px] font-bold text-rose-400">
-                    RM{total_balance?.toLocaleString() || "0"}
+                    {formatRM(total_balance ?? 0)}
                   </Text>
                 }
                 editOn={
@@ -338,7 +340,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
               condition={isEdit}
               editOff={
                 <Text className="text-[16px] font-bold text-slate-100">
-                  RM{monthly_payment?.toLocaleString() || "0"}
+                  {formatRM(monthly_payment ?? 0)}
                 </Text>
               }
               editOn={

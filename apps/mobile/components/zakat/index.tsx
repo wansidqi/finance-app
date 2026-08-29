@@ -1,3 +1,4 @@
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,14 +38,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   STOCK: "Stock",
 };
 
-function formatRM(value: number) {
-  return `RM${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
 export function ZakatTrackerScreen() {
+  const { formatRM } = useFormatRM();
   const { data: zakatData, isLoading, isError } = useGetZakatCategories();
   const updateTracker = useUpdateZakatTracker();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
@@ -174,7 +169,7 @@ export function ZakatTrackerScreen() {
             Total Zakat Due
           </Text>
           <Text className="text-[28px] font-extrabold text-white mt-1">
-            {formatRM(totalZakatDue)}
+            {formatRM(totalZakatDue, { decimals: true })}
           </Text>
           <Text className="text-[11px] text-slate-500 mt-1">
             Calculated at 2.5% of eligible assets
@@ -193,7 +188,7 @@ export function ZakatTrackerScreen() {
               </Text>
             </View>
             <Text className="text-[20px] font-extrabold text-emerald-400">
-              {formatRM(totalZakatable)}
+              {formatRM(totalZakatable, { decimals: true })}
             </Text>
           </View>
         </View>
@@ -265,7 +260,8 @@ export function ZakatTrackerScreen() {
 
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-[11px] text-slate-500">
-                    {formatRM(category.value)} / {formatRM(category.nisab)}
+                    {formatRM(category.value)} /{" "}
+                    {formatRM(category.nisab, { alwaysShow: true })}
                   </Text>
                   <Text className="text-[11px] font-semibold text-slate-400">
                     {displayPercent.toFixed(0)}%
@@ -296,7 +292,7 @@ export function ZakatTrackerScreen() {
                     />
                     <InfoCard
                       label="NISAB"
-                      value={`RM${category.nisab.toLocaleString()}`}
+                      value={formatRM(category.nisab, { alwaysShow: true })}
                     />
                   </View>
 

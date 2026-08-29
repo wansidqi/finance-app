@@ -1,5 +1,6 @@
 import { NisabSourceBanner } from "@/components/zakat/nisab-source-banner";
 import { StateNisabListModal } from "@/components/zakat/state-nisab-list-modal";
+import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetCategory } from "@/interface/asset";
 import { useGetAssets } from "@/services/asset";
 import { useGetLiabilities } from "@/services/liability";
@@ -20,26 +21,11 @@ import {
   View,
 } from "react-native";
 
-const CATEGORY_META: Record<
-  AssetCategory,
-  { label: string; icon: any; color: string }
-> = {
-  CASH: { label: "Cash & Savings", icon: "cash-outline", color: "#34d399" },
-  GOLD: { label: "Gold", icon: "diamond-outline", color: "#fbbf24" },
-  CRYPTO: { label: "Crypto", icon: "logo-bitcoin", color: "#a78bfa" },
-  STOCK: { label: "Stock", icon: "trending-up-outline", color: "#38bdf8" },
-};
 const CATEGORY_ORDER: AssetCategory[] = ["CASH", "GOLD", "CRYPTO", "STOCK"];
-
-function formatRM(value: number) {
-  return `RM${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const { data: assets, isLoading: assetsLoading } = useGetAssets();
   const { data: liabilities, isLoading: liabilitiesLoading } =
     useGetLiabilities();
@@ -130,6 +116,16 @@ export default function DashboardScreen() {
         </View>
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
+            onPress={() => setHideAmounts(!hideAmounts)}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons
+              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#cbd5e1"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => router.push("/reminders")}
             className="p-2 rounded-full bg-white/5 active:opacity-70"
           >
@@ -160,7 +156,7 @@ export default function DashboardScreen() {
             </View>
           </View>
           <Text className="text-[36px] font-extrabold text-white tracking-tight">
-            {formatRM(netWorth)}
+            {formatRM(netWorth, { decimals: true })}
           </Text>
 
           <View className="h-px bg-white/8 mt-6 mb-5" />
@@ -168,78 +164,28 @@ export default function DashboardScreen() {
           <View className="flex-row justify-between mb-4">
             <HeroStat
               label="Assets"
-              value={formatRM(totalAssets)}
-              sub={excludedTotal > 0 ? `+${formatRM(excludedTotal)} excluded` : undefined}
+              value={formatRM(totalAssets, { decimals: true })}
+              sub={
+                excludedTotal > 0
+                  ? `+${formatRM(excludedTotal, { decimals: true })} excluded`
+                  : undefined
+              }
             />
-            <HeroStat label="Debt" value={formatRM(totalLiabilities)} align="right" />
+            <HeroStat
+              label="Debt"
+              value={formatRM(totalLiabilities, { decimals: true })}
+              align="right"
+            />
           </View>
           <View className="flex-row justify-between">
             <HeroStat label="Debt ratio" value={`${debtRatio.toFixed(1)}%`} />
             <HeroStat
               label="Avg commitment"
-              value={formatRM(avgMonthlyCommitment)}
+              value={formatRM(avgMonthlyCommitment, { decimals: true })}
               align="right"
             />
           </View>
         </View>
-
-        {/* Asset Distribution */}
-        <Section title="Asset Distribution">
-          <View className="rounded-3xl bg-white/[0.035] border border-white/10 p-5">
-            <View className="flex-row h-2 rounded-full overflow-hidden bg-white/8">
-              {CATEGORY_ORDER.map((category, index) => {
-                const percent =
-                  totalAssets > 0
-                    ? (categoryTotals[category] / totalAssets) * 100
-                    : 0;
-                if (percent <= 0) return null;
-                return (
-                  <View
-                    key={category}
-                    style={{
-                      width: `${percent}%`,
-                      backgroundColor: CATEGORY_META[category].color,
-                      marginRight:
-                        index < CATEGORY_ORDER.length - 1 ? 2 : 0,
-                    }}
-                  />
-                );
-              })}
-            </View>
-
-            <View className="flex-row flex-wrap mt-5">
-              {CATEGORY_ORDER.map((category) => {
-                const meta = CATEGORY_META[category];
-                const value = categoryTotals[category];
-                const percent =
-                  totalAssets > 0 ? (value / totalAssets) * 100 : 0;
-                return (
-                  <View
-                    key={category}
-                    style={{ width: "50%" }}
-                    className="pr-2 mb-4"
-                  >
-                    <View className="flex-row items-center gap-2 mb-1">
-                      <View
-                        style={{ backgroundColor: meta.color }}
-                        className="h-2 w-2 rounded-full"
-                      />
-                      <Text className="text-[11px] text-slate-400">
-                        {meta.label}
-                      </Text>
-                    </View>
-                    <Text className="text-[14px] font-bold text-white">
-                      {formatRM(value)}
-                    </Text>
-                    <Text className="text-[10px] text-slate-500 mt-0.5">
-                      {percent.toFixed(1)}%
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        </Section>
 
         {/* Nisab Status */}
         <Section title="Nisab Status">
@@ -260,7 +206,10 @@ export default function DashboardScreen() {
                   Nisab Threshold
                 </Text>
                 <Text className="text-[15px] font-bold text-white">
-                  {formatRM(zakatCategories?.[0]?.nisab ?? 0)}
+                  {formatRM(zakatCategories?.[0]?.nisab ?? 0, {
+                    decimals: true,
+                    alwaysShow: true,
+                  })}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">
@@ -268,7 +217,7 @@ export default function DashboardScreen() {
                   Total Zakatable
                 </Text>
                 <Text className="text-[15px] font-bold text-emerald-400">
-                  {formatRM(totalZakatable)}
+                  {formatRM(totalZakatable, { decimals: true })}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">
@@ -276,7 +225,7 @@ export default function DashboardScreen() {
                   Total Zakat Due
                 </Text>
                 <Text className="text-[15px] font-bold text-white">
-                  {formatRM(totalZakatDue)}
+                  {formatRM(totalZakatDue, { decimals: true })}
                 </Text>
               </View>
             </View>
