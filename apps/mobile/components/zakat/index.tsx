@@ -168,33 +168,34 @@ export function ZakatTrackerScreen() {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ================= TOTAL SUMMARY ================= */}
-        <View className="mb-6 rounded-[24px] bg-linear-to-br from-emerald-400 to-emerald-600 px-5 py-5">
-          <Text className="text-[11px] font-bold text-emerald-950/70 uppercase tracking-wider">
+        {/* ================= TOTALS ================= */}
+        <View className="mb-6 rounded-[24px] bg-white/[0.035] border border-white/10 px-5 py-5">
+          <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             Total Zakat Due
           </Text>
-          <Text className="text-[28px] font-extrabold text-emerald-950 mt-1">
+          <Text className="text-[28px] font-extrabold text-white mt-1">
             {formatRM(totalZakatDue)}
           </Text>
-          <Text className="text-[11px] text-emerald-950/60 mt-1">
+          <Text className="text-[11px] text-slate-500 mt-1">
             Calculated at 2.5% of eligible assets
           </Text>
-        </View>
 
-        {/* ================= TOTAL ZAKATABLE ================= */}
-        <View className="mb-6 rounded-2xl bg-white/[0.035] border border-white/10 px-5 py-4 flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Zakatable
-            </Text>
-            <Text className="text-[10px] text-slate-500 mt-1">
-              2.5% across categories that have reached nisab, even before
-              their haul year is complete
+          <View className="h-px bg-white/8 mt-5 mb-4" />
+
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Total Zakatable
+              </Text>
+              <Text className="text-[10px] text-slate-500 mt-1">
+                Across categories that have reached nisab, even before
+                their haul year is complete
+              </Text>
+            </View>
+            <Text className="text-[20px] font-extrabold text-emerald-400">
+              {formatRM(totalZakatable)}
             </Text>
           </View>
-          <Text className="text-[20px] font-extrabold text-emerald-400">
-            {formatRM(totalZakatable)}
-          </Text>
         </View>
 
         {/* ================= ZAKAT CARDS ================= */}

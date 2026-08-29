@@ -149,74 +149,96 @@ export default function DashboardScreen() {
         contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Net Worth Card */}
-        <View className="mb-5 rounded-[28px] bg-linear-to-br from-emerald-400 to-emerald-600 px-6 py-7 overflow-hidden">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-[11px] font-bold text-emerald-950/70 uppercase tracking-[1.5px]">
+        {/* Net Worth + at-a-glance stats, one hero card */}
+        <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
               Net Worth
             </Text>
-            <View className="h-8 w-8 rounded-full bg-emerald-950/10 items-center justify-center">
-              <Ionicons name="trending-up" size={15} color="#022c22" />
+            <View className="h-8 w-8 rounded-full bg-emerald-500/15 items-center justify-center">
+              <Ionicons name="trending-up" size={15} color="#34d399" />
             </View>
           </View>
-          <Text className="text-[34px] font-extrabold text-emerald-950 tracking-tight">
+          <Text className="text-[36px] font-extrabold text-white tracking-tight">
             {formatRM(netWorth)}
           </Text>
-        </View>
 
-        {/* Quick Stats Grid */}
-        <View className="mb-5 gap-3">
-          <View className="flex-row gap-3">
-            <StatCard
-              icon="wallet-outline"
-              label="Total Assets"
+          <View className="h-px bg-white/8 mt-6 mb-5" />
+
+          <View className="flex-row justify-between mb-4">
+            <HeroStat
+              label="Assets"
               value={formatRM(totalAssets)}
               sub={excludedTotal > 0 ? `+${formatRM(excludedTotal)} excluded` : undefined}
-              tint="#34d399"
             />
-            <StatCard
-              icon="card-outline"
-              label="Total Debt"
-              value={formatRM(totalLiabilities)}
-              tint="#fb7185"
-            />
+            <HeroStat label="Debt" value={formatRM(totalLiabilities)} align="right" />
           </View>
-          <View className="flex-row gap-3">
-            <StatCard
-              icon="calculator-outline"
-              label="Debt Ratio"
-              value={`${debtRatio.toFixed(1)}%`}
-              tint="#fbbf24"
-            />
-            <StatCard
-              icon="repeat-outline"
-              label="Avg Monthly Commitment"
+          <View className="flex-row justify-between">
+            <HeroStat label="Debt ratio" value={`${debtRatio.toFixed(1)}%`} />
+            <HeroStat
+              label="Avg commitment"
               value={formatRM(avgMonthlyCommitment)}
-              tint="#38bdf8"
+              align="right"
             />
           </View>
         </View>
 
         {/* Asset Distribution */}
         <Section title="Asset Distribution">
-          <Card>
-            {CATEGORY_ORDER.map((category, index) => {
-              const meta = CATEGORY_META[category];
-              const value = categoryTotals[category];
-              const percent = totalAssets > 0 ? (value / totalAssets) * 100 : 0;
-              return (
-                <AssetBreakdownRow
-                  key={category}
-                  icon={meta.icon}
-                  label={meta.label}
-                  value={value}
-                  percent={percent}
-                  color={meta.color}
-                  isLast={index === CATEGORY_ORDER.length - 1}
-                />
-              );
-            })}
-          </Card>
+          <View className="rounded-3xl bg-white/[0.035] border border-white/10 p-5">
+            <View className="flex-row h-2 rounded-full overflow-hidden bg-white/8">
+              {CATEGORY_ORDER.map((category, index) => {
+                const percent =
+                  totalAssets > 0
+                    ? (categoryTotals[category] / totalAssets) * 100
+                    : 0;
+                if (percent <= 0) return null;
+                return (
+                  <View
+                    key={category}
+                    style={{
+                      width: `${percent}%`,
+                      backgroundColor: CATEGORY_META[category].color,
+                      marginRight:
+                        index < CATEGORY_ORDER.length - 1 ? 2 : 0,
+                    }}
+                  />
+                );
+              })}
+            </View>
+
+            <View className="flex-row flex-wrap mt-5">
+              {CATEGORY_ORDER.map((category) => {
+                const meta = CATEGORY_META[category];
+                const value = categoryTotals[category];
+                const percent =
+                  totalAssets > 0 ? (value / totalAssets) * 100 : 0;
+                return (
+                  <View
+                    key={category}
+                    style={{ width: "50%" }}
+                    className="pr-2 mb-4"
+                  >
+                    <View className="flex-row items-center gap-2 mb-1">
+                      <View
+                        style={{ backgroundColor: meta.color }}
+                        className="h-2 w-2 rounded-full"
+                      />
+                      <Text className="text-[11px] text-slate-400">
+                        {meta.label}
+                      </Text>
+                    </View>
+                    <Text className="text-[14px] font-bold text-white">
+                      {formatRM(value)}
+                    </Text>
+                    <Text className="text-[10px] text-slate-500 mt-0.5">
+                      {percent.toFixed(1)}%
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
         </Section>
 
         {/* Nisab Status */}
@@ -327,104 +349,29 @@ function Section({
   );
 }
 
-function Card({
-  children,
-  padded = false,
-}: {
-  children: React.ReactNode;
-  padded?: boolean;
-}) {
-  return (
-    <View
-      className={`rounded-3xl bg-white/[0.035] border border-white/10 overflow-hidden ${
-        padded ? "p-5" : ""
-      }`}
-    >
-      {children}
-    </View>
-  );
-}
-
 // Content components
-function StatCard({
-  icon,
+function HeroStat({
   label,
   value,
   sub,
-  tint,
+  align = "left",
 }: {
-  icon: any;
   label: string;
   value: string;
   sub?: string;
-  tint: string;
+  align?: "left" | "right";
 }) {
   return (
-    <View className="flex-1 rounded-2xl bg-white/[0.035] border border-white/10 p-4">
-      <View
-        style={{ backgroundColor: `${tint}1f` }}
-        className="h-8 w-8 rounded-lg items-center justify-center mb-3"
-      >
-        <Ionicons name={icon} size={15} color={tint} />
-      </View>
+    <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
       <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
         {label}
       </Text>
-      <Text
-        numberOfLines={1}
-        className="mt-1 text-[14px] font-bold text-white"
-      >
+      <Text className="text-[15px] font-bold text-white mt-0.5">
         {value}
       </Text>
       {sub && (
-        <Text numberOfLines={1} className="mt-0.5 text-[9px] text-slate-500">
-          {sub}
-        </Text>
+        <Text className="text-[9px] text-slate-500 mt-0.5">{sub}</Text>
       )}
-    </View>
-  );
-}
-
-function AssetBreakdownRow({
-  icon,
-  label,
-  value,
-  percent,
-  color,
-  isLast = false,
-}: {
-  icon: any;
-  label: string;
-  value: number;
-  percent: number;
-  color: string;
-  isLast?: boolean;
-}) {
-  return (
-    <View
-      className={`px-5 py-4 flex-row items-center justify-between ${
-        !isLast ? "border-b border-white/8" : ""
-      }`}
-    >
-      <View className="flex-row items-center gap-3 flex-1">
-        <View
-          style={{ backgroundColor: `${color}1f` }}
-          className="h-9 w-9 rounded-xl items-center justify-center"
-        >
-          <Ionicons name={icon} size={17} color={color} />
-        </View>
-        <View>
-          <Text className="text-[13px] font-semibold text-white">
-            {label}
-          </Text>
-          <Text className="text-[11px] text-slate-500 mt-0.5">
-            {percent.toFixed(1)}%
-          </Text>
-        </View>
-      </View>
-      <Text className="text-[13px] font-bold text-slate-200">
-        {formatRM(value)}
-      </Text>
     </View>
   );
 }
@@ -458,11 +405,14 @@ function QuickActionButton({
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.7}
-      style={{ flexBasis: "47%" }}
-      className="items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-4"
+      style={{ flexBasis: "31%" }}
+      className="items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-3.5"
     >
       <Ionicons name={icon} size={18} color={tint} />
-      <Text className="text-[11px] font-semibold text-slate-300">
+      <Text
+        className="text-[10px] font-semibold text-slate-300 text-center"
+        numberOfLines={2}
+      >
         {label}
       </Text>
     </TouchableOpacity>
