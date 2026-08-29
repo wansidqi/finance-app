@@ -7,12 +7,37 @@ avoid signature-mismatch install failures.
 
 ## Summary — per environment
 
-| Environment          | Build profiles          | Package (applicationId)       | Keystore                                  | SHA-1                                                         |
-| -------------------- | ----------------------- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
-| Development          | `development`           | `com.lumvyr.zakattracker.dev` | Auto-generated in the cloud on 2026-08-28 | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` |
-| Preview / Production | `preview`, `production` | `com.lumvyr.zakattracker`     | `RSRh8UH4-J`                              | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` |
+Development can be built two different ways — **EAS cloud**
+(`eas build --profile development`) or **locally** (`expo run:android`, or
+`eas build --local`, when EAS's free-tier build limit is hit) — and each
+signs with a completely different keystore, so each has its own SHA-1 that
+must be registered separately in Google Cloud Console. Switching between
+them is exactly when `UnregisteredOnApiConsole` shows up: whichever SHA-1
+isn't registered for the currently-installed build fails Google Sign-In.
 
-Development's SHA-1 was extracted by downloading the keystore
+| Environment          | Build profiles          | Package (applicationId)       | Build method               | Keystore                                                           | SHA-1                                                         |
+| -------------------- | ----------------------- | ----------------------------- | -------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Development          | `development`           | `com.lumvyr.zakattracker.dev` | EAS cloud                  | Auto-generated in the cloud on 2026-08-28                          | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` |
+| Development          | `development`           | `com.lumvyr.zakattracker.dev` | Local (`expo run:android`) | `android/app/debug.keystore` (gitignored, alias `androiddebugkey`) | `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` |
+| Preview / Production | `preview`, `production` | `com.lumvyr.zakattracker`     | EAS cloud                  | `RSRh8UH4-J`                                                       | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` |
+
+**Local debug SHA-1 status: not yet registered in Google Cloud Console.**
+Add it as a second Android OAuth client for `com.lumvyr.zakattracker.dev`
+(alongside the existing EAS one) to make Google Sign-In / Drive backup work
+on locally-built installs too. Extracted with:
+
+```
+keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+This SHA-1 is static across ordinary local rebuilds — Android's tooling
+only generates `debug.keystore` if it doesn't already exist at that path,
+and the whole `android/` folder is gitignored (never committed). It **will
+change** if that file is ever deleted or regenerated: `npx expo prebuild
+--clean`, deleting `android/`, or building fresh on a different machine all
+mint a new debug key with a new SHA-1.
+
+Development's EAS SHA-1 was extracted by downloading the keystore
 (`eas credentials -p android` → `development` → Keystore → "Download
 existing keystore", saved to `apps/mobile/credentials/android/keystore.jks`
 
@@ -24,10 +49,15 @@ existing keystore", saved to `apps/mobile/credentials/android/keystore.jks`
 Google Cloud Android OAuth client status:
 
 - Preview/Production (`com.lumvyr.zakattracker` + its SHA-1 above): **created**, 2026-08-27.
-- Development (`com.lumvyr.zakattracker.dev` + its SHA-1 above): **created** —
-  the `DEVELOPER_ERROR` this used to cause is fixed; Connect Google Drive /
-  Backup Now / Load Backup / Restore are all verified working end-to-end on
-  the `development` build (see `plan.md`'s Phase 11 status).
+- Development, **EAS cloud build** (`com.lumvyr.zakattracker.dev` +
+  `59:08:...`): **created** — the `DEVELOPER_ERROR` this used to cause is
+  fixed; Connect Google Drive / Backup Now / Load Backup / Restore are all
+  verified working end-to-end on an EAS-built `development` install (see
+  `plan.md`'s Phase 11 status).
+- Development, **local build** (`com.lumvyr.zakattracker.dev` +
+  `5E:8F:...`): **not created yet** — see the local debug SHA-1 note in the
+  Summary table above. A locally-built dev install will hit
+  `UnregisteredOnApiConsole` on Google Sign-In until this is added.
 
 ## Android package names (per eas.json build profile)
 
@@ -89,11 +119,12 @@ installing and see.
 Project: whatever was created in Google Cloud Console for this app (no
 project ID recorded here — check console.cloud.google.com).
 
-| Type            | Package / audience             | Fingerprint                                                   | Status                                                                                                                   |
-| --------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Android         | `com.lumvyr.zakattracker`      | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` | Created 2026-08-27. Confirmed correct — this is `preview`/`production`'s real, permanent signing identity going forward. |
-| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | Created. Confirmed working — Google Sign-In no longer throws `DEVELOPER_ERROR` in the dev build.                         |
-| Web application | n/a (not signing-key-specific) | n/a                                                           | Created 2026-08-27. Client ID: `429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.apps.googleusercontent.com`                |
+| Type            | Package / audience             | Fingerprint                                                   | Status                                                                                                                                                                                       |
+| --------------- | ------------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android         | `com.lumvyr.zakattracker`      | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` | Created 2026-08-27. Confirmed correct — this is `preview`/`production`'s real, permanent signing identity going forward.                                                                     |
+| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | Created. Confirmed working — Google Sign-In no longer throws `DEVELOPER_ERROR` in the dev build. This is the **EAS cloud** build's SHA-1.                                                    |
+| Android         | `com.lumvyr.zakattracker.dev`  | `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` | **Not created yet.** This is the **local build** (`expo run:android`) SHA-1, from `android/app/debug.keystore`. Causes `UnregisteredOnApiConsole` on locally-built dev installs until added. |
+| Web application | n/a (not signing-key-specific) | n/a                                                           | Created 2026-08-27. Client ID: `429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.apps.googleusercontent.com`                                                                                    |
 
 ## `.env` (local, gitignored)
 
