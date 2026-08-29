@@ -128,12 +128,20 @@ export default function DashboardScreen() {
             My Wealth
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push("/backup")}
-          className="p-2 rounded-full bg-white/5 active:opacity-70"
-        >
-          <Ionicons name="settings-outline" size={20} color="#cbd5e1" />
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/reminders")}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons name="notifications-outline" size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push("/backup")}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons name="settings-outline" size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView

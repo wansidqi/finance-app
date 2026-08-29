@@ -73,14 +73,9 @@ export default function TabLayout() {
           lean. href: null removes it from the bar without removing the route. */}
       <Tabs.Screen name="zakat-tracker" options={{ href: null }} />
 
-      <Tabs.Screen
-        name="reminders"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="notifications-outline" activeIcon="notifications" focused={focused} />
-          ),
-        }}
-      />
+      {/* Reachable via the notification bell next to the Dashboard's
+          settings button — hidden here to keep the tab bar lean. */}
+      <Tabs.Screen name="reminders" options={{ href: null }} />
     </Tabs>
   );
 }
