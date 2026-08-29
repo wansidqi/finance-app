@@ -1,6 +1,4 @@
-import { DetectedLocation, MALAYSIA_STATE_LABELS } from "@/interface/nisab-state";
 import { ZakatTrackerDto } from "@/interface/zakat";
-import { useDetectLocation, useGetDetectedLocation } from "@/services/state-location";
 import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
@@ -23,11 +21,32 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// Same palette + labels as the Dashboard's Nisab Status section, keyed by
+// AssetCategory so the progress bar reads as the same concept in both places.
+const CATEGORY_COLORS: Record<string, string> = {
+  CASH: "#34d399",
+  GOLD: "#fbbf24",
+  CRYPTO: "#a78bfa",
+  STOCK: "#38bdf8",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  CASH: "Cash & Savings",
+  GOLD: "Gold",
+  CRYPTO: "Crypto",
+  STOCK: "Stock",
+};
+
+function formatRM(value: number) {
+  return `RM${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export function ZakatTrackerScreen() {
   const { data: zakatData, isLoading, isError } = useGetZakatCategories();
   const updateTracker = useUpdateZakatTracker();
-  const detectLocation = useDetectLocation();
-  const { data: detectedLocation } = useGetDetectedLocation();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     null,
   );
@@ -38,17 +57,14 @@ export function ZakatTrackerScreen() {
      Helpers
   ============================ */
 
-  const toggleTracking = (category: ZakatTrackerDto) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
+  // "Pay Zakat Now" pays as of today directly — no manual date entry needed.
+  // The pencil icon on "Last Paid Date" remains for backdating/correcting it.
+  const payNow = (category: ZakatTrackerDto) => {
     updateTracker.mutate({
       category: category.category,
-      status: category.is_tracked ? "INACTIVE" : "ACTIVE",
+      status: "ACTIVE",
+      last_paid_date: new Date().toISOString(),
     });
-
-    if (expandedCategory === category.category) {
-      setExpandedCategory(null);
-    }
   };
 
   const savePaidDate = (isoDate: string) => {
@@ -97,13 +113,21 @@ export function ZakatTrackerScreen() {
   const totalZakatDue = useMemo(() => {
     if (!zakatData) return 0;
     return zakatData.reduce((sum, cat) => {
-      if (
-        cat.is_tracked &&
-        (cat.haul_status === "DUE" || cat.haul_status === "OVERDUE")
-      ) {
+      if (cat.haul_status === "DUE" || cat.haul_status === "OVERDUE") {
         return sum + cat.zakat_due;
       }
       return sum;
+    }, 0);
+  }, [zakatData]);
+
+  // Categories already holding nisab, regardless of whether their haul year
+  // has completed — lets the user see what they'd owe today even before
+  // it's formally due, distinct from totalZakatDue which only counts
+  // haul-completed categories.
+  const totalZakatable = useMemo(() => {
+    if (!zakatData) return 0;
+    return zakatData.reduce((sum, cat) => {
+      return cat.nisab_reached ? sum + cat.zakat_due : sum;
     }, 0);
   }, [zakatData]);
 
@@ -150,26 +174,43 @@ export function ZakatTrackerScreen() {
             Total Zakat Due
           </Text>
           <Text className="text-[28px] font-extrabold text-emerald-950 mt-1">
-            RM{totalZakatDue.toFixed(2)}
+            {formatRM(totalZakatDue)}
           </Text>
           <Text className="text-[11px] text-emerald-950/60 mt-1">
             Calculated at 2.5% of eligible assets
           </Text>
         </View>
 
-        {/* ================= NISAB SOURCE ================= */}
-        <NisabSourceBanner
-          source={zakatData[0]?.nisab_source}
-          detectedLocation={detectedLocation ?? null}
-          onDetect={() => detectLocation.mutate()}
-          isDetecting={detectLocation.isPending}
-        />
+        {/* ================= TOTAL ZAKATABLE ================= */}
+        <View className="mb-6 rounded-2xl bg-white/[0.035] border border-white/10 px-5 py-4 flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Zakatable
+            </Text>
+            <Text className="text-[10px] text-slate-500 mt-1">
+              2.5% across categories that have reached nisab, even before
+              their haul year is complete
+            </Text>
+          </View>
+          <Text className="text-[20px] font-extrabold text-emerald-400">
+            {formatRM(totalZakatable)}
+          </Text>
+        </View>
 
         {/* ================= ZAKAT CARDS ================= */}
         {zakatData.map((category) => {
-          const cardStatus = category.is_tracked
-            ? category.haul_status
-            : "PENDING";
+          const cardStatus = category.haul_status;
+          const nisabPercent =
+            category.nisab > 0
+              ? (category.value / category.nisab) * 100
+              : 0;
+          // Cap the *displayed* percentage below 100 unless nisab is
+          // actually reached — otherwise e.g. 99.6% rounds to "100%" via
+          // toFixed(0) and falsely reads as reached. No upper cap once
+          // reached — holdings well past nisab just show their real percentage.
+          const displayPercent = category.nisab_reached
+            ? nisabPercent
+            : Math.min(nisabPercent, 99);
 
           return (
             <View
@@ -186,150 +227,125 @@ export function ZakatTrackerScreen() {
             >
               {/* Header */}
               <TouchableOpacity
-                activeOpacity={category.is_tracked ? 0.7 : 1}
-                onPress={() =>
-                  category.is_tracked && toggleExpand(category.category)
-                }
-                className={`${!category.is_tracked ? "opacity-50" : ""}`}
+                activeOpacity={0.7}
+                onPress={() => toggleExpand(category.category)}
               >
-                <View className="flex-row justify-between items-start">
-                  <View>
-                    <View className="bg-emerald-500/20 self-start rounded-full px-3 py-1">
-                      <Text className="text-[11px] font-bold text-emerald-400">
-                        {category.category}
+                <View className="flex-row justify-between items-center mb-2.5">
+                  <Text className="text-[15px] font-semibold text-white">
+                    {CATEGORY_LABELS[category.category] ?? category.category}
+                  </Text>
+
+                  <View className="flex-row items-center gap-2">
+                    <View
+                      className="rounded-full px-2.5 py-1"
+                      style={{
+                        backgroundColor: `${getStatusColor(cardStatus)}20`,
+                      }}
+                    >
+                      <Text
+                        className="text-[10px] font-bold uppercase tracking-wide"
+                        style={{ color: getStatusColor(cardStatus) }}
+                      >
+                        {cardStatus}
                       </Text>
                     </View>
 
-                    <Text className="text-[20px] font-bold text-emerald-400 mt-2">
-                      RM{category.value.toLocaleString()}
-                    </Text>
-
-                    <Text className="text-[11px] text-slate-400 mt-0.5">
-                      Nisab RM{category.nisab.toLocaleString()}
-                    </Text>
+                    <Ionicons
+                      name={
+                        expandedCategory === category.category
+                          ? "chevron-up"
+                          : "chevron-down"
+                      }
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </View>
+                </View>
 
-                  <View className="items-end gap-2">
-                    {/* Status */}
-                    {category.is_tracked && (
-                      <View
-                        className="rounded-xl px-3 py-1.5"
-                        style={{
-                          backgroundColor: `${getStatusColor(
-                            cardStatus,
-                          )}20`,
-                        }}
-                      >
-                        <Text
-                          className="text-[10px] font-bold tracking-widest"
-                          style={{
-                            color: getStatusColor(cardStatus),
-                          }}
-                        >
-                          {cardStatus}
-                        </Text>
-                      </View>
-                    )}
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-[11px] text-slate-500">
+                    {formatRM(category.value)} / {formatRM(category.nisab)}
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-slate-400">
+                    {displayPercent.toFixed(0)}%
+                  </Text>
+                </View>
 
-                    {/* Tracking Pill */}
-                    <TouchableOpacity
-                      onPress={() => toggleTracking(category)}
-                      className={`px-3 py-1.5 rounded-full ${
-                        category.is_tracked
-                          ? "bg-emerald-500/20"
-                          : "bg-white/8"
-                      }`}
-                    >
-                      <Text
-                        className={`text-[11px] font-bold ${
-                          category.is_tracked
-                            ? "text-emerald-400"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {category.is_tracked ? "TRACKING" : "NOT TRACKED"}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {category.is_tracked && (
-                      <Ionicons
-                        name={
-                          expandedCategory === category.category
-                            ? "chevron-up"
-                            : "chevron-down"
-                        }
-                        size={18}
-                        color="#94a3b8"
-                      />
-                    )}
-                  </View>
+                <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                  <View
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(nisabPercent, 100)}%`,
+                      backgroundColor:
+                        CATEGORY_COLORS[category.category] ?? "#34d399",
+                    }}
+                  />
                 </View>
               </TouchableOpacity>
 
               {/* ================= EXPANDED ================= */}
-              {category.is_tracked &&
-                expandedCategory === category.category && (
-                  <View className="mt-5 gap-3">
-                    {/* Info cards */}
-                    <View className="flex-row gap-3">
-                      <InfoCard
-                        label="ZAKAT PAYABLE"
-                        value={`RM${category.zakat_due.toFixed(2)}`}
-                        highlight
-                      />
-                      <InfoCard
-                        label="NISAB"
-                        value={`RM${category.nisab.toLocaleString()}`}
-                      />
-                    </View>
-
-                    <DetailRow
-                      label="Nisab Reached"
-                      value={category.nisab_reached ? "YES" : "NO"}
-                      success={category.nisab_reached}
+              {expandedCategory === category.category && (
+                <View className="mt-5 gap-3">
+                  {/* Info cards */}
+                  <View className="flex-row gap-3">
+                    <InfoCard
+                      label="ZAKAT PAYABLE"
+                      value={formatRM(category.zakat_due)}
+                      highlight
                     />
-
-                    <DetailRow
-                      label="Last Paid Date"
-                      value={
-                        category.last_paid_date
-                          ? formatWithHijri(
-                              category.last_paid_date,
-                              category.last_paid_date_hijri,
-                            )
-                          : "Never"
-                      }
-                      onEdit={() => setEditingCategory(category)}
+                    <InfoCard
+                      label="NISAB"
+                      value={`RM${category.nisab.toLocaleString()}`}
                     />
-
-                    <DetailRow
-                      label="Next Due Date"
-                      value={
-                        category.next_due_date
-                          ? formatWithHijri(
-                              category.next_due_date,
-                              category.next_due_date_hijri,
-                            )
-                          : "Awaiting nisab"
-                      }
-                    />
-
-                    {(cardStatus === "DUE" || cardStatus === "OVERDUE") && (
-                      <TouchableOpacity
-                        onPress={() => setEditingCategory(category)}
-                        disabled={updateTracker.isPending}
-                        className="mt-4 bg-emerald-500 rounded-xl py-4"
-                      >
-                        <Text className="text-center text-emerald-950 font-bold tracking-wide">
-                          Pay Zakat Now
-                        </Text>
-                        <Text className="text-center text-[11px] text-emerald-950/70 mt-0.5">
-                          Fulfill your obligation
-                        </Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
-                )}
+
+                  <DetailRow
+                    label="Nisab Reached"
+                    value={category.nisab_reached ? "YES" : "NO"}
+                    success={category.nisab_reached}
+                  />
+
+                  <DetailRow
+                    label="Last Paid Date"
+                    value={
+                      category.last_paid_date
+                        ? formatWithHijri(
+                            category.last_paid_date,
+                            category.last_paid_date_hijri,
+                          )
+                        : "Never"
+                    }
+                    onEdit={() => setEditingCategory(category)}
+                  />
+
+                  <DetailRow
+                    label="Next Due Date"
+                    value={
+                      category.next_due_date
+                        ? formatWithHijri(
+                            category.next_due_date,
+                            category.next_due_date_hijri,
+                          )
+                        : "Awaiting nisab"
+                    }
+                  />
+
+                  {(cardStatus === "DUE" || cardStatus === "OVERDUE") && (
+                    <TouchableOpacity
+                      onPress={() => payNow(category)}
+                      disabled={updateTracker.isPending}
+                      className="mt-4 bg-emerald-500 rounded-xl py-4"
+                    >
+                      <Text className="text-center text-emerald-950 font-bold tracking-wide">
+                        Pay Zakat Now
+                      </Text>
+                      <Text className="text-center text-[11px] text-emerald-950/70 mt-0.5">
+                        Fulfill your obligation
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
             </View>
           );
         })}
@@ -350,97 +366,6 @@ export function ZakatTrackerScreen() {
 /* ===========================
    Small Components
 =========================== */
-
-function NisabSourceBanner({
-  source,
-  detectedLocation,
-  onDetect,
-  isDetecting,
-}: {
-  source: ZakatTrackerDto["nisab_source"] | undefined;
-  detectedLocation: DetectedLocation | null;
-  onDetect: () => void;
-  isDetecting: boolean;
-}) {
-  if (!source) return null;
-
-  if (source.kind === "state") {
-    const asOf = new Date(source.asOf).toLocaleDateString("en-MY", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-    return (
-      <View className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3">
-        <Text className="text-[11px] text-slate-300">
-          Nisab from {MALAYSIA_STATE_LABELS[source.state]}&apos;s zakat authority
-        </Text>
-        <Text className="text-[10px] text-slate-500 mt-0.5">
-          Checked {asOf}
-        </Text>
-      </View>
-    );
-  }
-
-  if (source.kind === "ppz_fallback") {
-    const asOf = new Date(source.asOf).toLocaleDateString("en-MY", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-    const detectedState = detectedLocation?.state
-      ? `${MALAYSIA_STATE_LABELS[detectedLocation.state]}'s own rate isn't available yet — using`
-      : "Using";
-    return (
-      <View className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3">
-        <Text className="text-[11px] text-slate-300">
-          {detectedState} PPZ-MAIWP&apos;s published rate
-        </Text>
-        <Text className="text-[10px] text-slate-500 mt-0.5">
-          Checked {asOf}
-        </Text>
-      </View>
-    );
-  }
-
-  // gold_price fallback — but *why* varies, and the difference matters:
-  // never detected vs. detected-but-unsupported look identical from the
-  // resolved nisab alone, so without this the banner never visibly changes
-  // after tapping "detect", which reads as "the tap did nothing."
-  let title = "Using nationwide gold-price nisab";
-  let subtitle = "Detect your state for its official nisab rate";
-
-  if (detectedLocation) {
-    if (detectedLocation.method === "unavailable") {
-      title = "Couldn't detect your location";
-      subtitle = "Check that location access is allowed for this app, then try again";
-    } else if (detectedLocation.state) {
-      title = `Detected: ${MALAYSIA_STATE_LABELS[detectedLocation.state]}`;
-      subtitle = "This state's official rate isn't available yet — using nationwide gold-price nisab";
-    } else {
-      title = "Couldn't match your location to a state";
-      subtitle = "Using nationwide gold-price nisab";
-    }
-  }
-
-  return (
-    <TouchableOpacity
-      onPress={onDetect}
-      disabled={isDetecting}
-      className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 flex-row items-center justify-between"
-    >
-      <View className="flex-1 pr-3">
-        <Text className="text-[11px] text-slate-300">{title}</Text>
-        <Text className="text-[10px] text-slate-500 mt-0.5">{subtitle}</Text>
-      </View>
-      {isDetecting ? (
-        <ActivityIndicator size="small" color="#34d399" />
-      ) : (
-        <Ionicons name="location-outline" size={18} color="#94a3b8" />
-      )}
-    </TouchableOpacity>
-  );
-}
 
 function InfoCard({
   label,

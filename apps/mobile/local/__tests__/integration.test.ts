@@ -114,15 +114,43 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
   }, 15000);
 
   test("upsertTracker sets last_paid_date and starts a haul cycle reflected in getAllCategories", async () => {
+    // Nisab must be currently held for last_paid_date/haul_start_date to
+    // stick — top CASH up well past any plausible live nisab first, since
+    // the existing CASH total (45500) may already sit below the live
+    // gold-price nisab fetched during this test run.
+    await createAsset({
+      category: "CASH" as any,
+      name: "Nisab Top-up",
+      platform: "Maybank",
+      price: 200000,
+      is_calculate: true,
+    });
+
     const paidDate = new Date().toISOString();
     await upsertTracker({ category: "CASH", status: "ACTIVE", last_paid_date: paidDate });
 
     const categories = await getAllCategories();
     const cash = categories.find((c) => c.category === "CASH");
     expect(cash!.is_tracked).toBe(true);
+    expect(cash!.nisab_reached).toBe(true);
     expect(cash!.last_paid_date).toBe(paidDate);
     expect(cash!.haul_start_date).toBe(paidDate);
     expect(cash!.next_due_date).not.toBeNull();
+  }, 15000);
+
+  test("last_paid_date and haul_start_date are wiped once nisab is no longer held", async () => {
+    // Take CASH back below nisab by zeroing out the top-up asset added above.
+    const all = await getAllAssets();
+    const topUp = all.find((a) => a.name === "Nisab Top-up");
+    await updateAsset({ id: topUp!.id, price: 0 });
+
+    const categories = await getAllCategories();
+    const cash = categories.find((c) => c.category === "CASH");
+    expect(cash!.nisab_reached).toBe(false);
+    expect(cash!.last_paid_date).toBeNull();
+    expect(cash!.haul_start_date).toBeNull();
+    expect(cash!.next_due_date).toBeNull();
+    expect(cash!.haul_status).toBe("PENDING");
   }, 15000);
 
   test("reminder notification settings default until a custom config is saved", async () => {

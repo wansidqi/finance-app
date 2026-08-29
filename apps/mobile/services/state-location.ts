@@ -1,4 +1,4 @@
-import { syncAllStates } from "@/local/nisab-state-sync-service";
+import { getAllStateNisabRates, syncAllStates } from "@/local/nisab-state-sync-service";
 import { detectAndStoreLocation, getStoredLocation } from "@/local/state-location-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -6,6 +6,14 @@ export const useGetDetectedLocation = () => {
   return useQuery({
     queryKey: ["zakat-detected-location"],
     queryFn: getStoredLocation,
+  });
+};
+
+/** All jurisdictions with a successfully scraped nisab figure on record. States with no live source configured, or whose last sync attempt failed, simply won't appear — callers cross-reference against `STATE_AUTHORITIES`/`MALAYSIA_STATES` to show those explicitly. */
+export const useGetAllStateNisabRates = () => {
+  return useQuery({
+    queryKey: ["zakat-state-nisab-rates"],
+    queryFn: getAllStateNisabRates,
   });
 };
 
@@ -24,6 +32,7 @@ export const useDetectLocation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zakat-detected-location"] });
       queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-state-nisab-rates"] });
     },
   });
 };
@@ -36,6 +45,7 @@ export const useRunScheduledStateSync = () => {
     mutationFn: syncAllStates,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["zakat-state-nisab-rates"] });
     },
   });
 };

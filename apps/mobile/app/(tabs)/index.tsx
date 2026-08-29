@@ -1,11 +1,18 @@
+import { NisabSourceBanner } from "@/components/zakat/nisab-source-banner";
+import { StateNisabListModal } from "@/components/zakat/state-nisab-list-modal";
 import { AssetCategory } from "@/interface/asset";
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetAssets } from "@/services/asset";
 import { useGetLiabilities } from "@/services/liability";
+import {
+  useDetectLocation,
+  useGetAllStateNisabRates,
+  useGetDetectedLocation,
+} from "@/services/state-location";
 import { useGetZakatCategories } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -39,6 +46,11 @@ export default function DashboardScreen() {
     useGetLiabilities();
   const { data: zakatCategories, isLoading: zakatLoading } =
     useGetZakatCategories();
+  const detectLocation = useDetectLocation();
+  const { data: detectedLocation } = useGetDetectedLocation();
+  const { data: stateNisabRates, isLoading: isLoadingStateRates } =
+    useGetAllStateNisabRates();
+  const [showStateList, setShowStateList] = useState(false);
 
   const isLoading = assetsLoading || liabilitiesLoading || zakatLoading;
 
@@ -229,6 +241,13 @@ export default function DashboardScreen() {
 
         {/* Nisab Status */}
         <Section title="Nisab Status">
+          <NisabSourceBanner
+            source={zakatCategories?.[0]?.nisab_source}
+            detectedLocation={detectedLocation ?? null}
+            onDetect={() => detectLocation.mutate()}
+            isDetecting={detectLocation.isPending}
+            onShowStateList={() => setShowStateList(true)}
+          />
           <Card>
             {CATEGORY_ORDER.map((category, index) => {
               const meta = CATEGORY_META[category];
@@ -281,6 +300,13 @@ export default function DashboardScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <StateNisabListModal
+        visible={showStateList}
+        onClose={() => setShowStateList(false)}
+        rates={stateNisabRates}
+        isLoading={isLoadingStateRates}
+      />
     </View>
   );
 }
@@ -458,6 +484,11 @@ function NisabStatusRow({
 }) {
   const isReached = current >= nisab;
   const percent = nisab > 0 ? (current / nisab) * 100 : 0;
+  // Cap the *displayed* percentage below 100 unless nisab is actually
+  // reached — otherwise e.g. 99.6% rounds to "100%" via toFixed(0) and
+  // falsely reads as reached. No upper cap once reached — holdings well
+  // past nisab just show their real percentage.
+  const displayPercent = isReached ? percent : Math.min(percent, 99);
 
   return (
     <View className={`px-5 py-4 ${!isLast ? "border-b border-white/8" : ""}`}>
@@ -485,7 +516,7 @@ function NisabStatusRow({
           {formatRM(current)} / {formatRM(nisab)}
         </Text>
         <Text className="text-[11px] font-semibold text-slate-400">
-          {Math.min(percent, 999).toFixed(0)}%
+          {displayPercent.toFixed(0)}%
         </Text>
       </View>
 

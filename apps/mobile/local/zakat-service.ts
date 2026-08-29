@@ -41,10 +41,10 @@ export interface HaulResult {
  * Derives the haul (zakat year) status from the category's current haul
  * start date and whether nisab is currently held.
  *
- * Per fiqh, the haul only needs nisab to be held at the start and end of the
- * year, not continuously throughout — so a mid-cycle dip below nisab does
- * not reset haulStart. It's only reset (set back to null) once the cycle
- * completes (one Hijri year elapsed) while nisab is not held at that point.
+ * Nisab must be held continuously — any dip below it, at any point, wipes
+ * the cycle entirely (caller also clears last_paid_date alongside
+ * haulStart, see getAllCategories). The next time nisab is reached it's
+ * treated as a brand-new occurrence, not a continuation.
  *
  * When there's no recorded haul start yet, it anchors to lastPaidDate (the
  * last time zakat was actually paid, which starts a fresh cycle) rather
@@ -57,22 +57,17 @@ export function computeHaulStatus(
   nisabReached: boolean,
   now: Date,
 ): HaulResult {
-  let start = haulStart;
-  if (start === null) {
-    if (!nisabReached) {
-      return { status: "PENDING", nextDue: null, newHaulStart: null };
-    }
-    start = lastPaidDate !== null ? lastPaidDate : now;
+  if (!nisabReached) {
+    return { status: "PENDING", nextDue: null, newHaulStart: null };
   }
+
+  const start = haulStart ?? lastPaidDate ?? now;
 
   const due = addHijriYear(start);
   const hours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
   const daysUntilDue = Math.trunc(hours / 24);
 
   if (daysUntilDue <= 0) {
-    if (!nisabReached) {
-      return { status: "PENDING", nextDue: null, newHaulStart: null };
-    }
     return { status: "OVERDUE", nextDue: due, newHaulStart: start };
   }
   if (daysUntilDue <= DUE_WINDOW_DAYS) {
@@ -81,16 +76,11 @@ export function computeHaulStatus(
   return { status: "PENDING", nextDue: due, newHaulStart: start };
 }
 
+// Every category is tracked unconditionally — there's no opt-out, so all
+// tracker rows are relevant regardless of their (now-vestigial) status column.
 async function getAllTrackers(): Promise<ZakatTrackerRow[]> {
   const db = await getDb();
-  return db.getAllAsync<ZakatTrackerRow>("SELECT * FROM zakat_tracker WHERE status = 'ACTIVE'");
-}
-
-/** Categories that already have a tracker row, active or not — used to tell a brand-new category (never seen) from one the user explicitly untracked. */
-async function getKnownCategoryNames(): Promise<Set<string>> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<{ category: string }>("SELECT category FROM zakat_tracker");
-  return new Set(rows.map((r) => r.category));
+  return db.getAllAsync<ZakatTrackerRow>("SELECT * FROM zakat_tracker");
 }
 
 async function updateHaulStartDate(category: string, haulStart: Date | null): Promise<void> {
@@ -98,6 +88,15 @@ async function updateHaulStartDate(category: string, haulStart: Date | null): Pr
   await db.runAsync(
     "UPDATE zakat_tracker SET haul_start_date = ?, updated_at = CURRENT_TIMESTAMP WHERE category = ?",
     haulStart ? haulStart.toISOString() : null,
+    category,
+  );
+}
+
+/** Wipes both the haul cycle and its payment record for a category that's lost nisab — the next time nisab is reached it starts as a brand-new occurrence rather than resuming the old one. */
+async function resetHaulAndPayment(category: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    "UPDATE zakat_tracker SET last_paid_date = NULL, haul_start_date = NULL, updated_at = CURRENT_TIMESTAMP WHERE category = ?",
     category,
   );
 }
@@ -122,7 +121,6 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
 
   const trackers = await getAllTrackers();
   const trackerMap = new Map(trackers.map((t) => [t.category, t]));
-  const knownCategories = await getKnownCategoryNames();
 
   const now = new Date();
   const { nisabRM: currentNisab, source: nisabSource } = await resolveNisab();
@@ -147,8 +145,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
       status: null,
       created_at: null,
       updated_at: null,
-      // A category with no tracker row at all is one we've never seen before — default it to tracked.
-      is_tracked: !knownCategories.has(category),
+      is_tracked: true,
       haul_status: "PENDING",
       nisab: currentNisab,
       nisab_source: nisabSource,
@@ -164,7 +161,6 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
 
     const tracker = trackerMap.get(category);
     if (tracker) {
-      dto.is_tracked = true;
       dto.id = tracker.id;
       dto.user_id = tracker.user_id;
       dto.status = tracker.status as ZakatTrackerDto["status"];
@@ -191,7 +187,11 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
         dto.next_due_date_hijri = await formatHijri(nextDue);
       }
 
-      if ((haulStart === null) !== (newHaulStart === null)) {
+      if (!nisabReached && (lastPaidDate !== null || haulStart !== null)) {
+        await resetHaulAndPayment(category);
+        dto.last_paid_date = null;
+        dto.last_paid_date_hijri = null;
+      } else if ((haulStart === null) !== (newHaulStart === null)) {
         await updateHaulStartDate(category, newHaulStart);
       }
     }

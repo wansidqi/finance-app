@@ -60,10 +60,11 @@ describe("computeHaulStatus", () => {
     expect(newHaulStart).toBeNull();
   });
 
-  test("mid-cycle dip below nisab does not reset the haul", () => {
+  test("mid-cycle dip below nisab resets the haul immediately", () => {
     const start = addDays(now, -100);
-    const { status, newHaulStart } = computeHaulStatus(start, null, false, now);
+    const { status, nextDue, newHaulStart } = computeHaulStatus(start, null, false, now);
     expect(status).toBe("PENDING");
-    expect(newHaulStart).toEqual(start);
+    expect(nextDue).toBeNull();
+    expect(newHaulStart).toBeNull();
   });
 });
