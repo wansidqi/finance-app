@@ -1,6 +1,9 @@
+import { resolveNisab } from "@/local/nisab-resolver";
+import { shouldRunScheduledStateSync, syncAllStates } from "@/local/nisab-state-sync-service";
 import { getAllCategories } from "@/local/zakat-service";
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
+import { notifyIfNisabChanged } from "./nisab-notifications";
 import { syncZakatReminders } from "./zakat-notifications";
 
 export const ZAKAT_BACKGROUND_TASK = "zakat-reminder-background-sync";
@@ -18,6 +21,18 @@ TaskManager.defineTask(ZAKAT_BACKGROUND_TASK, async () => {
   try {
     const categories = await getAllCategories();
     await syncZakatReminders(categories);
+
+    // Re-scrapes the configured state authorities' nisab rates on the same
+    // cadence as the reminder sync, so a rate change is caught even if the
+    // user never opens the app. Doesn't touch location detection itself —
+    // requesting a permission from a background execution isn't reliable,
+    // so that stays a foreground-only action (StateNisabSync on launch, or
+    // the manual "detect" button).
+    if (await shouldRunScheduledStateSync()) {
+      await syncAllStates();
+    }
+    await notifyIfNisabChanged(await resolveNisab());
+
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (err) {
     console.warn("Zakat background sync failed", err);

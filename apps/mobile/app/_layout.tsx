@@ -12,6 +12,7 @@ import "react-native-reanimated";
 
 import { PaymentReminderSync } from "@/components/reminders/reminder-sync";
 import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
+import { StateNisabSync } from "@/components/zakat/state-nisab-sync";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { registerBackupBackgroundTask } from "@/services/backup-background-task";
 import { registerReminderBackgroundTask } from "@/services/reminder-background-task";
@@ -83,6 +84,7 @@ export default function RootLayout() {
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
             <ZakatReminderSync />
+            <StateNisabSync />
             <PaymentReminderSync />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

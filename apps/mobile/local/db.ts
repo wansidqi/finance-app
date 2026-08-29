@@ -152,6 +152,31 @@ CREATE TABLE IF NOT EXISTS lhdn_sync_state (
   last_error TEXT NULL
 );
 
+CREATE TABLE IF NOT EXISTS nisab_state_rates (
+  state_key TEXT PRIMARY KEY,
+  nisab_rm REAL NULL,
+  source_url TEXT NULL,
+  last_checked_at TEXT NOT NULL,
+  last_error TEXT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS nisab_state_sync_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  last_synced_at TEXT NULL,
+  last_notified_nisab_rm REAL NULL,
+  last_notified_source_kind TEXT NULL,
+  last_notified_source_state TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_location (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  state_key TEXT NULL,
+  method TEXT NULL,
+  raw_region TEXT NULL,
+  detected_at TEXT NULL
+);
+
 CREATE TABLE IF NOT EXISTS backup_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   drive_file_id TEXT NULL,
@@ -270,6 +295,14 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
   {
     version: 5,
     run: dropAccountColumnsFromTransactions,
+  },
+  {
+    version: 6,
+    run: async (db) => {
+      await ensureColumn(db, "nisab_state_sync_state", "last_notified_nisab_rm", "last_notified_nisab_rm REAL");
+      await ensureColumn(db, "nisab_state_sync_state", "last_notified_source_kind", "last_notified_source_kind TEXT");
+      await ensureColumn(db, "nisab_state_sync_state", "last_notified_source_state", "last_notified_source_state TEXT");
+    },
   },
 ];
 

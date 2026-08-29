@@ -64,6 +64,13 @@ module.exports = {
           cameraPermission: "Allow Finance App to use your camera to photograph receipts.",
         },
       ],
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Allow Finance App to use your location to detect your state, so Zakat nisab can use your state's official rate.",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

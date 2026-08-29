@@ -2,7 +2,7 @@ import { PlatformShare, UpdateZakatTrackerRequest, ZakatTrackerDto } from "@/int
 import { getAllAssets } from "./asset-service";
 import { getDb } from "./db";
 import { addHijriYear, format as formatHijri } from "./hijri";
-import { value as nisabValue } from "./nisab";
+import { resolveNisab } from "./nisab-resolver";
 
 // Ported from apps/backend/internal/zakat (Go) — keep in sync if that changes.
 
@@ -125,7 +125,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
   const knownCategories = await getKnownCategoryNames();
 
   const now = new Date();
-  const currentNisab = await nisabValue();
+  const { nisabRM: currentNisab, source: nisabSource } = await resolveNisab();
   const dtos: ZakatTrackerDto[] = [];
 
   for (const [category, agg] of categories) {
@@ -151,6 +151,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
       is_tracked: !knownCategories.has(category),
       haul_status: "PENDING",
       nisab: currentNisab,
+      nisab_source: nisabSource,
       nisab_reached: nisabReached,
       last_paid_date: null,
       last_paid_date_hijri: null,

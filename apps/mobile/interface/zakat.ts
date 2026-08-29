@@ -1,3 +1,5 @@
+import { NisabSource } from "./nisab-state";
+
 export interface PlatformShare {
   platform: string;
   value: number;
@@ -16,6 +18,7 @@ export interface ZakatTrackerDto {
   is_tracked: boolean;
   haul_status: "PENDING" | "DUE" | "OVERDUE";
   nisab: number;
+  nisab_source: NisabSource;
   nisab_reached: boolean;
   last_paid_date: string | null;
   last_paid_date_hijri: string | null;

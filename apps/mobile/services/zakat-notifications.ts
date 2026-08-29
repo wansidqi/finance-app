@@ -101,6 +101,7 @@ export async function sendTestDueSequence(): Promise<boolean> {
     is_tracked: true,
     haul_status: "PENDING",
     nisab: 29740,
+    nisab_source: { kind: "gold_price" },
     nisab_reached: true,
     last_paid_date: null,
     last_paid_date_hijri: null,
