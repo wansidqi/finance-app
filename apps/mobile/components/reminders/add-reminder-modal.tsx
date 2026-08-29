@@ -134,7 +134,6 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
         <View className="flex-1 justify-end bg-black/50">
           <View
             className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]"
-            style={{ marginBottom: TAB_BAR_BASE_HEIGHT + insets.bottom }}
           >
             <View className="flex-row items-center justify-between px-6 mb-4">
               <View>
@@ -173,7 +172,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                   Description (optional)
                 </Text>
                 <TextInput
-                  placeholder="Any extra detail"
+                  placeholder="Shown here, and used as the notification's message instead of 'Due today.'"
                   value={note}
                   onChangeText={setNote}
                   placeholderTextColor="#64748b"

@@ -27,13 +27,15 @@ function reminderContent(reminder: ReminderInterface, offsetDays: number) {
 
   const title =
     offsetDays === 0
-      ? `${reminder.name} is due today`
+      ? `${reminder.name}`
       : `${reminder.name} due in ${offsetDays} day${offsetDays > 1 ? "s" : ""}`;
 
-  const bodyParts = [offsetDays === 0 ? "Due today." : `Due on ${dueDateLabel}.`];
-  if (reminder.note?.trim()) bodyParts.push(reminder.note.trim());
+  // `note` doubles as the notification body when set, instead of a separate
+  // dedicated "custom message" field — keeps Name/Description as the only
+  // two inputs that shape a reminder, both in the app and in its notification.
+  const body = reminder.note?.trim() || (offsetDays === 0 ? "Due today." : `Due on ${dueDateLabel}.`);
 
-  return { title, body: bodyParts.join(" ") };
+  return { title, body };
 }
 
 /** Resolves the effective offsets/hour/minute for one reminder — its own override when set, otherwise the app-wide default. */
