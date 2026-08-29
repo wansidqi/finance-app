@@ -7,28 +7,30 @@ avoid signature-mismatch install failures.
 
 ## Summary — per environment
 
-| Environment | Build profiles | Package (applicationId) | Keystore | SHA-1 |
-|---|---|---|---|---|
-| Development | `development` | `com.lumvyr.zakattracker.dev` | Auto-generated in the cloud on 2026-08-28 | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` |
-| Preview / Production | `preview`, `production` | `com.lumvyr.zakattracker` | `RSRh8UH4-J` | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` |
+| Environment          | Build profiles          | Package (applicationId)       | Keystore                                  | SHA-1                                                         |
+| -------------------- | ----------------------- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| Development          | `development`           | `com.lumvyr.zakattracker.dev` | Auto-generated in the cloud on 2026-08-28 | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` |
+| Preview / Production | `preview`, `production` | `com.lumvyr.zakattracker`     | `RSRh8UH4-J`                              | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` |
 
 Development's SHA-1 was extracted by downloading the keystore
 (`eas credentials -p android` → `development` → Keystore → "Download
 existing keystore", saved to `apps/mobile/credentials/android/keystore.jks`
-+ `credentials.json` — both gitignored, contain plaintext passwords) and
-parsing the JKS file's leaf certificate directly with a small Node script
-(JKS stores the cert chain as cleartext DER; only the private key blob
-itself is encrypted, so no keystore password was even needed).
+
+- `credentials.json` — both gitignored, contain plaintext passwords) and
+  parsing the JKS file's leaf certificate directly with a small Node script
+  (JKS stores the cert chain as cleartext DER; only the private key blob
+  itself is encrypted, so no keystore password was even needed).
 
 Google Cloud Android OAuth client status:
+
 - Preview/Production (`com.lumvyr.zakattracker` + its SHA-1 above): **created**, 2026-08-27.
 - Development (`com.lumvyr.zakattracker.dev` + its SHA-1 above): **still needs to be created** — this is what was causing the `DEVELOPER_ERROR` from react-native-google-signin when testing "Connect Google Drive" in the dev build.
 
 ## Android package names (per eas.json build profile)
 
-| Profile                                                     | Package (applicationId)       | Set via                                    |
-| ----------------------------------------------------------- | ----------------------------- | ------------------------------------------ |
-| `development`                                               | `com.lumvyr.zakattracker.dev` | `app.config.js`, `APP_VARIANT=development` |
+| Profile                 | Package (applicationId)       | Set via                                    |
+| ----------------------- | ----------------------------- | ------------------------------------------ |
+| `development`           | `com.lumvyr.zakattracker.dev` | `app.config.js`, `APP_VARIANT=development` |
 | `preview`, `production` | `com.lumvyr.zakattracker`     | `app.config.js` default (no `APP_VARIANT`) |
 
 ## Keystores (`eas credentials -p android`)
@@ -66,11 +68,11 @@ installing and see.
 Project: whatever was created in Google Cloud Console for this app (no
 project ID recorded here — check console.cloud.google.com).
 
-| Type            | Package / audience             | Fingerprint                       | Status                                                                                                                                                                                                                                  |
-| --------------- | ------------------------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type            | Package / audience             | Fingerprint                                                   | Status                                                                                                                   |
+| --------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Android         | `com.lumvyr.zakattracker`      | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` | Created 2026-08-27. Confirmed correct — this is `preview`/`production`'s real, permanent signing identity going forward. |
-| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | **Not yet created** — causes `DEVELOPER_ERROR` from Google Sign-In in the dev build until this is added. |
-| Web application | n/a (not signing-key-specific) | n/a                               | Created 2026-08-27. Client ID: `429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.apps.googleusercontent.com`                                                                                                                               |
+| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | **Not yet created** — causes `DEVELOPER_ERROR` from Google Sign-In in the dev build until this is added.                 |
+| Web application | n/a (not signing-key-specific) | n/a                                                           | Created 2026-08-27. Client ID: `429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.apps.googleusercontent.com`                |
 
 ## `.env` (local, gitignored)
 
@@ -79,7 +81,7 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.a
 ```
 
 **Do not add `APP_VARIANT` here.** `eas build` loads `.env` locally to
-resolve `app.config.js` *before* uploading, regardless of `--profile` — a
+resolve `app.config.js` _before_ uploading, regardless of `--profile` — a
 blanket `APP_VARIANT=development` in `.env` leaked into `preview`/
 `production` builds too. Confirmed via `eas build:list --json`: a preview
 build submitted while that line was present had the exact same project

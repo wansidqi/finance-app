@@ -675,7 +675,7 @@ seeding, cap edits surviving re-seeding, and per-year claimed-amount
 aggregation (including that a different year's or an untagged
 transaction's amount never leaks into a year's summary).
 
-**Not yet built:** true evidence *bundling* (the CSV export lists receipt
+**Not yet built:** true evidence _bundling_ (the CSV export lists receipt
 counts per transaction but doesn't package the receipt files themselves
 into the export — each receipt is still only viewable/shareable
 individually from its transaction, per the MVP section above).
