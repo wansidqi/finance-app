@@ -1,7 +1,6 @@
 import { NisabSourceBanner } from "@/components/zakat/nisab-source-banner";
 import { StateNisabListModal } from "@/components/zakat/state-nisab-list-modal";
 import { AssetCategory } from "@/interface/asset";
-import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetAssets } from "@/services/asset";
 import { useGetLiabilities } from "@/services/liability";
 import {
@@ -93,21 +92,22 @@ export default function DashboardScreen() {
     0,
   );
 
-  // Zakat figures come straight from the same backend logic the Zakat
-  // Tracker screen uses, keyed by category — categories with no assets
-  // yet simply fall back to a zero/not-reached state below.
-  const zakatByCategory = useMemo(() => {
-    const map = new Map<string, ZakatTrackerDto>();
-    for (const z of zakatCategories ?? []) map.set(z.category, z);
-    return map;
-  }, [zakatCategories]);
-
-  const nisab = zakatCategories?.[0]?.nisab ?? 29740;
-
-  const totalZakatPayable = (zakatCategories ?? []).reduce(
+  // Categories currently holding nisab, regardless of whether their haul
+  // year has completed — same "Total Zakatable" concept as the Zakat
+  // Tracker screen.
+  const totalZakatable = (zakatCategories ?? []).reduce(
     (sum, z) => sum + (z.nisab_reached ? z.zakat_due : 0),
     0,
   );
+
+  // Only categories whose haul year has actually completed (DUE/OVERDUE) —
+  // the amount genuinely owed right now.
+  const totalZakatDue = (zakatCategories ?? []).reduce((sum, z) => {
+    if (z.haul_status === "DUE" || z.haul_status === "OVERDUE") {
+      return sum + z.zakat_due;
+    }
+    return sum;
+  }, 0);
 
   if (isLoading) {
     return (
@@ -211,59 +211,49 @@ export default function DashboardScreen() {
           </Card>
         </Section>
 
-        {/* Zakat Due */}
-        <Section title="Zakat Due">
-          <Card padded>
-            {CATEGORY_ORDER.map((category, index) => {
-              const meta = CATEGORY_META[category];
-              const z = zakatByCategory.get(category);
-              return (
-                <ZakatBreakdownRow
-                  key={category}
-                  label={meta.label}
-                  amount={z?.nisab_reached ? z.zakat_due : 0}
-                  isNisabReached={z?.nisab_reached ?? false}
-                  isLast={index === CATEGORY_ORDER.length - 1}
-                />
-              );
-            })}
-
-            <View className="mt-3 pt-4 border-t border-white/10 flex-row justify-between items-center">
-              <Text className="text-slate-300 font-semibold text-[13px]">
-                Total Payable
-              </Text>
-              <Text className="text-emerald-400 text-[19px] font-extrabold">
-                {formatRM(totalZakatPayable)}
-              </Text>
-            </View>
-          </Card>
-        </Section>
-
         {/* Nisab Status */}
         <Section title="Nisab Status">
-          <NisabSourceBanner
-            source={zakatCategories?.[0]?.nisab_source}
-            detectedLocation={detectedLocation ?? null}
-            onDetect={() => detectLocation.mutate()}
-            isDetecting={detectLocation.isPending}
-            onShowStateList={() => setShowStateList(true)}
-          />
-          <Card>
-            {CATEGORY_ORDER.map((category, index) => {
-              const meta = CATEGORY_META[category];
-              const z = zakatByCategory.get(category);
-              return (
-                <NisabStatusRow
-                  key={category}
-                  label={meta.label}
-                  color={meta.color}
-                  current={z?.value ?? 0}
-                  nisab={nisab}
-                  isLast={index === CATEGORY_ORDER.length - 1}
-                />
-              );
-            })}
-          </Card>
+          <View className="rounded-3xl bg-white/[0.035] border border-white/10 p-5">
+            <NisabSourceBanner
+              source={zakatCategories?.[0]?.nisab_source}
+              detectedLocation={detectedLocation ?? null}
+              onDetect={() => detectLocation.mutate()}
+              isDetecting={detectLocation.isPending}
+              onShowStateList={() => setShowStateList(true)}
+            />
+
+            <View className="h-px bg-white/8 my-4" />
+
+            <View className="gap-3">
+              <View className="flex-row justify-between items-center">
+                <Text className="text-[12px] text-slate-400">
+                  Total Zakatable
+                </Text>
+                <Text className="text-[15px] font-bold text-emerald-400">
+                  {formatRM(totalZakatable)}
+                </Text>
+              </View>
+              <View className="flex-row justify-between items-center">
+                <Text className="text-[12px] text-slate-400">
+                  Total Zakat Due
+                </Text>
+                <Text className="text-[15px] font-bold text-white">
+                  {formatRM(totalZakatDue)}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/zakat-tracker")}
+              activeOpacity={0.7}
+              className="mt-4 pt-4 border-t border-white/8 flex-row items-center justify-center gap-1"
+            >
+              <Text className="text-[12px] font-semibold text-emerald-400">
+                View Details
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color="#34d399" />
+            </TouchableOpacity>
+          </View>
         </Section>
 
         {/* Quick Actions */}
@@ -427,108 +417,6 @@ function AssetBreakdownRow({
       <Text className="text-[13px] font-bold text-slate-200">
         {formatRM(value)}
       </Text>
-    </View>
-  );
-}
-
-function ZakatBreakdownRow({
-  label,
-  amount,
-  isNisabReached,
-  isLast = false,
-}: {
-  label: string;
-  amount: number;
-  isNisabReached: boolean;
-  isLast?: boolean;
-}) {
-  return (
-    <View
-      className={`flex-row justify-between items-center py-2.5 ${
-        !isLast ? "border-b border-white/8" : ""
-      }`}
-    >
-      <View className="flex-row items-center gap-2">
-        <Ionicons
-          name={isNisabReached ? "checkmark-circle" : "close-circle"}
-          size={15}
-          color={isNisabReached ? "#34d399" : "#64748b"}
-        />
-        <Text className="text-[13px] font-medium text-slate-200">
-          {label}
-        </Text>
-      </View>
-      <Text
-        className={`font-semibold text-[13px] ${
-          amount > 0 ? "text-white" : "text-slate-600"
-        }`}
-      >
-        {formatRM(amount)}
-      </Text>
-    </View>
-  );
-}
-
-function NisabStatusRow({
-  label,
-  color,
-  current,
-  nisab,
-  isLast = false,
-}: {
-  label: string;
-  color: string;
-  current: number;
-  nisab: number;
-  isLast?: boolean;
-}) {
-  const isReached = current >= nisab;
-  const percent = nisab > 0 ? (current / nisab) * 100 : 0;
-  // Cap the *displayed* percentage below 100 unless nisab is actually
-  // reached — otherwise e.g. 99.6% rounds to "100%" via toFixed(0) and
-  // falsely reads as reached. No upper cap once reached — holdings well
-  // past nisab just show their real percentage.
-  const displayPercent = isReached ? percent : Math.min(percent, 99);
-
-  return (
-    <View className={`px-5 py-4 ${!isLast ? "border-b border-white/8" : ""}`}>
-      <View className="flex-row justify-between items-center mb-2.5">
-        <Text className="text-[13px] font-semibold text-white">{label}</Text>
-        <View
-          className="rounded-full px-2.5 py-1"
-          style={{
-            backgroundColor: isReached
-              ? "rgba(52, 211, 153, 0.12)"
-              : "rgba(148, 163, 184, 0.12)",
-          }}
-        >
-          <Text
-            className="text-[10px] font-bold uppercase tracking-wide"
-            style={{ color: isReached ? "#34d399" : "#94a3b8" }}
-          >
-            {isReached ? "Reached" : "Pending"}
-          </Text>
-        </View>
-      </View>
-
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-[11px] text-slate-500">
-          {formatRM(current)} / {formatRM(nisab)}
-        </Text>
-        <Text className="text-[11px] font-semibold text-slate-400">
-          {displayPercent.toFixed(0)}%
-        </Text>
-      </View>
-
-      <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-        <View
-          className="h-full rounded-full"
-          style={{
-            width: `${Math.min(percent, 100)}%`,
-            backgroundColor: color,
-          }}
-        />
-      </View>
     </View>
   );
 }

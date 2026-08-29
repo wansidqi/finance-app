@@ -68,14 +68,10 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="zakat-tracker"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="moon-outline" activeIcon="moon" focused={focused} />
-          ),
-        }}
-      />
+      {/* Reachable via the Dashboard's Nisab Status "View Details" link and
+          the Quick Actions "Zakat" button — hidden here to keep the tab bar
+          lean. href: null removes it from the bar without removing the route. */}
+      <Tabs.Screen name="zakat-tracker" options={{ href: null }} />
 
       <Tabs.Screen
         name="reminders"

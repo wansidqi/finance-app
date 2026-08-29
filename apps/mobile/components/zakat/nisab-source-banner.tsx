@@ -28,6 +28,10 @@ function BannerActions({
   );
 }
 
+// Bare content row, no outer box/margin — the caller (currently the
+// Dashboard's Nisab Status card) supplies the surrounding box so this can be
+// composed alongside other content (totals, a "view details" link) inside
+// one shared card instead of stacking separate bordered boxes.
 export function NisabSourceBanner({
   source,
   detectedLocation,
@@ -50,7 +54,7 @@ export function NisabSourceBanner({
       year: "numeric",
     });
     return (
-      <View className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 flex-row items-center justify-between">
+      <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-3">
           <Text className="text-[11px] text-slate-300">
             Nisab from {MALAYSIA_STATE_LABELS[source.state]}&apos;s zakat authority
@@ -78,7 +82,7 @@ export function NisabSourceBanner({
       ? `${MALAYSIA_STATE_LABELS[detectedLocation.state]}'s own rate isn't available yet — using`
       : "Using";
     return (
-      <View className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 flex-row items-center justify-between">
+      <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-3">
           <Text className="text-[11px] text-slate-300">
             {detectedState} PPZ-MAIWP&apos;s published rate
@@ -117,7 +121,7 @@ export function NisabSourceBanner({
   }
 
   return (
-    <View className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 flex-row items-center justify-between">
+    <View className="flex-row items-center justify-between">
       <View className="flex-1 pr-3">
         <Text className="text-[11px] text-slate-300">{title}</Text>
         <Text className="text-[10px] text-slate-500 mt-0.5">{subtitle}</Text>
