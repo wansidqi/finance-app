@@ -60,6 +60,15 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="transactions"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="receipt-outline" activeIcon="receipt" focused={focused} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="liability"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -73,9 +82,6 @@ export default function TabLayout() {
           lean. href: null removes it from the bar without removing the route. */}
       <Tabs.Screen name="zakat-tracker" options={{ href: null }} />
 
-      {/* Reachable via the notification bell next to the Dashboard's
-          settings button — hidden here to keep the tab bar lean. */}
-      <Tabs.Screen name="reminders" options={{ href: null }} />
     </Tabs>
   );
 }

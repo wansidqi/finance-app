@@ -97,8 +97,8 @@ export default function RootLayout() {
                 options={{ headerShown: false }}
               />
               <Stack.Screen name="backup" options={{ headerShown: false }} />
+              <Stack.Screen name="reminders" options={{ headerShown: false }} />
               <Stack.Screen name="tax-relief" options={{ headerShown: false }} />
-              <Stack.Screen name="transactions" options={{ headerShown: false }} />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

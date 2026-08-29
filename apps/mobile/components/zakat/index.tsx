@@ -156,9 +156,9 @@ export function ZakatTrackerScreen() {
   return (
     <View className="flex-1 bg-slate-950">
       {/* Header */}
-      <View className="px-6 pt-10 pb-4">
-        <Text className="text-[14px] text-slate-400">Islamic Finance</Text>
-        <Text className="text-[32px] font-bold text-white mt-1">
+      <View className="px-6 pt-20 pb-6">
+        <Text className="text-[13px] font-medium text-slate-500">Islamic Finance</Text>
+        <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
           Zakat Tracker
         </Text>
       </View>

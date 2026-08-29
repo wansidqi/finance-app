@@ -9,6 +9,7 @@ import {
   useSetReminderPaused,
 } from "@/services/reminder";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { AddReminderModal } from "./add-reminder-modal";
@@ -41,6 +42,7 @@ function groupReminders(reminders: ReminderInterface[]) {
 }
 
 export function Reminders() {
+  const router = useRouter();
   const { data = [], isLoading } = useGetReminders();
   const [tab, setTab] = useState<Tab>("upcoming");
   const [modalVisible, setModalVisible] = useState(false);
@@ -111,10 +113,15 @@ export function Reminders() {
     <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
-        <View>
-          <Text className="text-[14px] font-medium text-slate-400">Overview</Text>
-          <Text className="text-[32px] font-bold text-white mt-1">Reminders</Text>
+      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
+        <View className="flex-row items-center gap-3">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="p-2 -ml-2 rounded-full active:bg-white/5"
+          >
+            <Ionicons name="chevron-back" size={22} color="#cbd5e1" />
+          </TouchableOpacity>
+          <Text className="text-[22px] font-bold text-white">Reminders</Text>
         </View>
         <TouchableOpacity
           onPress={openAdd}

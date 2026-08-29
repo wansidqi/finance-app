@@ -41,12 +41,12 @@ export function Liability() {
     <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center justify-between px-6 pt-10 pb-2">
+      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
         <View>
-          <Text className="text-[14px] font-medium text-slate-400">
+          <Text className="text-[13px] font-medium text-slate-500">
             Overview
           </Text>
-          <Text className="text-[32px] font-bold text-white mt-1">
+          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
             My Liabilities
           </Text>
         </View>
@@ -61,7 +61,7 @@ export function Liability() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-slate-950 py-10 my-5">
+      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-slate-950">
         <ScrollView
           className="px-6 flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}

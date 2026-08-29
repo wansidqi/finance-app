@@ -323,6 +323,13 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
       await ensureColumn(db, "payment_reminders", "notification_minute", "notification_minute INTEGER");
     },
   },
+  {
+    // `last_unmatched` was added to the `lhdn_sync_state` CREATE TABLE above
+    // after that table already existed on installed devices, so
+    // CREATE TABLE IF NOT EXISTS never picked it up there.
+    version: 8,
+    run: (db) => ensureColumn(db, "lhdn_sync_state", "last_unmatched", "last_unmatched TEXT"),
+  },
 ];
 
 /** The schema version this build of the app understands — a restored backup newer than this can't be safely opened. */

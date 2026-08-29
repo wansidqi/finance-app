@@ -48,7 +48,7 @@ export default function AssetDetailPage() {
 
   return (
     <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-3 py-12">
+      <View className="flex-row items-center justify-between px-3 pt-20 pb-6">
         <TouchableOpacity
           onPress={() => router.navigate("/(tabs)/asset")}
           className="p-2"

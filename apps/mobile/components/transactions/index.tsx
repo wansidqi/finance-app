@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-export default function TransactionsScreen() {
+export function Transactions() {
   const router = useRouter();
   const { data: transactions = [], isLoading } = useGetTransactions();
 
@@ -35,21 +35,35 @@ export default function TransactionsScreen() {
     <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center justify-between px-3 py-12">
-        <TouchableOpacity onPress={() => router.back()} className="p-2">
-          <Ionicons name="chevron-back" size={28} color="white" />
-        </TouchableOpacity>
-        <Text className="text-[18px] font-bold text-white flex-1 ml-2">Transactions</Text>
-        <TouchableOpacity
-          onPress={() => {
-            setEditingTxn(null);
-            setAddVisible(true);
-          }}
-          className="rounded-full bg-sky-500 px-4 py-2 flex-row items-center gap-1 mr-3 active:opacity-80"
-        >
-          <Ionicons name="add" size={16} color="white" />
-          <Text className="text-white font-semibold text-[12px]">Add</Text>
-        </TouchableOpacity>
+      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
+        <View>
+          <Text className="text-[13px] font-medium text-slate-500">
+            Overview
+          </Text>
+          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
+            Transactions
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => router.push("/tax-relief")}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons name="document-text-outline" size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setEditingTxn(null);
+              setAddVisible(true);
+            }}
+            className="rounded-full bg-sky-500 px-5 py-3 active:opacity-80"
+          >
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="add" size={20} color="white" />
+              <Text className="text-white font-semibold text-[14px]">Add</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView

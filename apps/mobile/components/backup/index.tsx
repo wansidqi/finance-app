@@ -110,7 +110,7 @@ export function Backup() {
     <View className="flex-1 bg-slate-950">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center gap-3 px-6 pt-10 pb-4">
+      <View className="flex-row items-center gap-3 px-6 pt-20 pb-6">
         <TouchableOpacity
           onPress={() => router.back()}
           className="p-2 -ml-2 rounded-full active:bg-white/5"

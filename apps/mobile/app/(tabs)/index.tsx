@@ -119,7 +119,7 @@ export default function DashboardScreen() {
 
   return (
     <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-start justify-between px-6 pt-16 pb-2">
+      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
         <View>
           <Text className="text-[13px] font-medium text-slate-500">
             Overview
@@ -130,7 +130,7 @@ export default function DashboardScreen() {
         </View>
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
-            onPress={() => router.push("/(tabs)/reminders")}
+            onPress={() => router.push("/reminders")}
             className="p-2 rounded-full bg-white/5 active:opacity-70"
           >
             <Ionicons name="notifications-outline" size={20} color="#cbd5e1" />
@@ -397,7 +397,7 @@ function QuickActionButton({
 
   const handlePress = () => {
     if (label === "Transactions") {
-      router.push("/transactions");
+      router.push("/(tabs)/transactions");
     } else if (label === "Assets") {
       router.push("/(tabs)/asset");
     } else if (label === "Liabilities") {
