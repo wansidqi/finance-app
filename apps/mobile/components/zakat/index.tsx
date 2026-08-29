@@ -316,7 +316,11 @@ export function ZakatTrackerScreen() {
                           )
                         : "Never"
                     }
-                    onEdit={() => setEditingCategory(category)}
+                    onEdit={
+                      category.nisab_reached
+                        ? () => setEditingCategory(category)
+                        : undefined
+                    }
                   />
 
                   <DetailRow

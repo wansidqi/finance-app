@@ -257,6 +257,14 @@ export default function DashboardScreen() {
             <View className="gap-3">
               <View className="flex-row justify-between items-center">
                 <Text className="text-[12px] text-slate-400">
+                  Nisab Threshold
+                </Text>
+                <Text className="text-[15px] font-bold text-white">
+                  {formatRM(zakatCategories?.[0]?.nisab ?? 0)}
+                </Text>
+              </View>
+              <View className="flex-row justify-between items-center">
+                <Text className="text-[12px] text-slate-400">
                   Total Zakatable
                 </Text>
                 <Text className="text-[15px] font-bold text-emerald-400">
