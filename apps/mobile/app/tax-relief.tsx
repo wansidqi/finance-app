@@ -1,10 +1,19 @@
-import { TaxReliefCategoryKey } from "@/interface/tax-relief";
-import { useGetReliefSummary, useGetReliefTransactions, useUpdateCap } from "@/services/tax-relief";
+import { TAX_RELIEF_CATEGORY_LABELS, TaxReliefCategoryKey } from "@/interface/tax-relief";
+import { shouldRunScheduledCheck } from "@/local/lhdn-relief-sync-service";
+import {
+  useApplyLhdnSyncDiffs,
+  useDismissLhdnSyncDiffs,
+  useGetReliefSummary,
+  useGetReliefTransactions,
+  useLhdnSyncState,
+  useRunLhdnSync,
+  useUpdateCap,
+} from "@/services/tax-relief";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const EXPORT_DIR = new Directory(Paths.cache, "tax-relief-export");
@@ -29,6 +38,53 @@ export default function TaxReliefScreen() {
   // Only fetched lazily on export — no need to hold every transaction detail
   // in memory just to render the category summary list above.
   const { refetch: fetchTransactions } = useGetReliefTransactions(year);
+
+  const { data: syncState } = useLhdnSyncState();
+  const { mutateAsync: runLhdnSync, isPending: isSyncing } = useRunLhdnSync(year);
+  const { mutateAsync: applyLhdnDiffs, isPending: isApplyingDiffs } = useApplyLhdnSyncDiffs(year);
+  const { mutateAsync: dismissLhdnDiffs } = useDismissLhdnSyncDiffs();
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [selectedDiffs, setSelectedDiffs] = useState<Set<TaxReliefCategoryKey>>(new Set());
+  // Fires at most once per mount — the scheduled quarterly check, run silently
+  // in the background. Failures just sit in syncState.lastError for the
+  // manual "Check now" path to retry; they never interrupt this screen.
+  const ranScheduledCheck = useRef(false);
+
+  useEffect(() => {
+    if (ranScheduledCheck.current) return;
+    ranScheduledCheck.current = true;
+    shouldRunScheduledCheck().then((due) => {
+      if (due) runLhdnSync().catch(() => {});
+    });
+  }, [runLhdnSync]);
+
+  const pendingDiffs = syncState?.pendingDiffs ?? [];
+  const unmatched = syncState?.unmatched ?? [];
+  const lastError = syncState?.lastError ?? null;
+
+  const openSyncModal = () => {
+    setSelectedDiffs(new Set(pendingDiffs.map((d) => d.category_key)));
+    setShowSyncModal(true);
+  };
+
+  const toggleDiffSelected = (key: TaxReliefCategoryKey) => {
+    setSelectedDiffs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleApplySelectedDiffs = async () => {
+    await applyLhdnDiffs(Array.from(selectedDiffs));
+    setShowSyncModal(false);
+  };
+
+  const handleDismissDiffs = async () => {
+    await dismissLhdnDiffs();
+    setShowSyncModal(false);
+  };
 
   const totalClaimed = summary.reduce((sum, s) => sum + s.claimed, 0);
   const totalCap = summary.reduce((sum, s) => sum + s.cap, 0);
@@ -116,11 +172,63 @@ export default function TaxReliefScreen() {
         <TouchableOpacity
           onPress={handleExport}
           disabled={isExporting}
-          className="flex-row items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-800/50 py-3 mb-6 active:opacity-70"
+          className="flex-row items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-800/50 py-3 mb-4 active:opacity-70"
         >
           <Ionicons name="share-outline" size={16} color="#38bdf8" />
           <Text className="text-[13px] font-semibold text-sky-400">
             {isExporting ? "Preparing export..." : "Export Evidence (CSV)"}
+          </Text>
+        </TouchableOpacity>
+
+        {lastError ? (
+          <TouchableOpacity
+            onPress={() => runLhdnSync()}
+            disabled={isSyncing}
+            className="flex-row items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 mb-3 active:opacity-70"
+          >
+            <Ionicons name="cloud-offline-outline" size={18} color="#f87171" />
+            <Text className="flex-1 text-[12px] font-semibold text-red-300">
+              Couldn&apos;t check LHDN ({lastError}) — tap to retry
+            </Text>
+          </TouchableOpacity>
+        ) : pendingDiffs.length > 0 ? (
+          <TouchableOpacity
+            onPress={openSyncModal}
+            className="flex-row items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 mb-3 active:opacity-70"
+          >
+            <Ionicons name="alert-circle-outline" size={18} color="#fbbf24" />
+            <Text className="flex-1 text-[12px] font-semibold text-amber-300">
+              LHDN may have updated {pendingDiffs.length}{" "}
+              {pendingDiffs.length === 1 ? "relief category" : "relief categories"} — tap to review
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color="#fbbf24" />
+          </TouchableOpacity>
+        ) : unmatched.length > 0 ? (
+          <TouchableOpacity
+            onPress={openSyncModal}
+            className="flex-row items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/40 px-4 py-3 mb-3 active:opacity-70"
+          >
+            <Ionicons name="help-circle-outline" size={18} color="#94a3b8" />
+            <Text className="flex-1 text-[12px] font-semibold text-slate-300">
+              Couldn&apos;t verify {unmatched.length} relief {unmatched.length === 1 ? "category" : "categories"} on
+              LHDN&apos;s page — tap to review
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+          </TouchableOpacity>
+        ) : null}
+
+        <TouchableOpacity
+          onPress={() => runLhdnSync()}
+          disabled={isSyncing}
+          className="flex-row items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/30 py-2.5 mb-6 active:opacity-70"
+        >
+          <Ionicons name="cloud-download-outline" size={14} color="#94a3b8" />
+          <Text className="text-[11px] font-semibold text-slate-400">
+            {isSyncing
+              ? "Checking hasil.gov.my..."
+              : syncState?.lastCheckedAt
+                ? `Last checked LHDN ${new Date(syncState.lastCheckedAt).toLocaleDateString("en-MY")} · Check now`
+                : "Check LHDN for relief updates"}
           </Text>
         </TouchableOpacity>
 
@@ -191,6 +299,87 @@ export default function TaxReliefScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showSyncModal} transparent animationType="fade" onRequestClose={() => setShowSyncModal(false)}>
+        <View className="flex-1 bg-black/60 items-center justify-center px-6">
+          <View className="w-full rounded-2xl bg-slate-800 border border-slate-700 p-6">
+            <Text className="text-white text-[15px] font-bold mb-1">LHDN Relief Check</Text>
+            <Text className="text-slate-400 text-[11px] mb-4">
+              Scraped from hasil.gov.my — review each before applying. This changes YA{year}&apos;s caps.
+            </Text>
+            <ScrollView style={{ maxHeight: 320 }} className="mb-4">
+              {pendingDiffs.length > 0 && (
+                <View className="gap-2 mb-4">
+                  {pendingDiffs.map((d) => {
+                    const selected = selectedDiffs.has(d.category_key);
+                    return (
+                      <TouchableOpacity
+                        key={d.category_key}
+                        onPress={() => toggleDiffSelected(d.category_key)}
+                        className={`flex-row items-center gap-3 rounded-xl border px-4 py-3 ${
+                          selected ? "border-sky-500 bg-sky-500/10" : "border-slate-600 bg-slate-700/30"
+                        }`}
+                      >
+                        <Ionicons
+                          name={selected ? "checkbox" : "square-outline"}
+                          size={18}
+                          color={selected ? "#38bdf8" : "#64748b"}
+                        />
+                        <View className="flex-1">
+                          <Text className="text-[12px] font-semibold text-white">
+                            {TAX_RELIEF_CATEGORY_LABELS[d.category_key]}
+                          </Text>
+                          <Text className="text-[11px] text-slate-400 mt-0.5">
+                            {formatRM(d.current_cap)} → {formatRM(d.scraped_amount)}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {unmatched.length > 0 && (
+                <View>
+                  <Text className="text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                    Couldn&apos;t verify on LHDN&apos;s page
+                  </Text>
+                  <View className="gap-1.5">
+                    {unmatched.map((key) => (
+                      <Text key={key} className="text-[11px] text-slate-500">
+                        • {TAX_RELIEF_CATEGORY_LABELS[key]}
+                      </Text>
+                    ))}
+                  </View>
+                  <Text className="text-[10px] text-slate-600 mt-2">
+                    LHDN&apos;s page wording may have changed for these — caps above weren&apos;t touched.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+            {pendingDiffs.length > 0 ? (
+              <View className="flex-row gap-3">
+                <TouchableOpacity onPress={handleDismissDiffs} className="flex-1 bg-slate-600/40 rounded-lg py-3">
+                  <Text className="text-center text-slate-200 font-semibold text-[13px]">Dismiss All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleApplySelectedDiffs}
+                  disabled={isApplyingDiffs || selectedDiffs.size === 0}
+                  className="flex-1 bg-sky-500 rounded-lg py-3"
+                >
+                  <Text className="text-center text-white font-semibold text-[13px]">
+                    {isApplyingDiffs ? "Applying..." : `Apply (${selectedDiffs.size})`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setShowSyncModal(false)} className="bg-slate-600/40 rounded-lg py-3">
+                <Text className="text-center text-slate-200 font-semibold text-[13px]">Close</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>

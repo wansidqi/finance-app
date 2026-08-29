@@ -1,15 +1,17 @@
 import { TaxReliefCategoryKey } from "@/interface/tax-relief";
 import {
-  getCapsForYear,
-  getReliefSummary,
-  getReliefTransactions,
-  updateCap,
-} from "@/local/tax-relief-service";
+  applySyncDiffs,
+  dismissPendingDiffs,
+  getSyncState,
+  runAndRecordSyncCheck,
+} from "@/local/lhdn-relief-sync-service";
+import { getReliefSummary, getReliefTransactions, updateCap } from "@/local/tax-relief-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const summaryKey = (year: number) => ["tax-relief-summary", year];
 const capsKey = (year: number) => ["tax-relief-caps", year];
 const transactionsKey = (year: number) => ["tax-relief-transactions", year];
+const lhdnSyncStateKey = ["lhdn-sync-state"];
 
 export const useGetReliefSummary = (year: number) => {
   return useQuery({
@@ -33,6 +35,45 @@ export const useUpdateCap = (year: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: summaryKey(year) });
       queryClient.invalidateQueries({ queryKey: capsKey(year) });
+    },
+  });
+};
+
+export const useLhdnSyncState = () => {
+  return useQuery({
+    queryKey: lhdnSyncStateKey,
+    queryFn: getSyncState,
+  });
+};
+
+export const useRunLhdnSync = (year: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => runAndRecordSyncCheck(year),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lhdnSyncStateKey });
+    },
+  });
+};
+
+export const useApplyLhdnSyncDiffs = (year: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (categoryKeys: TaxReliefCategoryKey[]) => applySyncDiffs(year, categoryKeys),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lhdnSyncStateKey });
+      queryClient.invalidateQueries({ queryKey: summaryKey(year) });
+      queryClient.invalidateQueries({ queryKey: capsKey(year) });
+    },
+  });
+};
+
+export const useDismissLhdnSyncDiffs = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: dismissPendingDiffs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lhdnSyncStateKey });
     },
   });
 };

@@ -144,6 +144,14 @@ CREATE TABLE IF NOT EXISTS receipt_attachments (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS lhdn_sync_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  last_checked_at TEXT NULL,
+  pending_diffs TEXT NULL,
+  last_unmatched TEXT NULL,
+  last_error TEXT NULL
+);
+
 CREATE TABLE IF NOT EXISTS backup_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   drive_file_id TEXT NULL,
