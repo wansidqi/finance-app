@@ -51,17 +51,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="accounts"
-        options={{
-          // Kept out of the tab bar (accessed instead from the Dashboard's
-          // Quick Actions) so the bar doesn't get overcrowded — `href: null`
-          // hides it from the bar while keeping the route navigable via
-          // router.push("/(tabs)/accounts").
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
         name="asset"
         options={{
           tabBarIcon: ({ focused }) => (

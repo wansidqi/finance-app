@@ -1,4 +1,5 @@
 import { TAX_RELIEF_CATEGORIES, TAX_RELIEF_CATEGORY_LABELS, TaxReliefCategoryKey } from "@/interface/tax-relief";
+import { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Props = {
@@ -8,6 +9,9 @@ type Props = {
   onChangeAssessmentYear: (year: string) => void;
 };
 
+// Number of categories shown before the "More" pill collapses the rest.
+const COLLAPSED_COUNT = 4;
+
 /** Optional LHDN relief tagging for an expense transaction — shown only when the parent form's type is "expense". */
 export function TaxReliefPicker({
   categoryKey,
@@ -15,6 +19,18 @@ export function TaxReliefPicker({
   onChangeCategory,
   onChangeAssessmentYear,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Auto-expand when editing a transaction already tagged with a category
+  // that's hidden behind "More", so the active selection is never invisible.
+  useEffect(() => {
+    if (categoryKey && TAX_RELIEF_CATEGORIES.indexOf(categoryKey) >= COLLAPSED_COUNT) {
+      setExpanded(true);
+    }
+  }, [categoryKey]);
+
+  const visibleCategories = expanded ? TAX_RELIEF_CATEGORIES : TAX_RELIEF_CATEGORIES.slice(0, COLLAPSED_COUNT);
+
   return (
     <View className="mb-4">
       <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
@@ -31,7 +47,7 @@ export function TaxReliefPicker({
             None
           </Text>
         </TouchableOpacity>
-        {TAX_RELIEF_CATEGORIES.map((key) => (
+        {visibleCategories.map((key) => (
           <TouchableOpacity
             key={key}
             onPress={() => onChangeCategory(key)}
@@ -44,6 +60,16 @@ export function TaxReliefPicker({
             </Text>
           </TouchableOpacity>
         ))}
+        {!expanded && (
+          <TouchableOpacity
+            onPress={() => setExpanded(true)}
+            className="rounded-lg px-3 py-2 border-2 border-dashed border-slate-500 bg-slate-700/10"
+          >
+            <Text className="font-bold text-[12px] text-slate-400">
+              More ({TAX_RELIEF_CATEGORIES.length - COLLAPSED_COUNT})
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {categoryKey !== null && (

@@ -111,23 +111,8 @@ CREATE TABLE IF NOT EXISTS backup_settings (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
-CREATE TABLE IF NOT EXISTS accounts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NULL,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'bank',
-  institution TEXT NULL,
-  balance REAL NOT NULL DEFAULT 0,
-  note TEXT NULL,
-  status TEXT NOT NULL DEFAULT 'ACTIVE',
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  account_id INTEGER NOT NULL,
-  transfer_account_id INTEGER NULL,
   type TEXT NOT NULL,
   amount REAL NOT NULL,
   occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -201,6 +186,49 @@ async function ensureColumn(
 }
 
 /**
+ * Accounts (Phase 3) was dropped in favor of a flat, account-less
+ * Transactions model — this restructures an existing `transactions` table
+ * that still has the old `account_id`/`transfer_account_id` columns
+ * (SQLite has no ALTER TABLE DROP COLUMN-with-constraint-change story, so
+ * recreate-and-copy is the standard approach). A fresh install's `SCHEMA`
+ * above already creates the new shape directly, so this is a no-op there.
+ * `transfer`-type rows (the only type that depended on a second account)
+ * are recategorized as `expense` — there's no account to transfer between
+ * anymore, but the amount/date/notes are still worth keeping. The old
+ * `accounts` table itself is left in place, just unreferenced — dropping
+ * it outright isn't necessary and a physically-removed table can't be
+ * recovered if that turns out to be wrong.
+ */
+async function dropAccountColumnsFromTransactions(db: SQLite.SQLiteDatabase): Promise<void> {
+  const cols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(transactions)");
+  if (!cols.some((c) => c.name === "account_id")) return;
+
+  await db.execAsync(`
+    CREATE TABLE transactions_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      amount REAL NOT NULL,
+      occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      description TEXT NULL,
+      note TEXT NULL,
+      tax_relief_category TEXT NULL,
+      assessment_year INTEGER NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    INSERT INTO transactions_new
+      (id, type, amount, occurred_at, description, note, tax_relief_category, assessment_year, created_at, updated_at)
+    SELECT
+      id,
+      CASE WHEN type = 'transfer' THEN 'expense' ELSE type END,
+      amount, occurred_at, description, note, tax_relief_category, assessment_year, created_at, updated_at
+    FROM transactions;
+    DROP TABLE transactions;
+    ALTER TABLE transactions_new RENAME TO transactions;
+  `);
+}
+
+/**
  * Ordered, numbered migration steps applied via SQLite's built-in
  * `PRAGMA user_version` counter. Only steps with a version greater than the
  * database's current version run, and each is idempotent (safe to re-run on
@@ -230,6 +258,10 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
   {
     version: 4,
     run: (db) => ensureColumn(db, "transactions", "assessment_year", "assessment_year INTEGER"),
+  },
+  {
+    version: 5,
+    run: dropAccountColumnsFromTransactions,
   },
 ];
 

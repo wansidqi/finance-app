@@ -105,7 +105,6 @@ interface ReliefTransactionRow {
   note: string | null;
   amount: number;
   tax_relief_category: string;
-  account_name: string;
   receipt_count: number;
 }
 
@@ -117,7 +116,6 @@ export interface ReliefTransactionDetail {
   amount: number;
   category_key: TaxReliefCategoryKey;
   category_label: string;
-  account_name: string;
   receipt_count: number;
 }
 
@@ -127,10 +125,8 @@ export async function getReliefTransactions(year: number): Promise<ReliefTransac
   const rows = await db.getAllAsync<ReliefTransactionRow>(
     `SELECT
        t.id, t.occurred_at, t.description, t.note, t.amount, t.tax_relief_category,
-       a.name AS account_name,
        (SELECT COUNT(*) FROM receipt_attachments r WHERE r.transaction_id = t.id) AS receipt_count
      FROM transactions t
-     JOIN accounts a ON a.id = t.account_id
      WHERE t.assessment_year = ? AND t.tax_relief_category IS NOT NULL
      ORDER BY t.tax_relief_category, t.occurred_at DESC`,
     year,
@@ -143,7 +139,6 @@ export async function getReliefTransactions(year: number): Promise<ReliefTransac
     amount: r.amount,
     category_key: r.tax_relief_category as TaxReliefCategoryKey,
     category_label: TAX_RELIEF_CATEGORY_LABELS[r.tax_relief_category as TaxReliefCategoryKey],
-    account_name: r.account_name,
     receipt_count: r.receipt_count,
   }));
 }

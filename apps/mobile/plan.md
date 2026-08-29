@@ -456,42 +456,41 @@ Background execution must be treated as best effort because iOS and Android may 
 
 # Phase 3 — Accounts & Transactions
 
-## Status: MVP implemented, kept fully separate from Assets
+## Status: Accounts removed by request — Transactions is now a standalone, account-less feature
 
-Accounts + Transactions now exist as their own local-first feature —
-`accounts`/`transactions` SQLite tables, `interface/account.ts` +
-`interface/transaction.ts`, `local/account-service.ts` +
-`local/transaction-service.ts` + `local/transaction-effect.ts`,
-`services/account.ts` + `services/transaction.ts` (React Query hooks), a
-new **Accounts** tab (`app/(tabs)/accounts.tsx`) listing accounts with a
-total-balance summary, and `app/account/[id].tsx` showing one account's
-balance + transaction history with an add/edit transaction sheet.
-`account/[id]` is registered in the root `Stack` (`app/_layout.tsx`) with
-`headerShown: false`, same as `asset/[id]` and `liability/[id]`, so only
-the screen's own custom header shows — the route was missed initially,
-which briefly showed a native "account/[id]" header above it.
+Originally shipped as Accounts + Transactions together (accounts holding a
+running balance, transactions referencing an account and optionally
+transferring between two). On 2026-08-28, per explicit user request,
+Accounts was removed entirely — no balances, no transfers, no "which
+account is this in" step. Transactions is now a flat list of standalone
+records (type, amount, date, description, note, optional tax-relief tag —
+see Phase 4), reachable from the Dashboard's Quick Actions
+(`app/transactions.tsx`) rather than nested under an account.
 
-Deliberately kept separate from the existing Asset feature's `CASH`
-category (which already models "cash at a platform" informally) — no
-shared table, no migration between them. If/when linking is wanted, that's
-a separate follow-up.
+Removed: `app/(tabs)/accounts.tsx`, `app/account/[id].tsx`,
+`components/accounts/*`, `interface/account.ts`,
+`local/account-service.ts`, `services/account.ts`, the `transfer`
+transaction type (nothing to transfer between anymore), and the
+`accounts` table from fresh installs. `local/db.ts` migration version 5
+(`dropAccountColumnsFromTransactions`) restructures an existing device's
+`transactions` table (SQLite can't just drop a NOT NULL column, so it's a
+recreate-and-copy) — old `transfer`-type rows are recategorized as
+`expense` since the amount/date/notes are still worth keeping even though
+the transfer semantics no longer apply. The old `accounts` table itself is
+left in place on an upgraded device, just unreferenced by any code —
+deleting it outright wasn't necessary and isn't reversible if that turns
+out to be wrong. Covered by `local/__tests__/db-migration.test.ts`
+(pre-seeds the old schema, runs the real migration, asserts columns are
+gone and rows survived) and `local/__tests__/transaction-service.test.ts`
+(plain CRUD, no balance side effects to verify anymore).
 
-Account types: bank, cash, savings, e-wallet, ASB, brokerage, crypto.
-Transaction types: income, expense, transfer (between two accounts),
-investment buy/sell, dividend, interest, debt payment, zakat payment.
-`accounts.balance` is a running total maintained exclusively by
-transaction-service inside an exclusive SQLite transaction (create/update/
-delete all reverse-then-reapply the balance delta), so it can never be
-edited directly — verified with a real-SQLite Jest suite
-(`local/__tests__/account-transaction.test.ts`) covering income/expense,
-transfers debiting one side and crediting the other, edits that change
-amount/type, and deletes reversing their effect.
+Transaction types remaining: income, expense, investment buy/sell,
+dividend, interest, debt payment, zakat payment.
 
-**Not yet built** (deferred from the full Phase 3 spec below): the
-dedicated Cash Flow view/summaries, Financial Commitment Intelligence
-(monthly-equivalent/reserved/required math), recurring/scheduled
-transactions, category/tag taxonomy on transactions, and any backend
-involvement (this, like Reminders, is mobile-only local SQLite).
+**Not yet built** (deferred, mostly moot without accounts/balances):
+Cash Flow view/summaries, Financial Commitment Intelligence, recurring/
+scheduled transactions, category/tag taxonomy beyond the Phase 4 tax
+relief tagging, and any backend involvement.
 
 ## Financial Accounts
 
@@ -607,14 +606,31 @@ explicitly deletes a transaction's receipts first — there's no DB-level
 `ON DELETE CASCADE` since the `foreign_keys` pragma is off.
 
 `components/transactions/receipts-section.tsx` (via `services/receipt.ts`
-React Query hooks) is embedded in `AddTransactionModal`, shown only once a
-transaction has been saved (a receipt needs a `transaction_id`). Lets
-users: capture a photo (`expo-image-picker` camera), pick photos from the
-library (multi-select), or pick documents/PDFs (`expo-document-picker`,
-multi-select); view an image full-screen with pinch-to-zoom
-(`expo-image` + `ScrollView` zoom); open a non-image file (e.g. PDF)
-through the system share sheet (`expo-sharing`) since there's no in-app
-PDF viewer; and delete an attachment with the existing
+React Query hooks) is embedded in `AddTransactionModal`, at the very top
+of the form (per user request — it was previously easy to miss further
+down). Behavior differs by mode, also per user request:
+
+- **Add (new transaction):** Camera/Photo/File buttons are available
+  immediately, before the transaction is saved. Attaching a receipt before
+  the transaction exists lazily creates it in the background
+  (`ensureDraftTransaction` in `add-transaction-modal.tsx`, using whatever
+  amount/date/type is filled in so far — it errors with a friendly message
+  if those aren't valid yet), and remembers its id as a draft. Tapping
+  "Add Transaction" afterward updates that same draft row rather than
+  creating a second one. If the sheet is dismissed (Cancel/X) after a
+  receipt was attached but before finalizing, the draft transaction (and
+  its receipts) is deleted so nothing orphaned is left behind.
+- **Edit (existing transaction):** shows previously attached receipts
+  (view full-screen/share, delete) but hides the Camera/Photo/File
+  buttons — new attachments only happen through the Add flow.
+  `ReceiptsSection` takes a `hideUploadButtons` prop for this.
+
+Lets users: capture a photo (`expo-image-picker` camera), pick photos from
+the library (multi-select), or pick documents/PDFs
+(`expo-document-picker`, multi-select); view an image full-screen with
+pinch-to-zoom (`expo-image` + `ScrollView` zoom); open a non-image file
+(e.g. PDF) through the system share sheet (`expo-sharing`) since there's
+no in-app PDF viewer; and delete an attachment with the existing
 `ConfirmDeleteModal`. Thumbnails aren't rendered in the list (would mean
 reading every attachment's full BLOB just to render a list row) — each row
 shows a file-type icon, name, and size instead, with bytes only fetched on

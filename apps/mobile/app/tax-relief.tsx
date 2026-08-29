@@ -59,7 +59,7 @@ export default function TaxReliefScreen() {
         lines.push([csvEscape(s.label), s.claimed, s.cap, s.remaining].join(","));
       }
       lines.push("");
-      lines.push("Category,Date,Description,Amount,Account,Receipts Attached");
+      lines.push("Category,Date,Description,Amount,Receipts Attached");
       for (const t of transactions) {
         lines.push(
           [
@@ -67,7 +67,6 @@ export default function TaxReliefScreen() {
             new Date(t.occurred_at).toLocaleDateString("en-MY"),
             csvEscape(t.description ?? t.note ?? ""),
             t.amount,
-            csvEscape(t.account_name),
             t.receipt_count,
           ].join(","),
         );

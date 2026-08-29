@@ -35,7 +35,6 @@ jest.mock("expo-sqlite", () => {
 });
 
 import { DEFAULT_TAX_RELIEF_CAPS } from "@/interface/tax-relief";
-import { createAccount } from "../account-service";
 import { getCapsForYear, getReliefSummary, getReliefTransactions, updateCap } from "../tax-relief-service";
 import { createTransaction } from "../transaction-service";
 
@@ -54,17 +53,13 @@ describe("tax relief caps + summary (real SQLite via node:sqlite)", () => {
   });
 
   test("summary aggregates claimed amounts per category and flags over-cap", async () => {
-    const account = await createAccount({ name: "Wallet", type: "cash", balance: 0 });
-
     await createTransaction({
-      account_id: account.id,
       type: "expense",
       amount: 1500,
       tax_relief_category: "lifestyle",
       assessment_year: 2027,
     });
     await createTransaction({
-      account_id: account.id,
       type: "expense",
       amount: 1200,
       tax_relief_category: "lifestyle",
@@ -72,14 +67,13 @@ describe("tax relief caps + summary (real SQLite via node:sqlite)", () => {
     });
     // Different year — must not leak into the 2027 summary.
     await createTransaction({
-      account_id: account.id,
       type: "expense",
       amount: 999,
       tax_relief_category: "lifestyle",
       assessment_year: 2099,
     });
     // Untagged expense — must not appear in any relief summary.
-    await createTransaction({ account_id: account.id, type: "expense", amount: 50 });
+    await createTransaction({ type: "expense", amount: 50 });
 
     const summary = await getReliefSummary(2027);
     const lifestyle = summary.find((s) => s.category_key === "lifestyle")!;

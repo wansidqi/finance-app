@@ -3,14 +3,11 @@ import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { ReceiptsSection } from "@/components/transactions/receipts-section";
 import { TaxReliefPicker } from "@/components/transactions/tax-relief-picker";
-import { AccountInterface } from "@/interface/account";
 import { TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { TransactionInterface, TransactionType } from "@/interface/transaction";
-import { isOutflowType } from "@/local/transaction-effect";
-import { useGetAccounts } from "@/services/account";
-import { useCreateTransaction, useUpdateTransaction } from "@/services/transaction";
+import { useCreateTransaction, useDeleteTransaction, useUpdateTransaction } from "@/services/transaction";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,16 +20,14 @@ const TAB_BAR_BASE_HEIGHT = 52;
 type Props = {
   visible: boolean;
   onClose: () => void;
-  account: AccountInterface;
   transaction?: TransactionInterface | null;
 };
 
-export function AddTransactionModal({ visible, onClose, account, transaction }: Props) {
+export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   const isEditing = !!transaction;
 
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
-  const [transferAccountId, setTransferAccountId] = useState<number | null>(null);
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
   const [occurredYear, setOccurredYear] = useState("");
@@ -40,17 +35,15 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
   const [note, setNote] = useState("");
   const [taxReliefCategory, setTaxReliefCategory] = useState<TaxReliefCategoryKey | null>(null);
   const [assessmentYear, setAssessmentYear] = useState("");
+  // Set only in the "Add" flow, the moment a receipt is attached before the
+  // transaction has otherwise been saved — see ensureDraftTransaction below.
+  const [draftTransactionId, setDraftTransactionId] = useState<number | null>(null);
 
-  const { data: accounts = [] } = useGetAccounts();
   const { mutateAsync: createTransaction, isPending: isCreating } = useCreateTransaction();
   const { mutateAsync: updateTransaction, isPending: isUpdating } = useUpdateTransaction();
+  const { mutateAsync: deleteTransaction } = useDeleteTransaction();
   const { error, isVisible, hideError, showError } = useErrorModal();
   const insets = useSafeAreaInsets();
-
-  const transferTargets = useMemo(
-    () => accounts.filter((a) => a.id !== account.id && a.status === "ACTIVE"),
-    [accounts, account.id],
-  );
 
   useEffect(() => {
     if (!visible) return;
@@ -63,38 +56,62 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
 
     setType(transaction?.type ?? "expense");
     setAmount(transaction ? String(transaction.amount) : "");
-    setTransferAccountId(transaction?.transfer_account_id ?? transferTargets[0]?.id ?? null);
     setDescription(transaction?.description ?? "");
     setNote(transaction?.note ?? "");
     setTaxReliefCategory((transaction?.tax_relief_category as TaxReliefCategoryKey | null) ?? null);
     setAssessmentYear(transaction?.assessment_year ? String(transaction.assessment_year) : "");
+    setDraftTransactionId(null);
   }, [visible, transaction]);
 
-  const handleSave = async () => {
+  const buildData = () => {
     const isoDate = fieldsToIsoDate(day, month, occurredYear);
     const numericAmount = Number(amount);
-    if (!isoDate || !numericAmount || numericAmount <= 0) return;
-    if (type === "transfer" && !transferAccountId) return;
-
     const isExpense = type === "expense";
     const parsedAssessmentYear = Number(assessmentYear);
 
-    const data = {
-      account_id: account.id,
-      transfer_account_id: type === "transfer" ? transferAccountId : null,
-      type,
-      amount: numericAmount,
-      occurred_at: isoDate,
-      description: description.trim() || null,
-      note: note.trim() || null,
-      tax_relief_category: isExpense ? taxReliefCategory : null,
-      assessment_year:
-        isExpense && taxReliefCategory && parsedAssessmentYear > 0 ? parsedAssessmentYear : null,
+    return {
+      isoDate,
+      numericAmount,
+      data: {
+        type,
+        amount: numericAmount,
+        occurred_at: isoDate ?? undefined,
+        description: description.trim() || null,
+        note: note.trim() || null,
+        tax_relief_category: isExpense ? taxReliefCategory : null,
+        assessment_year:
+          isExpense && taxReliefCategory && parsedAssessmentYear > 0 ? parsedAssessmentYear : null,
+      },
     };
+  };
+
+  // Lazily creates the transaction the first time a receipt is attached
+  // during the "Add" flow, so Receipts has a real transaction_id to attach
+  // to before the user taps "Add Transaction". Subsequent attaches reuse
+  // the same draft id; the final save updates it instead of re-creating it.
+  const ensureDraftTransaction = async (): Promise<number> => {
+    if (draftTransactionId != null) return draftTransactionId;
+
+    const { isoDate, numericAmount, data } = buildData();
+    if (!isoDate || !numericAmount || numericAmount <= 0) {
+      throw new Error("Enter an amount and date first, then attach a receipt.");
+    }
+
+    const created = await createTransaction(data);
+    setDraftTransactionId(created.id);
+    return created.id;
+  };
+
+  const handleSave = async () => {
+    const { isoDate, numericAmount, data } = buildData();
+    if (!isoDate || !numericAmount || numericAmount <= 0) return;
 
     try {
       if (isEditing) {
         await updateTransaction({ id: transaction.id, data });
+      } else if (draftTransactionId != null) {
+        // A receipt was already attached, which created this row — finalize it.
+        await updateTransaction({ id: draftTransactionId, data });
       } else {
         await createTransaction(data);
       }
@@ -104,29 +121,34 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
     }
   };
 
+  const handleClose = async () => {
+    if (!isEditing && draftTransactionId != null) {
+      // Backing out after attaching a receipt but before finalizing — don't
+      // leave an orphaned transaction behind (deleteTransaction also cleans
+      // up its receipts).
+      await deleteTransaction(draftTransactionId).catch(() => {});
+    }
+    onClose();
+  };
+
   const isSaving = isCreating || isUpdating;
   const isoPreview = fieldsToIsoDate(day, month, occurredYear);
-  const isComplete =
-    !!amount && Number(amount) > 0 && !!isoPreview && (type !== "transfer" || !!transferAccountId);
-  const outflow = isOutflowType(type);
+  const isComplete = !!amount && Number(amount) > 0 && !!isoPreview;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
       <KeyboardAvoidingView behavior="padding" className="flex-1">
-        <View className="flex-1 justify-end bg-black/50">
+        <View className="flex-1 justify-end bg-black/50" style={{ paddingTop: insets.top + 24 }}>
           <View
-            className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4 max-h-[90%]"
-            style={{ marginBottom: TAB_BAR_BASE_HEIGHT + insets.bottom }}
+            className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4"
+            style={{ marginTop: "60%" }}
           >
             <View className="flex-row items-center justify-between px-6 mb-4">
-              <View>
-                <Text className="text-[20px] font-bold text-white">
-                  {isEditing ? "Edit Transaction" : "Add Transaction"}
-                </Text>
-                <Text className="text-[11px] text-slate-400 mt-0.5">{account.name}</Text>
-              </View>
-              <TouchableOpacity onPress={onClose} className="p-2 rounded-full bg-slate-700/50">
+              <Text className="text-[20px] font-bold text-white">
+                {isEditing ? "Edit Transaction" : "Add Transaction"}
+              </Text>
+              <TouchableOpacity onPress={handleClose} className="p-2 rounded-full bg-slate-700/50">
                 <Ionicons name="close" size={20} color="#cbd5e1" />
               </TouchableOpacity>
             </View>
@@ -136,6 +158,12 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
               contentContainerStyle={{ paddingBottom: 20 }}
               className="px-6"
             >
+              {isEditing ? (
+                <ReceiptsSection transactionId={transaction.id} hideUploadButtons />
+              ) : (
+                <ReceiptsSection transactionId={draftTransactionId} onRequireTransactionId={ensureDraftTransaction} />
+              )}
+
               <View className="mb-4">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Type
@@ -161,49 +189,12 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
                 </View>
               </View>
 
-              {type === "transfer" && (
-                <View className="mb-4">
-                  <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                    Transfer To
-                  </Text>
-                  {transferTargets.length === 0 ? (
-                    <Text className="text-[12px] text-slate-500">
-                      Add another account first to transfer between accounts.
-                    </Text>
-                  ) : (
-                    <View className="flex-row flex-wrap gap-2">
-                      {transferTargets.map((a) => (
-                        <TouchableOpacity
-                          key={a.id}
-                          onPress={() => setTransferAccountId(a.id)}
-                          className={`rounded-lg px-3 py-2 border-2 ${
-                            transferAccountId === a.id
-                              ? "border-sky-500 bg-sky-500/10"
-                              : "border-slate-600 bg-slate-700/30"
-                          }`}
-                        >
-                          <Text
-                            className={`font-bold text-[12px] ${
-                              transferAccountId === a.id ? "text-sky-400" : "text-slate-300"
-                            }`}
-                          >
-                            {a.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-
               <View className="mb-4">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Amount (RM)
                 </Text>
                 <View className="flex-row items-center border border-slate-600 rounded-lg bg-slate-700/30 px-3 py-3">
-                  <Text className={`mr-2 font-bold ${outflow ? "text-red-400" : "text-emerald-400"}`}>
-                    {outflow ? "-" : "+"}RM
-                  </Text>
+                  <Text className="mr-2 font-bold text-slate-300">RM</Text>
                   <TextInput
                     placeholder="0.00"
                     keyboardType="decimal-pad"
@@ -267,11 +258,9 @@ export function AddTransactionModal({ visible, onClose, account, transaction }: 
                 />
               )}
 
-              {isEditing && transaction && <ReceiptsSection transactionId={transaction.id} />}
-
               <View className="flex-row gap-3">
                 <TouchableOpacity
-                  onPress={onClose}
+                  onPress={handleClose}
                   className="flex-1 rounded-lg bg-slate-700/50 py-3 border border-slate-600"
                 >
                   <Text className="text-center font-semibold text-slate-200 text-[14px]">Cancel</Text>

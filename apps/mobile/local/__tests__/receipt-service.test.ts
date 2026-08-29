@@ -34,7 +34,6 @@ jest.mock("expo-sqlite", () => {
   };
 });
 
-import { createAccount } from "../account-service";
 import {
   addReceipt,
   deleteReceipt,
@@ -45,8 +44,7 @@ import { createTransaction, deleteTransaction } from "../transaction-service";
 
 describe("receipt attachments (real SQLite via node:sqlite)", () => {
   test("stores and reads back BLOB bytes unmodified", async () => {
-    const account = await createAccount({ name: "Wallet", type: "cash", balance: 0 });
-    const txn = await createTransaction({ account_id: account.id, type: "expense", amount: 25 });
+    const txn = await createTransaction({ type: "expense", amount: 25 });
 
     const bytes = new Uint8Array([1, 2, 3, 250, 255, 0]);
     const created = await addReceipt({
@@ -64,8 +62,7 @@ describe("receipt attachments (real SQLite via node:sqlite)", () => {
   });
 
   test("list metadata excludes the BLOB column", async () => {
-    const account = await createAccount({ name: "Wallet", type: "cash", balance: 0 });
-    const txn = await createTransaction({ account_id: account.id, type: "expense", amount: 25 });
+    const txn = await createTransaction({ type: "expense", amount: 25 });
 
     await addReceipt({
       transaction_id: txn.id,
@@ -81,8 +78,7 @@ describe("receipt attachments (real SQLite via node:sqlite)", () => {
   });
 
   test("deleting a receipt removes it from the list", async () => {
-    const account = await createAccount({ name: "Wallet", type: "cash", balance: 0 });
-    const txn = await createTransaction({ account_id: account.id, type: "expense", amount: 25 });
+    const txn = await createTransaction({ type: "expense", amount: 25 });
 
     const created = await addReceipt({
       transaction_id: txn.id,
@@ -96,8 +92,7 @@ describe("receipt attachments (real SQLite via node:sqlite)", () => {
   });
 
   test("deleting a transaction also deletes its receipts", async () => {
-    const account = await createAccount({ name: "Wallet", type: "cash", balance: 0 });
-    const txn = await createTransaction({ account_id: account.id, type: "expense", amount: 25 });
+    const txn = await createTransaction({ type: "expense", amount: 25 });
 
     await addReceipt({
       transaction_id: txn.id,

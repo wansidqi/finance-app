@@ -3,7 +3,6 @@ import { TransactionType } from "@/interface/transaction";
 export const TRANSACTION_TYPES: TransactionType[] = [
   "income",
   "expense",
-  "transfer",
   "investment_purchase",
   "investment_sale",
   "dividend",
@@ -15,7 +14,6 @@ export const TRANSACTION_TYPES: TransactionType[] = [
 export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   income: "Income",
   expense: "Expense",
-  transfer: "Transfer",
   investment_purchase: "Investment Buy",
   investment_sale: "Investment Sell",
   dividend: "Dividend",

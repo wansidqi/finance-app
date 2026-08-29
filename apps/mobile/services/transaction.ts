@@ -1,31 +1,25 @@
 import {
   createTransaction as localCreateTransaction,
   deleteTransaction as localDeleteTransaction,
-  getTransactionsByAccount,
+  getAllTransactions,
   updateTransaction as localUpdateTransaction,
 } from "@/local/transaction-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-const ACCOUNTS_KEY = ["accounts"];
-const transactionsKey = (accountId: number) => ["transactions", accountId];
+const TRANSACTIONS_KEY = ["transactions"];
 
 type CreateInput = Parameters<typeof localCreateTransaction>[0];
 type UpdateInput = Parameters<typeof localUpdateTransaction>[1];
 
-export const useGetTransactionsByAccount = (accountId: number) => {
+export const useGetTransactions = () => {
   return useQuery({
-    queryKey: transactionsKey(accountId),
-    queryFn: () => getTransactionsByAccount(accountId),
-    enabled: !!accountId,
+    queryKey: TRANSACTIONS_KEY,
+    queryFn: getAllTransactions,
   });
 };
 
-// Mutations can move money between two accounts (transfers) or affect an
-// account other than the one the UI is currently viewing, so every mutation
-// invalidates all transaction lists plus the accounts list (balances).
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
-  queryClient.invalidateQueries({ queryKey: ["transactions"] });
-  queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+  queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY });
   // A transaction's tax-relief tag/amount/year can change here too, so any
   // Tax Relief screen showing a summary for an affected year needs to refetch.
   queryClient.invalidateQueries({ queryKey: ["tax-relief-summary"] });

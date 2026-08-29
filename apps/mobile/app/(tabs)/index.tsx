@@ -254,8 +254,8 @@ export default function DashboardScreen() {
           </Text>
           <View className="flex-row flex-wrap gap-3">
             <QuickActionButton
-              icon="business-outline"
-              label="Accounts"
+              icon="list-outline"
+              label="Transactions"
               tint="#38bdf8"
             />
             <QuickActionButton
@@ -514,8 +514,8 @@ function QuickActionButton({
   const router = useRouter();
 
   const handlePress = () => {
-    if (label === "Accounts") {
-      router.push("/(tabs)/accounts");
+    if (label === "Transactions") {
+      router.push("/transactions");
     } else if (label === "Assets") {
       router.push("/(tabs)/asset");
     } else if (label === "Liabilities") {
