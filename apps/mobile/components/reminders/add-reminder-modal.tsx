@@ -1,3 +1,4 @@
+import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/components/date-field";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { ReminderInterface, ReminderRecurrence, ReminderTimingMode } from "@/interface/reminder";
@@ -12,7 +13,6 @@ import { useEffect, useState } from "react";
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { DateFields, dateToFields, fieldsToIsoDate } from "./date-fields";
 import { REMINDER_RECURRENCES, REMINDER_RECURRENCE_LABELS } from "./reminder-options";
 
 // Matches the floating tab bar height in app/(tabs)/_layout.tsx, so the
@@ -36,9 +36,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   const [note, setNote] = useState("");
   const [recurrence, setRecurrence] = useState<ReminderRecurrence>("monthly");
   const [intervalDays, setIntervalDays] = useState("30");
-  const [day, setDay] = useState("");
-  const [month, setMonth] = useState("");
-  const [year, setYear] = useState("");
+  const [dueDate, setDueDate] = useState<Date | null>(null);
 
   const [timingMode, setTimingMode] = useState<ReminderTimingMode>("global");
   const [offsetsText, setOffsetsText] = useState(DEFAULT_REMINDER_OFFSETS_DAYS.join(", "));
@@ -54,11 +52,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   useEffect(() => {
     if (!visible) return;
 
-    const base = reminder ? new Date(reminder.next_due_date) : new Date();
-    const fields = dateToFields(base);
-    setDay(fields.day);
-    setMonth(fields.month);
-    setYear(fields.year);
+    setDueDate(reminder ? isoToCalendarDate(reminder.next_due_date) : today());
 
     setName(reminder?.name ?? "");
     setNote(reminder?.note ?? "");
@@ -77,7 +71,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   };
 
   const handleSave = async () => {
-    const isoDate = fieldsToIsoDate(day, month, year);
+    const isoDate = dueDate ? calendarDateToIso(dueDate) : null;
     if (!name.trim() || !isoDate) return;
 
     let offsets: number[] = [];
@@ -130,7 +124,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   };
 
   const isSaving = isCreating || isUpdating;
-  const isoPreview = fieldsToIsoDate(day, month, year);
+  const isoPreview = dueDate ? calendarDateToIso(dueDate) : null;
   const isComplete = !!name.trim() && !!isoPreview;
 
   return (
@@ -235,14 +229,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   {isEditing ? "Next Due Date" : "Due Date"}
                 </Text>
-                <DateFields
-                  day={day}
-                  month={month}
-                  year={year}
-                  onChangeDay={setDay}
-                  onChangeMonth={setMonth}
-                  onChangeYear={setYear}
-                />
+                <DateField value={dueDate} onChange={setDueDate} accentColor="#f59e0b" />
               </View>
 
               <View className="mb-6">

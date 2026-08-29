@@ -1,6 +1,7 @@
+import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/components/date-field";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 interface EditPaidDateModalProps {
   visible: boolean;
@@ -11,10 +12,6 @@ interface EditPaidDateModalProps {
   isLoading?: boolean;
 }
 
-function pad(n: number) {
-  return n.toString().padStart(2, "0");
-}
-
 export function EditPaidDateModal({
   visible,
   category,
@@ -23,54 +20,15 @@ export function EditPaidDateModal({
   onConfirm,
   isLoading = false,
 }: EditPaidDateModalProps) {
-  const [day, setDay] = useState("");
-  const [month, setMonth] = useState("");
-  const [year, setYear] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [date, setDate] = useState<Date>(today());
 
   useEffect(() => {
     if (!visible) return;
-    const base = initialDate ? new Date(initialDate) : new Date();
-    setDay(pad(base.getDate()));
-    setMonth(pad(base.getMonth() + 1));
-    setYear(base.getFullYear().toString());
-    setError(null);
+    setDate(initialDate ? isoToCalendarDate(initialDate) : today());
   }, [visible, initialDate]);
 
   const handleConfirm = () => {
-    const d = parseInt(day, 10);
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
-
-    if (!d || !m || !y || y < 1900) {
-      setError("Enter a valid date");
-      return;
-    }
-
-    // Build as a UTC midnight timestamp for the chosen calendar day, so the
-    // date doesn't shift depending on the device's timezone offset.
-    const check = new Date(Date.UTC(y, m - 1, d));
-    if (
-      check.getUTCFullYear() !== y ||
-      check.getUTCMonth() !== m - 1 ||
-      check.getUTCDate() !== d
-    ) {
-      setError("That date doesn't exist");
-      return;
-    }
-
-    const today = new Date();
-    const todayUTC = Date.UTC(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    );
-    if (check.getTime() > todayUTC) {
-      setError("Date can't be in the future");
-      return;
-    }
-
-    onConfirm(check.toISOString());
+    onConfirm(calendarDateToIso(date));
   };
 
   return (
@@ -95,50 +53,9 @@ export function EditPaidDateModal({
             </Text>
           </View>
 
-          <View className="flex-row gap-3 mt-2">
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-400 mb-1">DAY</Text>
-              <TextInput
-                value={day}
-                onChangeText={setDay}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="DD"
-                placeholderTextColor="#64748b"
-                className="bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2 text-white text-center"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-400 mb-1">MONTH</Text>
-              <TextInput
-                value={month}
-                onChangeText={setMonth}
-                keyboardType="number-pad"
-                maxLength={2}
-                placeholder="MM"
-                placeholderTextColor="#64748b"
-                className="bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2 text-white text-center"
-              />
-            </View>
-            <View className="flex-[1.4]">
-              <Text className="text-[10px] text-slate-400 mb-1">YEAR</Text>
-              <TextInput
-                value={year}
-                onChangeText={setYear}
-                keyboardType="number-pad"
-                maxLength={4}
-                placeholder="YYYY"
-                placeholderTextColor="#64748b"
-                className="bg-slate-700/40 border border-slate-600 rounded-lg px-3 py-2 text-white text-center"
-              />
-            </View>
+          <View className="mt-2">
+            <DateField value={date} onChange={setDate} accentColor="#10b981" maximumDate={today()} />
           </View>
-
-          {error && (
-            <Text className="text-red-400 text-[11px] mt-2 text-center">
-              {error}
-            </Text>
-          )}
 
           <View className="flex-row gap-3 mt-5">
             <TouchableOpacity

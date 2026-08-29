@@ -1,4 +1,4 @@
-import { dateToFields, DateFields, fieldsToIsoDate } from "@/components/reminders/date-fields";
+import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/components/date-field";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { ReceiptsSection } from "@/components/transactions/receipts-section";
@@ -28,9 +28,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
 
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
-  const [day, setDay] = useState("");
-  const [month, setMonth] = useState("");
-  const [occurredYear, setOccurredYear] = useState("");
+  const [occurredDate, setOccurredDate] = useState<Date | null>(null);
   const [description, setDescription] = useState("");
   const [note, setNote] = useState("");
   const [taxReliefCategory, setTaxReliefCategory] = useState<TaxReliefCategoryKey | null>(null);
@@ -48,11 +46,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   useEffect(() => {
     if (!visible) return;
 
-    const base = transaction ? new Date(transaction.occurred_at) : new Date();
-    const fields = dateToFields(base);
-    setDay(fields.day);
-    setMonth(fields.month);
-    setOccurredYear(fields.year);
+    setOccurredDate(transaction ? isoToCalendarDate(transaction.occurred_at) : today());
 
     setType(transaction?.type ?? "expense");
     setAmount(transaction ? String(transaction.amount) : "");
@@ -64,7 +58,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   }, [visible, transaction]);
 
   const buildData = () => {
-    const isoDate = fieldsToIsoDate(day, month, occurredYear);
+    const isoDate = occurredDate ? calendarDateToIso(occurredDate) : null;
     const numericAmount = Number(amount);
     const isExpense = type === "expense";
     const parsedAssessmentYear = Number(assessmentYear);
@@ -132,7 +126,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   };
 
   const isSaving = isCreating || isUpdating;
-  const isoPreview = fieldsToIsoDate(day, month, occurredYear);
+  const isoPreview = occurredDate ? calendarDateToIso(occurredDate) : null;
   const isComplete = !!amount && Number(amount) > 0 && !!isoPreview;
 
   return (
@@ -210,14 +204,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Date
                 </Text>
-                <DateFields
-                  day={day}
-                  month={month}
-                  year={occurredYear}
-                  onChangeDay={setDay}
-                  onChangeMonth={setMonth}
-                  onChangeYear={setOccurredYear}
-                />
+                <DateField value={occurredDate} onChange={setOccurredDate} accentColor="#0ea5e9" />
               </View>
 
               <View className="mb-4">

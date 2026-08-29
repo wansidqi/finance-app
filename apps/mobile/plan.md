@@ -254,6 +254,17 @@ Not yet done from this phase's spec: currency field (app is RM-only
 throughout, so skipped as unnecessary for now) and per-reminder offsets
 (the customizable schedule above is global, not per individual reminder).
 
+Due-date entry (both here and in the two other date fields listed below)
+was upgraded from manual DD/MM/YYYY text boxes to a native calendar
+picker — `components/date-field.tsx`, shared by the Add/Edit Reminder
+modal, the Add/Edit Transaction modal (Phase 3), and the Zakat Tracker's
+Edit Paid Date modal (Phase 8). Tapping the field opens the platform's
+own picker (native Android dialog via `DateTimePickerAndroid.open()`; an
+inline calendar sheet with Cancel/Done on iOS) instead of typing three
+separate digits. Built on `@react-native-community/datetimepicker` — a
+native module, so it needs a dev-client rebuild before it works on
+device (not just a JS/Metro reload).
+
 ## Goal
 
 Add a new mobile tab for managing payment reminders such as:
@@ -486,6 +497,9 @@ gone and rows survived) and `local/__tests__/transaction-service.test.ts`
 
 Transaction types remaining: income, expense, investment buy/sell,
 dividend, interest, debt payment, zakat payment.
+
+The transaction date field now uses the shared native date picker — see
+the note under Phase 2's status for detail.
 
 **Not yet built** (deferred, mostly moot without accounts/balances):
 Cash Flow view/summaries, Financial Commitment Intelligence, recurring/
@@ -1290,6 +1304,10 @@ log of past payments beyond the single `last_paid_date` per category),
 and everything else below this heading (business-asset zakat, a
 dedicated zakat-position dashboard, deeper zakat/transactions/financial-
 calendar integration).
+
+The Edit Paid Date modal's date field now uses the shared native date
+picker (capped at today — no future paid dates) — see the note under
+Phase 2's status for detail.
 
 Continue expanding the existing zakat system.
 
