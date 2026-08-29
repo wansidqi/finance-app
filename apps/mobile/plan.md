@@ -680,6 +680,24 @@ counts per transaction but doesn't package the receipt files themselves
 into the export — each receipt is still only viewable/shareable
 individually from its transaction, per the MVP section above).
 
+**Also shipped, beyond the original spec: live LHDN relief-cap sync.**
+`local/lhdn-relief-sync-service.ts` scrapes hasil.gov.my's public relief
+page (`CATEGORY_ANCHORS`, a fixed English-language anchor phrase per
+relief category verified against the YA2025 listing) and looks for a
+thousands-separated RM amount near each anchor. A scheduled check runs at
+most once per `app/tax-relief.tsx` mount, gated to roughly quarterly
+(`SYNC_CHECK_INTERVAL_DAYS = 90`) via `shouldRunScheduledCheck`; a manual
+"Check LHDN for relief updates" button on the same screen runs it anytime.
+Results are never applied automatically — matches (`pendingDiffs`, current
+cap vs. scraped amount) and categories the scraper couldn't confidently
+locate (`unmatched`, surfaced rather than silently treated as "no
+change") both sit in `lhdn_relief_sync_state` until the user reviews them
+in the "LHDN Relief Check" dialog and selectively applies or dismisses
+them. Since this is HTML scraping against a page LHDN could restyle at
+any time, failures (network or zero matches) just populate
+`syncState.lastError` for the manual retry path rather than blocking the
+screen. Covered by `local/__tests__/lhdn-relief-sync-service.test.ts`.
+
 ## Goal
 
 Give users a durable, LHDN-ready evidence trail for purchases that qualify
@@ -1228,6 +1246,51 @@ The screening system should remain separate from the core investment model.
 
 # Phase 8 — Zakat Expansion
 
+## Status: Per-state nisab detection shipped (ahead of the rest of this phase)
+
+Zakat previously used a single nationwide gold-price-derived nisab for
+every user. `interface/nisab-state.ts` adds a `MalaysiaStateKey` union for
+all 14 states/federal territories and a `NisabSource` discriminant
+(`state` / `ppz_fallback` / `gold_price`) so the UI can always say _why_
+a given nisab figure is what it is — see `pages.md` §4.2 for the banner's
+exact copy per state.
+
+`local/nisab-state-sync-service.ts` (`STATE_AUTHORITIES`) live-scrapes
+8 of the 14 states' own zakat authorities (Selangor/LZS via an AJAX
+endpoint with a bespoke fetcher, WP KL-Putrajaya-Labuan/PPZ-MAIWP, Johor/
+MAIJ, Kedah/LZNK, Melaka/MAIM, Negeri Sembilan, Sabah, Terengganu — each
+via an anchor-phrase HTML scrape similar in spirit to the LHDN relief
+sync above); the other 6 states have no live source configured yet and
+always fall back to PPZ-MAIWP's published rate. A scheduled resync runs
+at most every `STATE_SYNC_INTERVAL_DAYS = 30` (shorter than the LHDN
+relief sync's 90, since ~14 heterogeneous sites scraped at once is more
+failure-prone and a broken anchor should surface sooner); `local/nisab-
+resolver.ts` picks the effective nisab per user (their detected state's
+live rate → PPZ-MAIWP fallback → nationwide gold price, in that order).
+
+`local/state-location-service.ts` detects the user's state via
+`expo-location` foreground GPS + reverse-geocoding, matching the
+geocoder's free-text region/subregion against a per-state alias list
+(handles iOS/Android geocoder wording differences, e.g. "Kuala Lumpur"
+vs. "W.P. Kuala Lumpur"). Detection is manual (a refresh icon on the
+nisab source banner), not automatic/background — the user triggers it
+from the Dashboard or Zakat Tracker.
+
+`services/nisab-notifications.ts` fires a local "Zakat Nisab Updated"
+notification whenever the resolved nisab changes from what the user was
+last notified about (checked on every global sync pass, foreground or
+background) — except the very first run, which just records a silent
+baseline so a fresh install doesn't announce a "change" for a number the
+user has never seen. Covered by `local/__tests__/nisab-resolver.test.ts`,
+`local/__tests__/nisab-state-sync-service.test.ts`, and
+`local/__tests__/state-location-service.test.ts`.
+
+**Not yet built:** the other 6 states' live sources, zakat history (a
+log of past payments beyond the single `last_paid_date` per category),
+and everything else below this heading (business-asset zakat, a
+dedicated zakat-position dashboard, deeper zakat/transactions/financial-
+calendar integration).
+
 Continue expanding the existing zakat system.
 
 Support:
@@ -1484,6 +1547,13 @@ returning a non-absolute path, breaking `FileSystemFile.copy`) that was
 fixed in `development` via live reload but needs a fresh preview build to
 pick up, since preview bundles JS at build time rather than connecting to
 Metro.
+
+**Uncommitted, not yet built:** `app.config.js` now sets an iOS
+`bundleIdentifier` (same dev/prod split as the existing Android
+`package`) and `eas.json`'s `preview` profile now sets `"distribution":
+"internal"` explicitly — neither has an iOS Google OAuth client, keystore,
+or build yet, so this is prep, not a working iOS path. See
+`apps/mobile/env.md` before building for either platform.
 
 ## Goal
 

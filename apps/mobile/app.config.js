@@ -16,6 +16,7 @@ module.exports = {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      bundleIdentifier: IS_DEV ? "com.lumvyr.zakattracker.dev" : "com.lumvyr.zakattracker",
     },
     android: {
       adaptiveIcon: {

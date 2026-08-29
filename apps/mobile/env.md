@@ -24,7 +24,10 @@ existing keystore", saved to `apps/mobile/credentials/android/keystore.jks`
 Google Cloud Android OAuth client status:
 
 - Preview/Production (`com.lumvyr.zakattracker` + its SHA-1 above): **created**, 2026-08-27.
-- Development (`com.lumvyr.zakattracker.dev` + its SHA-1 above): **still needs to be created** — this is what was causing the `DEVELOPER_ERROR` from react-native-google-signin when testing "Connect Google Drive" in the dev build.
+- Development (`com.lumvyr.zakattracker.dev` + its SHA-1 above): **created** —
+  the `DEVELOPER_ERROR` this used to cause is fixed; Connect Google Drive /
+  Backup Now / Load Backup / Restore are all verified working end-to-end on
+  the `development` build (see `plan.md`'s Phase 11 status).
 
 ## Android package names (per eas.json build profile)
 
@@ -32,6 +35,25 @@ Google Cloud Android OAuth client status:
 | ----------------------- | ----------------------------- | ------------------------------------------ |
 | `development`           | `com.lumvyr.zakattracker.dev` | `app.config.js`, `APP_VARIANT=development` |
 | `preview`, `production` | `com.lumvyr.zakattracker`     | `app.config.js` default (no `APP_VARIANT`) |
+
+## iOS bundle identifiers — added, not yet built (uncommitted)
+
+`app.config.js` now sets `ios.bundleIdentifier` with the same dev/prod
+split as the Android `package`:
+
+| Profile                 | Bundle identifier             |
+| ----------------------- | ----------------------------- |
+| `development`           | `com.lumvyr.zakattracker.dev` |
+| `preview`, `production` | `com.lumvyr.zakattracker`     |
+
+This is local, working-tree config only — nothing has been committed,
+built, or submitted for iOS yet. There is no Apple Developer account
+signing identity, provisioning profile, or iOS Google OAuth client
+registered anywhere. Do not assume an iOS build will succeed until that
+setup is done. `eas.json`'s `preview` profile also picked up an explicit
+`"distribution": "internal"` (previously unset, which for iOS would
+otherwise default toward store/App Store Connect distribution) —
+untested against a real iOS build so far.
 
 ## Keystores (`eas credentials -p android`)
 
@@ -53,10 +75,9 @@ therefore correct, no fix needed there.
 Once the package split took effect, building `development`
 (`com.lumvyr.zakattracker.dev`, a package with no prior keystore) made EAS
 auto-generate a **new, separate keystore in the cloud** for it — confirming
-the "keyed by package name" theory. Its SHA-1 still needs to be fetched
-(`eas credentials -p android`, select a profile using the `.dev` package)
-and registered as a _second_ Android OAuth client
-(package `com.lumvyr.zakattracker.dev`) once known.
+the "keyed by package name" theory. Its SHA-1 (`59:08:...`, see the Summary
+table above) has since been fetched and registered as a second Android
+OAuth client for `com.lumvyr.zakattracker.dev` — done, no longer pending.
 
 If the existing preview app on the test device happens to have been signed
 with a different (older) keystore than `RSRh8UH4-J`, Android will simply
@@ -71,7 +92,7 @@ project ID recorded here — check console.cloud.google.com).
 | Type            | Package / audience             | Fingerprint                                                   | Status                                                                                                                   |
 | --------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Android         | `com.lumvyr.zakattracker`      | `51:84:6B:9B:9B:15:7A:CC:AF:4E:62:41:08:CF:C2:E3:CD:F4:65:1B` | Created 2026-08-27. Confirmed correct — this is `preview`/`production`'s real, permanent signing identity going forward. |
-| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | **Not yet created** — causes `DEVELOPER_ERROR` from Google Sign-In in the dev build until this is added.                 |
+| Android         | `com.lumvyr.zakattracker.dev`  | `59:08:5C:AD:38:82:8B:AF:38:D0:30:F1:CA:AA:57:F7:34:A5:8B:87` | Created. Confirmed working — Google Sign-In no longer throws `DEVELOPER_ERROR` in the dev build.                         |
 | Web application | n/a (not signing-key-specific) | n/a                                                           | Created 2026-08-27. Client ID: `429470441903-jl8bfdj693pvt6aaj3lrmtcjukc19bd2.apps.googleusercontent.com`                |
 
 ## `.env` (local, gitignored)
