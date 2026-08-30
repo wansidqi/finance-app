@@ -2271,6 +2271,144 @@ Backup exists across all phases:
 
 ---
 
+# Phase 14 — Document Vault
+
+## Status: MVP implemented
+
+Built per the MVP spec below, reusing Phase 4's receipt infrastructure
+end-to-end. New `vault_documents` SQLite table (`local/db.ts`) —
+`id, category, name, file_name, mime_type, size_bytes, data BLOB,
+expiry_date, note, created_at, updated_at` — independent of
+`transactions`, since a document isn't evidence for a purchase.
+
+A fixed category taxonomy (IC, Passport, etc.) shipped initially but was
+cut per user feedback before the category picker/filter ever got real
+use — search by name/note replaced it (see MVP section below, already
+updated to match). `category` stays a `NOT NULL` column written as a
+constant (`'document'`) from `local/vault-service.ts` rather than
+migrating it away — same "leave the column, stop using it" approach this
+codebase already takes for deprecated fields (the old `accounts` table,
+`payment_reminders.category/amount`).
+
+`local/vault-service.ts` mirrors `receipt-service.ts`'s shape exactly —
+metadata list reads (`getAllDocuments`) stay separate from a
+`getVaultDocumentData(id)` byte read, so listing never pulls BLOB data.
+`components/document-vault/add-document-modal.tsx` collects
+name/optional-note/optional-expiry-date first (name is required — a
+bare "IC.jpg" isn't identifiable at a glance, unlike a receipt which has
+its transaction's amount/date for context), then Camera/Photo/File
+capture buttons finalize the whole record in one save — unlike receipts,
+a vault document is always exactly one file, so there is no "attach more
+later" step and pickers are single-select rather than multi-select.
+
+`components/document-vault/index.tsx` (`app/(tabs)/document-vault.tsx` —
+a full tab bar entry, not a root Stack screen; also still reachable from
+the Dashboard's Quick Actions grid, matching Transactions' dual-entry
+pattern) lists documents with a search bar (matches name or note,
+case-insensitive) instead of category browsing, an expiry badge
+(red "Expired Xd ago" / teal "Expires in Xd" within a 30-day window /
+no badge otherwise — same red-for-urgent, section-accent-for-soon,
+neutral-otherwise convention Reminders uses for its due-today/overdue
+badges), and reuses the delete flow from `receipts-section.tsx`. Section
+accent is teal — the next unused color in the app's per-section palette
+(Assets/Zakat=emerald, Liability=red, Transactions=sky, Reminders=indigo).
+
+Viewing differs from receipts in one way: images still use the same
+full-screen pinch-zoom viewer, but PDFs render **in-app** via a
+`react-native-webview` `WebView` pointed at the local cached file, rather
+than handing off to the system share sheet — per user request, a PDF
+shouldn't need "downloading" through another app just to look at it.
+Every other file type still falls back to the share sheet, since there's
+no in-app viewer for arbitrary formats. `react-native-webview` is a new
+native dependency, so this only takes effect once the dev client is
+rebuilt — a plain Metro/JS reload can't add native code to an
+already-installed binary. Local Windows rebuilds are currently blocked by
+an unrelated, pre-existing `react-native-keyboard-controller` MAX_PATH
+bug (see the env.md/local-build notes); an EAS cloud build is the
+reliable path once a rebuild is actually wanted.
+
+A root-level screen needs its own explicit `headerShown: false` entry in
+`app/_layout.tsx`'s `<Stack>` or Expo Router renders its default native
+header (showed up as a stray "document-vault" title bar during review);
+screens inside `app/(tabs)/` inherit `headerShown: false` from the
+`(tabs)` group registration for free, which is the other reason this
+lives there instead of at the root.
+
+**Also shipped, beyond the original MVP: folder grouping.** A document
+can carry an optional freeform `folder` tag (`vault_documents.folder`,
+migration v9) — same shape as Assets' `platform` field, grouped
+client-side rather than a separate folders table. Lets one folder hold
+either multiple *scans of the same document* (e.g. "IC" with a front PNG
+and a back PNG) or many *unrelated documents that share a context* (e.g.
+"Project A"). The list (`components/document-vault/index.tsx`) renders a
+section per folder (sorted alphabetically) followed by an "Unfiled"
+section for untagged documents — but only while browsing; an active
+search flattens to matched results regardless of folder, since searching
+means hunting for one specific item, not browsing. The Add modal
+(`add-document-modal.tsx`) surfaces previously-used folder names as
+tap-to-reuse chips, derived from the already-loaded document list rather
+than a separate lookup query.
+
+**Not yet built (Full — Expiry Awareness):** auto-creating a Payment
+Reminder from a document's expiry date, and multiple files uploaded
+together as one record in a single step (currently achieved by adding
+several documents to the same folder one at a time instead).
+
+Non-financial, but kept in this app rather than spun out separately: a
+secure place for the identity/insurance/warranty documents everyone ends
+up hunting for in email attachments and photo galleries. First feature
+outside the core "financial tracking" scope — chosen over other
+superapp-style directions (chat, bookings, marketplace) because it reuses
+existing infrastructure end-to-end rather than adding new plumbing:
+BLOB-in-SQLite storage and the camera/photo/file capture flow both
+already exist from Phase 4's receipts, and Google Drive backup already
+covers it for free the same way it does receipts.
+
+## Goal
+
+Let a user store a document once — MyKad/IC, passport, driving license,
+insurance policy, warranty — and find it later without digging through
+photo galleries or email search, with an optional expiry date so
+time-sensitive documents (IC, passport, insurance) surface before they
+lapse.
+
+## MVP — Document Capture & Storage
+
+- Same three capture paths as receipts: camera photo, photo library,
+  document/PDF picker — reusing `expo-image-picker`/`expo-document-picker`,
+  not new dependencies. A vault document is always exactly one file, so
+  pickers are single-select (unlike receipts' multi-select).
+- A user-given name per document (e.g. "MyKad", "Takaful Policy #4821"),
+  since "IC.jpg" isn't distinguishable at a glance the way a transaction's
+  amount/date makes a receipt identifiable.
+- Optional note field, optional expiry date.
+- Stored the same way receipts are: a BLOB column in a new
+  `vault_documents` SQLite table, independent of `transactions` — a
+  document isn't evidence for a purchase, it's a standalone record.
+- Search by name/note (no category taxonomy — cut before shipping, see
+  Status above), view full-screen (images) or in-app for PDFs, or via the
+  system share sheet (other file types), delete with confirmation.
+- Optional folder grouping (freeform tag, same shape as Assets'
+  `platform` field) — one folder can hold multiple scans of the same
+  document (IC front/back) or many unrelated documents sharing a context
+  ("Project A"). See Status above for how this shipped.
+- A full tab bar entry, plus still reachable from the Dashboard's Quick
+  Actions grid — matching Transactions' dual-entry pattern.
+
+## Full — Expiry Awareness
+
+- Expiring-soon indicator on the document list (color-coded by days
+  remaining), matching the urgency-badge convention Reminders already
+  uses (red = expired/imminent, neutral = comfortable runway).
+- Potential features (not required for a useful first version):
+  - Auto-create a Payment Reminder from a document's expiry date, reusing
+    Phase 2's reminder/notification infrastructure instead of building a
+    second notification path.
+  - Multiple files per document record (e.g. front + back of an IC),
+    mirroring receipts' multi-attachment support.
+
+---
+
 # Initial Scope Recommendation
 
 Do not attempt to build the entire super app immediately.

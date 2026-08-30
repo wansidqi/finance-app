@@ -177,6 +177,21 @@ CREATE TABLE IF NOT EXISTS user_location (
   detected_at TEXT NULL
 );
 
+CREATE TABLE IF NOT EXISTS vault_documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  data BLOB NOT NULL,
+  expiry_date TEXT NULL,
+  note TEXT NULL,
+  folder TEXT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS backup_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   drive_file_id TEXT NULL,
@@ -329,6 +344,13 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
     // CREATE TABLE IF NOT EXISTS never picked it up there.
     version: 8,
     run: (db) => ensureColumn(db, "lhdn_sync_state", "last_unmatched", "last_unmatched TEXT"),
+  },
+  {
+    // `folder` was added to `vault_documents` after the table already
+    // existed on this dev build (Document Vault UI review), so
+    // CREATE TABLE IF NOT EXISTS never picked it up there.
+    version: 9,
+    run: (db) => ensureColumn(db, "vault_documents", "folder", "folder TEXT"),
   },
 ];
 

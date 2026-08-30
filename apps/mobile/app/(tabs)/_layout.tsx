@@ -77,6 +77,19 @@ export default function TabLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="document-vault"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              icon="lock-closed-outline"
+              activeIcon="lock-closed"
+              focused={focused}
+            />
+          ),
+        }}
+      />
+
       {/* Reachable via the Dashboard's Nisab Status "View Details" link and
           the Quick Actions "Zakat" button — hidden here to keep the tab bar
           lean. href: null removes it from the bar without removing the route. */}

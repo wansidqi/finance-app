@@ -274,6 +274,11 @@ export default function DashboardScreen() {
               label="Tax Relief"
               tint="#a78bfa"
             />
+            <QuickActionButton
+              icon="lock-closed-outline"
+              label="Vault"
+              tint="#2dd4bf"
+            />
           </View>
         </View>
       </ScrollView>
@@ -355,6 +360,8 @@ function QuickActionButton({
       router.push("/(tabs)/zakat-tracker");
     } else if (label === "Tax Relief") {
       router.push("/tax-relief");
+    } else if (label === "Vault") {
+      router.push("/(tabs)/document-vault");
     }
   };
 
