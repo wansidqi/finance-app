@@ -90,6 +90,7 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 20 }}
               className="px-6"
+              keyboardShouldPersistTaps="handled"
             >
               {/* Name Input */}
               <View className="mb-4">

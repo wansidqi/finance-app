@@ -68,6 +68,7 @@ export function Liability() {
           className="px-6 flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {!isLoading && data.length > 0 && (
             <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">

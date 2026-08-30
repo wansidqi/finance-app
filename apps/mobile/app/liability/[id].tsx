@@ -64,6 +64,7 @@ export default function LiabilityDetailPage() {
           className="px-6"
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <LiabilityCard {...liability} />
         </ScrollView>

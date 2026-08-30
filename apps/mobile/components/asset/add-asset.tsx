@@ -167,6 +167,7 @@ export function AddAssetModal({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 10 }}
               className="px-6"
+              keyboardShouldPersistTaps="handled"
             >
               {/* Category Selector */}
               <View className="mb-4">

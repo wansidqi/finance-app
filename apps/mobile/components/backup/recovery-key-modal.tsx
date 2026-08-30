@@ -53,7 +53,7 @@ export function RecoveryKeyModal({ visible, onClose }: Props) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text className="text-slate-400 text-[12px] mb-4">
               This key encrypts your backups on this device. It&apos;s never uploaded anywhere.
               Save it somewhere safe — without it, an encrypted backup can&apos;t be restored on

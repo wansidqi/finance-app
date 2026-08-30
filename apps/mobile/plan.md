@@ -2273,86 +2273,142 @@ Backup exists across all phases:
 
 # Phase 14 — Document Vault
 
-## Status: MVP implemented
+## Status: MVP implemented, including in-app PDF preview
 
 Built per the MVP spec below, reusing Phase 4's receipt infrastructure
 end-to-end. New `vault_documents` SQLite table (`local/db.ts`) —
 `id, category, name, file_name, mime_type, size_bytes, data BLOB,
-expiry_date, note, created_at, updated_at` — independent of
+expiry_date, note, folder, created_at, updated_at` — independent of
 `transactions`, since a document isn't evidence for a purchase.
 
 A fixed category taxonomy (IC, Passport, etc.) shipped initially but was
 cut per user feedback before the category picker/filter ever got real
-use — search by name/note replaced it (see MVP section below, already
-updated to match). `category` stays a `NOT NULL` column written as a
-constant (`'document'`) from `local/vault-service.ts` rather than
-migrating it away — same "leave the column, stop using it" approach this
-codebase already takes for deprecated fields (the old `accounts` table,
+use — search by name/note replaced it (see MVP section below). `category`
+stays a `NOT NULL` column written as a constant (`'document'`) from
+`local/vault-service.ts` rather than migrating it away — same "leave the
+column, stop using it" approach this codebase already takes for
+deprecated fields (the old `accounts` table,
 `payment_reminders.category/amount`).
 
 `local/vault-service.ts` mirrors `receipt-service.ts`'s shape exactly —
 metadata list reads (`getAllDocuments`) stay separate from a
 `getVaultDocumentData(id)` byte read, so listing never pulls BLOB data.
-`components/document-vault/add-document-modal.tsx` collects
-name/optional-note/optional-expiry-date first (name is required — a
-bare "IC.jpg" isn't identifiable at a glance, unlike a receipt which has
-its transaction's amount/date for context), then Camera/Photo/File
-capture buttons finalize the whole record in one save — unlike receipts,
-a vault document is always exactly one file, so there is no "attach more
-later" step and pickers are single-select rather than multi-select.
 
 `components/document-vault/index.tsx` (`app/(tabs)/document-vault.tsx` —
 a full tab bar entry, not a root Stack screen; also still reachable from
 the Dashboard's Quick Actions grid, matching Transactions' dual-entry
 pattern) lists documents with a search bar (matches name or note,
-case-insensitive) instead of category browsing, an expiry badge
+case-insensitive) instead of category browsing, and an expiry badge
 (red "Expired Xd ago" / teal "Expires in Xd" within a 30-day window /
 no badge otherwise — same red-for-urgent, section-accent-for-soon,
 neutral-otherwise convention Reminders uses for its due-today/overdue
-badges), and reuses the delete flow from `receipts-section.tsx`. Section
-accent is teal — the next unused color in the app's per-section palette
-(Assets/Zakat=emerald, Liability=red, Transactions=sky, Reminders=indigo).
+badges). Section accent is teal — the next unused color in the app's
+per-section palette (Assets/Zakat=emerald, Liability=red,
+Transactions=sky, Reminders=indigo). A root-level screen needs its own
+explicit `headerShown: false` entry in `app/_layout.tsx`'s `<Stack>` or
+Expo Router renders its default native header (showed up as a stray
+"document-vault" title bar during review); screens inside `app/(tabs)/`
+inherit `headerShown: false` from the `(tabs)` group registration for
+free, which is the other reason this lives there instead of at the root.
 
-Viewing differs from receipts in one way: images still use the same
-full-screen pinch-zoom viewer, but PDFs render **in-app** via a
-`react-native-webview` `WebView` pointed at the local cached file, rather
-than handing off to the system share sheet — per user request, a PDF
-shouldn't need "downloading" through another app just to look at it.
-Every other file type still falls back to the share sheet, since there's
-no in-app viewer for arbitrary formats. `react-native-webview` is a new
-native dependency, so this only takes effect once the dev client is
-rebuilt — a plain Metro/JS reload can't add native code to an
-already-installed binary. Local Windows rebuilds are currently blocked by
-an unrelated, pre-existing `react-native-keyboard-controller` MAX_PATH
-bug (see the env.md/local-build notes); an EAS cloud build is the
-reliable path once a rebuild is actually wanted.
+**In-app PDF preview: three approaches failed on real Android platform
+limitations before the fourth (a dedicated native renderer) worked:**
 
-A root-level screen needs its own explicit `headerShown: false` entry in
-`app/_layout.tsx`'s `<Stack>` or Expo Router renders its default native
-header (showed up as a stray "document-vault" title bar during review);
-screens inside `app/(tabs)/` inherit `headerShown: false` from the
-`(tabs)` group registration for free, which is the other reason this
-lives there instead of at the root.
+1. `react-native-webview` `WebView` pointed at the local cached `file://`
+   path — Android's embedded `android.webkit.WebView` has no built-in PDF
+   plugin at all (unlike desktop Chrome or iOS's WKWebView), and separately
+   refuses `file://` reads from the app's own private cache dir
+   (`net::ERR_ACCESS_DENIED`) even with `allowFileAccess`/
+   `allowFileAccessFromFileURLs`/`allowUniversalAccessFromFileURLs` all set.
+2. A base64 `data:application/pdf;base64,...` URI, to sidestep the
+   file-access block — silently rejected (no `onError`/`onHttpError` even
+   fires), consistent with `WebView.loadUrl()`'s practical size ceiling for
+   a multi-megabyte URL string.
+3. `expo-web-browser`'s `openBrowserAsync()` with a `content://` URI (via
+   `expo-file-system/legacy`'s `getContentUriAsync`), hoping Chrome Custom
+   Tabs' full browser engine would render it — Android didn't route it to
+   Custom Tabs at all (Custom Tabs only apply to http/https), instead
+   resolving the `content://` VIEW intent to Google Drive's PDF viewer app;
+   that app opened but showed a blank page, since `openBrowserAsync` never
+   grants the receiving app `FLAG_GRANT_READ_URI_PERMISSION` on the
+   FileProvider-backed URI.
 
-**Also shipped, beyond the original MVP: folder grouping.** A document
-can carry an optional freeform `folder` tag (`vault_documents.folder`,
-migration v9) — same shape as Assets' `platform` field, grouped
-client-side rather than a separate folders table. Lets one folder hold
-either multiple *scans of the same document* (e.g. "IC" with a front PNG
-and a back PNG) or many *unrelated documents that share a context* (e.g.
-"Project A"). The list (`components/document-vault/index.tsx`) renders a
-section per folder (sorted alphabetically) followed by an "Unfiled"
-section for untagged documents — but only while browsing; an active
-search flattens to matched results regardless of folder, since searching
-means hunting for one specific item, not browsing. The Add modal
-(`add-document-modal.tsx`) surfaces previously-used folder names as
-tap-to-reuse chips, derived from the already-loaded document list rather
-than a separate lookup query.
+`react-native-webview` was removed after all three failed (PDFs
+temporarily fell back to the share sheet, same as receipts), and
+**`react-native-pdf`** (plus its required peer dependency
+`react-native-blob-util`) was added instead — a dedicated native PDF
+renderer, not reliant on WebView's missing plugin or Android's
+intent/permission system at all. It worked on the first real attempt.
+Both `react-native-pdf`/`react-native-blob-util` are new native
+dependencies, so this needed a fresh dev-client rebuild — see the
+"Local Android builds" note below for how that rebuild was actually
+made to succeed on this Windows machine.
 
-**Not yet built (Full — Expiry Awareness):** auto-creating a Payment
-Reminder from a document's expiry date, and multiple files uploaded
-together as one record in a single step (currently achieved by adding
-several documents to the same folder one at a time instead).
+Preview is now a shared `components/document-vault/preview-modal.tsx`
+(`DocumentPreviewModal`) used in two places: images use the existing
+zoomable full-screen viewer; PDFs render via `react-native-pdf` inside a
+`pt-24`-padded container (without it, the PDF content renders under the
+phone's status bar). Every other file type still has no in-app viewer
+and falls back to `Sharing.shareAsync()`.
+
+**Also shipped, beyond the original MVP:**
+
+- **Folder grouping.** A document can carry an optional freeform `folder`
+  tag (`vault_documents.folder`, migration v9) — same shape as Assets'
+  `platform` field, grouped client-side rather than a separate folders
+  table. Lets one folder hold either multiple *scans of the same
+  document* (e.g. "IC" with a front PNG and a back PNG) or many
+  *unrelated documents that share a context* (e.g. "Project A"). The list
+  renders a section per folder (sorted alphabetically) followed by an
+  "Unfiled" section for untagged documents — but only while browsing; an
+  active search flattens to matched results regardless of folder. The Add
+  modal surfaces previously-used folder names as tap-to-reuse chips,
+  derived from the already-loaded document list rather than a separate
+  lookup query.
+- **Review-before-save, instead of save-on-capture.** Originally, tapping
+  Camera/Photo/File immediately wrote the document — per user feedback,
+  picking a file now only stages it (`pickedAsset` state in
+  `add-document-modal.tsx`); nothing is written to the vault until an
+  explicit "Save Document" button is tapped. While staged, a "Selected
+  File" card shows the filename with its own Preview/Download actions (via
+  the same `DocumentPreviewModal`/`Sharing.shareAsync`) and an × to clear
+  it and pick again — Name/Folder/Note/Expiry stay editable throughout.
+- **Explicit Preview/Download/Delete on saved documents,** replacing the
+  original tap-to-open-or-share row. Preview opens the in-app viewer for
+  images/PDFs (or an alert pointing at Download for anything else);
+  Download always goes through the share sheet regardless of file type,
+  so there's a reliable "get a copy out" path independent of whether
+  in-app preview exists for that type.
+- **`keyboardShouldPersistTaps="handled"` app-wide.** Found here first:
+  tapping Camera/Photo/File while the Name field's keyboard was open only
+  dismissed the keyboard on the first tap and did nothing else —
+  `ScrollView`'s default `keyboardShouldPersistTaps="never"` treats a tap
+  on any child as "dismiss the keyboard" rather than passing it to the
+  child's `onPress` when a sibling text input has focus. Fixed here, then
+  audited and fixed across every other `ScrollView` in the app that
+  actually mixes a text input with tappable buttons (Asset/Liability
+  detail screens, Add Asset/Liability/Reminder/Transaction modals, the
+  Liability list's inline "Make Payment" field, Backup & Restore's
+  retention fields, and the Recovery Key modal's import field) — screens
+  with no text input, or where the text input lives in a plain `<View>`
+  popup rather than a `ScrollView`, aren't subject to this bug and were
+  left alone.
+
+**Local Android builds on this machine were blocked by a Windows
+`MAX_PATH` (260-character) limit** in the New Architecture's C++ codegen
+build — `react-native-keyboard-controller` has deeply nested source
+paths that, combined with this project's own path length, produced
+object-file paths past the limit, and `ninja` (bundled with the Android
+SDK's `cmake;3.22.1`) hard-fails rather than tolerating it. Fixed by
+creating an NTFS junction (`mklink /J C:\mobile <repo>\apps\mobile`) and
+running Gradle from the short `C:\mobile` path instead of the real one —
+files are identical either way, this just gives Gradle/CMake a shorter
+path to generate from. An earlier attempt using `subst` (a virtual drive
+letter) failed differently: Java-based tools silently resolve `subst`
+drives back to their real path, desyncing Gradle's own path handling. A
+junction is a real filesystem construct, not a virtual mapping, so every
+tool sees the same path consistently. This is now the standing recipe
+for any future local native rebuild on this machine.
 
 Non-financial, but kept in this app rather than spun out separately: a
 secure place for the identity/insurance/warranty documents everyone ends
@@ -2375,23 +2431,25 @@ lapse.
 ## MVP — Document Capture & Storage
 
 - Same three capture paths as receipts: camera photo, photo library,
-  document/PDF picker — reusing `expo-image-picker`/`expo-document-picker`,
-  not new dependencies. A vault document is always exactly one file, so
-  pickers are single-select (unlike receipts' multi-select).
+  document/PDF picker — reusing `expo-image-picker`/`expo-document-picker`.
+  A vault document is always exactly one file, so pickers are single-select
+  (unlike receipts' multi-select). Picking a file only stages it for
+  review — nothing saves until an explicit Save button is tapped (see
+  Status above).
 - A user-given name per document (e.g. "MyKad", "Takaful Policy #4821"),
   since "IC.jpg" isn't distinguishable at a glance the way a transaction's
   amount/date makes a receipt identifiable.
-- Optional note field, optional expiry date.
+- Optional note field, optional expiry date, optional folder grouping
+  (freeform tag — one folder can hold multiple scans of the same document
+  or many unrelated documents sharing a context; see Status above).
 - Stored the same way receipts are: a BLOB column in a new
   `vault_documents` SQLite table, independent of `transactions` — a
   document isn't evidence for a purchase, it's a standalone record.
 - Search by name/note (no category taxonomy — cut before shipping, see
-  Status above), view full-screen (images) or in-app for PDFs, or via the
-  system share sheet (other file types), delete with confirmation.
-- Optional folder grouping (freeform tag, same shape as Assets'
-  `platform` field) — one folder can hold multiple scans of the same
-  document (IC front/back) or many unrelated documents sharing a context
-  ("Project A"). See Status above for how this shipped.
+  Status above).
+- Explicit Preview (in-app for images and PDFs via `react-native-pdf`;
+  an alert pointing at Download for other types) and Download (always
+  via the share sheet) actions, plus delete with confirmation.
 - A full tab bar entry, plus still reachable from the Dashboard's Quick
   Actions grid — matching Transactions' dual-entry pattern.
 
@@ -2399,13 +2457,16 @@ lapse.
 
 - Expiring-soon indicator on the document list (color-coded by days
   remaining), matching the urgency-badge convention Reminders already
-  uses (red = expired/imminent, neutral = comfortable runway).
-- Potential features (not required for a useful first version):
+  uses (red = expired/imminent, neutral = comfortable runway). **Shipped**
+  — see Status above.
+- Potential features (not required for a useful first version, not yet
+  built):
   - Auto-create a Payment Reminder from a document's expiry date, reusing
     Phase 2's reminder/notification infrastructure instead of building a
     second notification path.
-  - Multiple files per document record (e.g. front + back of an IC),
-    mirroring receipts' multi-attachment support.
+  - Multiple files per document record (e.g. front + back of an IC) saved
+    together in one step, rather than as separate documents sharing a
+    folder (today's workaround).
 
 ---
 

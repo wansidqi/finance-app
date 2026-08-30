@@ -144,6 +144,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 20 }}
               className="px-6"
+              keyboardShouldPersistTaps="handled"
             >
               <View className="mb-4">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">

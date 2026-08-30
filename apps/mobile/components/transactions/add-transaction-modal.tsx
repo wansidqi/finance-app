@@ -151,6 +151,7 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 20 }}
               className="px-6"
+              keyboardShouldPersistTaps="handled"
             >
               {isEditing ? (
                 <ReceiptsSection transactionId={transaction.id} hideUploadButtons />

@@ -124,6 +124,7 @@ export function Backup() {
         className="px-6 flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Google Drive connection */}
         <View className="bg-white/[0.035] border border-white/10 rounded-2xl p-4 mb-4">

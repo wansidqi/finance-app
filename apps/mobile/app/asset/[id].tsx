@@ -65,6 +65,7 @@ export default function AssetDetailPage() {
           className="px-6"
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <AssetCard {...asset} />
         </ScrollView>

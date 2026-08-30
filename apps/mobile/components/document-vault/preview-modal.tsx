@@ -1,0 +1,42 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { Modal, ScrollView, TouchableOpacity, View } from "react-native";
+import Pdf from "react-native-pdf";
+
+type Props = {
+  visible: boolean;
+  uri: string | null;
+  mimeType: string | null;
+  onClose: () => void;
+};
+
+/** Full-screen preview for a local file — images get a zoomable viewer, PDFs render in-app via react-native-pdf. Shared between the pre-save review step (add-document-modal.tsx) and already-saved documents (index.tsx). */
+export function DocumentPreviewModal({ visible, uri, mimeType, onClose }: Props) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/95">
+        <TouchableOpacity
+          onPress={onClose}
+          className="absolute top-14 right-6 z-10 p-2.5 rounded-full bg-white/10"
+        >
+          <Ionicons name="close" size={22} color="white" />
+        </TouchableOpacity>
+        {mimeType === "application/pdf" ? (
+          <View className="flex-1 pt-24">
+            <Pdf source={{ uri: uri ?? "" }} style={{ flex: 1, backgroundColor: "transparent" }} />
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+          >
+            {uri && <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="contain" />}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
+  );
+}

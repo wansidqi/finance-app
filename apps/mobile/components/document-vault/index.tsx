@@ -3,16 +3,19 @@ import { VaultDocumentInterface } from "@/interface/document-vault";
 import { useDeleteVaultDocument, useGetVaultDocuments, getVaultDocumentData } from "@/services/vault";
 import { Ionicons } from "@expo/vector-icons";
 import { Directory, File, Paths } from "expo-file-system";
-import { Image } from "expo-image";
 import * as Sharing from "expo-sharing";
 import { useMemo, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { WebView } from "react-native-webview";
+import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AddDocumentModal } from "./add-document-modal";
+import { DocumentPreviewModal } from "./preview-modal";
 
-// Scratch space for a document's bytes while it's open for viewing/sharing —
-// overwritten on every open, never relied on to persist.
+// Scratch space for a document's bytes while it's open for previewing/
+// downloading — overwritten on every open, never relied on to persist.
 const VIEW_DIR = new Directory(Paths.cache, "vault-document-view");
+
+const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf"]);
+const isPreviewable = (mimeType: string) =>
+  mimeType.startsWith("image/") || PREVIEWABLE_MIME_TYPES.has(mimeType);
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -61,7 +64,7 @@ export function DocumentVault() {
   const [modalVisible, setModalVisible] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewing, setViewing] = useState<{ uri: string; mimeType: string } | null>(null);
-  const [isOpeningId, setIsOpeningId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -78,26 +81,49 @@ export function DocumentVault() {
     [filtered, query],
   );
 
-  const handleOpen = async (doc: VaultDocumentInterface) => {
-    setIsOpeningId(doc.id);
+  const writeToScratchFile = async (doc: VaultDocumentInterface) => {
+    const full = await getVaultDocumentData(doc.id);
+    if (!full) return null;
+
+    if (!VIEW_DIR.exists) VIEW_DIR.create({ intermediates: true, idempotent: true });
+    const file = new File(VIEW_DIR, full.file_name);
+    if (file.exists) file.delete();
+    file.write(full.data);
+    return { file, mimeType: full.mime_type };
+  };
+
+  const handlePreview = async (doc: VaultDocumentInterface) => {
+    setBusyId(doc.id);
     try {
-      const full = await getVaultDocumentData(doc.id);
-      if (!full) return;
+      const written = await writeToScratchFile(doc);
+      if (!written) return;
 
-      if (!VIEW_DIR.exists) VIEW_DIR.create({ intermediates: true, idempotent: true });
-      const file = new File(VIEW_DIR, full.file_name);
-      if (file.exists) file.delete();
-      file.write(full.data);
-
-      if (full.mime_type.startsWith("image/") || full.mime_type === "application/pdf") {
-        setViewing({ uri: file.uri, mimeType: full.mime_type });
-      } else if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(file.uri, { mimeType: full.mime_type });
+      if (isPreviewable(written.mimeType)) {
+        setViewing({ uri: written.file.uri, mimeType: written.mimeType });
       } else {
-        Alert.alert("Can't open file", "No app is available on this device to open this file type.");
+        Alert.alert(
+          "No in-app preview",
+          "This file type can't be previewed in the app — use Download instead.",
+        );
       }
     } finally {
-      setIsOpeningId(null);
+      setBusyId(null);
+    }
+  };
+
+  const handleDownload = async (doc: VaultDocumentInterface) => {
+    setBusyId(doc.id);
+    try {
+      const written = await writeToScratchFile(doc);
+      if (!written) return;
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(written.file.uri, { mimeType: written.mimeType });
+      } else {
+        Alert.alert("Can't save file", "No app is available on this device to save this file.");
+      }
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -149,6 +175,7 @@ export function DocumentVault() {
         className="px-6 flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {!isLoading && filtered.length > 0 ? (
           <View className="gap-5">
@@ -167,8 +194,9 @@ export function DocumentVault() {
                   <DocumentListItem
                     key={doc.id}
                     doc={doc}
-                    isOpening={isOpeningId === doc.id}
-                    onOpen={() => handleOpen(doc)}
+                    isBusy={busyId === doc.id}
+                    onPreview={() => handlePreview(doc)}
+                    onDownload={() => handleDownload(doc)}
                     onDelete={() => setDeletingId(doc.id)}
                   />
                 ))}
@@ -186,8 +214,9 @@ export function DocumentVault() {
                   <DocumentListItem
                     key={doc.id}
                     doc={doc}
-                    isOpening={isOpeningId === doc.id}
-                    onOpen={() => handleOpen(doc)}
+                    isBusy={busyId === doc.id}
+                    onPreview={() => handlePreview(doc)}
+                    onDownload={() => handleDownload(doc)}
                     onDelete={() => setDeletingId(doc.id)}
                   />
                 ))}
@@ -220,46 +249,27 @@ export function DocumentVault() {
         isLoading={isDeleting}
       />
 
-      <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
-        <View className="flex-1 bg-black/95">
-          <TouchableOpacity
-            onPress={() => setViewing(null)}
-            className="absolute top-14 right-6 z-10 p-2.5 rounded-full bg-white/10"
-          >
-            <Ionicons name="close" size={22} color="white" />
-          </TouchableOpacity>
-          {viewing?.mimeType === "application/pdf" ? (
-            <View className="flex-1 pt-24">
-              <WebView source={{ uri: viewing.uri }} style={{ flex: 1, backgroundColor: "transparent" }} />
-            </View>
-          ) : (
-            <ScrollView
-              className="flex-1"
-              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}
-              maximumZoomScale={4}
-              minimumZoomScale={1}
-              centerContent
-            >
-              {viewing && (
-                <Image source={{ uri: viewing.uri }} style={{ width: "100%", height: "100%" }} contentFit="contain" />
-              )}
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
+      <DocumentPreviewModal
+        visible={!!viewing}
+        uri={viewing?.uri ?? null}
+        mimeType={viewing?.mimeType ?? null}
+        onClose={() => setViewing(null)}
+      />
     </View>
   );
 }
 
 function DocumentListItem({
   doc,
-  isOpening,
-  onOpen,
+  isBusy,
+  onPreview,
+  onDownload,
   onDelete,
 }: {
   doc: VaultDocumentInterface;
-  isOpening: boolean;
-  onOpen: () => void;
+  isBusy: boolean;
+  onPreview: () => void;
+  onDownload: () => void;
   onDelete: () => void;
 }) {
   const expiryDays = doc.expiry_date ? daysUntil(doc.expiry_date) : null;
@@ -282,8 +292,8 @@ function DocumentListItem({
   return (
     <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
       <TouchableOpacity
-        onPress={onOpen}
-        disabled={isOpening}
+        onPress={onPreview}
+        disabled={isBusy}
         className="flex-row items-center justify-between active:opacity-70"
       >
         <View className="flex-1 flex-row items-center gap-3">
@@ -322,8 +332,28 @@ function DocumentListItem({
         </View>
       </TouchableOpacity>
 
-      <View className="mt-3 pt-3 border-t border-white/10 flex-row justify-end">
-        <TouchableOpacity onPress={onDelete} className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 items-center justify-center">
+      <View className="mt-3 pt-3 border-t border-white/10 flex-row gap-2">
+        <TouchableOpacity
+          onPress={onPreview}
+          disabled={isBusy}
+          className="flex-1 bg-teal-500/15 border border-teal-500/40 rounded-lg py-2.5 flex-row items-center justify-center gap-1.5"
+        >
+          <Ionicons name="eye-outline" size={15} color="#2dd4bf" />
+          <Text className="text-center font-semibold text-teal-400 text-[12px]">Preview</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onDownload}
+          disabled={isBusy}
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg py-2.5 flex-row items-center justify-center gap-1.5"
+        >
+          <Ionicons name="download-outline" size={15} color="#cbd5e1" />
+          <Text className="text-center font-semibold text-slate-200 text-[12px]">Download</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onDelete}
+          disabled={isBusy}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 items-center justify-center"
+        >
           <Ionicons name="trash-outline" size={16} color="#f87171" />
         </TouchableOpacity>
       </View>
