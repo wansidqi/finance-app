@@ -14,27 +14,34 @@ import { REMINDER_RECURRENCE_LABELS } from "./reminder-options";
 // No "completed" tab — recurring reminders roll to their next cycle on
 // their own (see local/reminder-service.ts's advanceOverdueRecurringReminders),
 // and a one-time reminder is considered done simply by deleting it.
-type Tab = "upcoming" | "due_today" | "overdue";
+//
+// No separate "overdue" tab either — a recurring reminder is rolled forward
+// before it's ever read (so it never actually renders as overdue), and a
+// one-time reminder past its date is just as urgent as one due today, so
+// both land in "Due Today" (the card's own badge still says "Xd overdue").
+type Tab = "upcoming" | "due_today";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
   { key: "due_today", label: "Due Today" },
-  { key: "overdue", label: "Overdue" },
 ];
 
 function groupReminders(reminders: ReminderInterface[]) {
-  const overdue: ReminderInterface[] = [];
   const dueToday: ReminderInterface[] = [];
   const upcoming: ReminderInterface[] = [];
 
   for (const r of reminders) {
-    if (r.status !== "ACTIVE") upcoming.push(r);
-    else if (r.is_overdue) overdue.push(r);
-    else if (r.is_due_today) dueToday.push(r);
+    if (r.status === "ACTIVE" && (r.is_overdue || r.is_due_today)) dueToday.push(r);
     else upcoming.push(r);
   }
 
-  return { overdue, dueToday, upcoming };
+  // Nearest to today leads in both tabs: soonest due date first for what's
+  // still ahead, and least-overdue (most recent due date) first for what's
+  // already passed — furthest away sinks to the bottom either way.
+  dueToday.sort((a, b) => new Date(b.next_due_date).getTime() - new Date(a.next_due_date).getTime());
+  upcoming.sort((a, b) => new Date(a.next_due_date).getTime() - new Date(b.next_due_date).getTime());
+
+  return { dueToday, upcoming };
 }
 
 export function Reminders() {
@@ -52,16 +59,14 @@ export function Reminders() {
   const counts: Record<Tab, number> = {
     upcoming: groups.upcoming.length,
     due_today: groups.dueToday.length,
-    overdue: groups.overdue.length,
   };
 
   const listForTab: Record<Tab, ReminderInterface[]> = {
     upcoming: groups.upcoming,
     due_today: groups.dueToday,
-    overdue: groups.overdue,
   };
 
-  const activeCount = groups.overdue.length + groups.dueToday.length + groups.upcoming.length;
+  const activeCount = groups.dueToday.length + groups.upcoming.length;
 
   const openEdit = (reminder: ReminderInterface) => {
     setEditingReminder(reminder);
