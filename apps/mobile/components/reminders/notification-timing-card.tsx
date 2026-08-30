@@ -5,6 +5,7 @@ import {
 } from "@/services/reminder";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { DaysBeforeDueField, withDueDayIncluded } from "./days-before-due-picker";
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
@@ -29,7 +30,7 @@ export function NotificationTimingCard() {
 
   const [draft, setDraft] = useState<{
     mode: ReminderNotificationMode;
-    offsetsText: string;
+    offsets: number[];
     hourText: string;
     minuteText: string;
   } | null>(null);
@@ -39,7 +40,7 @@ export function NotificationTimingCard() {
     if (!settings) return;
     setDraft({
       mode: settings.mode,
-      offsetsText: settings.offsets_days.join(", "),
+      offsets: withDueDayIncluded(settings.offsets_days),
       hourText: String(settings.hour),
       minuteText: pad(settings.minute),
     });
@@ -55,18 +56,9 @@ export function NotificationTimingCard() {
       return;
     }
 
-    const offsets = draft.offsetsText
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0)
-      .map(Number);
     const hour = Number(draft.hourText);
     const minute = Number(draft.minuteText);
 
-    if (offsets.length === 0 || offsets.some((n) => Number.isNaN(n) || n < 0)) {
-      setError("Enter one or more non-negative day counts, separated by commas");
-      return;
-    }
     if (Number.isNaN(hour) || hour < 0 || hour > 23) {
       setError("Hour must be between 0 and 23");
       return;
@@ -76,25 +68,25 @@ export function NotificationTimingCard() {
       return;
     }
 
-    await save({ mode: "custom", offsetsDays: offsets, hour, minute });
+    await save({ mode: "custom", offsetsDays: draft.offsets, hour, minute });
     setDraft(null);
   };
 
   if (!settings) return null;
 
   return (
-    <View className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5">
-      <View className="flex-row items-center justify-between mb-1">
-        <Text className="text-[12px] font-bold text-slate-200">Notification Timing</Text>
+    <View className="mb-4 rounded-3xl bg-linear-to-br from-indigo-500/25 via-indigo-600/10 to-transparent border border-indigo-500/20 px-6 pt-6 pb-5 overflow-hidden">
+      <View className="flex-row items-center justify-between mb-2">
+        <Text className="text-[15px] font-bold text-white">Notification Timing</Text>
         {!draft && (
           <TouchableOpacity onPress={startEditing}>
-            <Text className="text-amber-400 text-[12px] font-semibold">Edit</Text>
+            <Text className="text-indigo-400 text-[13px] font-semibold">Edit</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {!draft ? (
-        <Text className="text-[11px] text-slate-400">
+        <Text className="text-[13px] text-slate-300 leading-5">
           {settings.mode === "default" ? "Default — " : "Custom — "}
           {describeOffsets(settings.offsets_days)} at {formatTime(settings.hour, settings.minute)}
         </Text>
@@ -107,13 +99,13 @@ export function NotificationTimingCard() {
                 onPress={() => setDraft({ ...draft, mode })}
                 className={`flex-1 rounded-lg py-2 items-center border-2 ${
                   draft.mode === mode
-                    ? "border-amber-500 bg-amber-500/10"
+                    ? "border-indigo-500 bg-indigo-500/10"
                     : "border-slate-600 bg-slate-700/30"
                 }`}
               >
                 <Text
                   className={`text-[11px] font-bold ${
-                    draft.mode === mode ? "text-amber-400" : "text-slate-300"
+                    draft.mode === mode ? "text-indigo-400" : "text-slate-300"
                   }`}
                 >
                   {mode === "default" ? "Default (7/3/1/0 @ 9:00 AM)" : "Custom"}
@@ -124,17 +116,15 @@ export function NotificationTimingCard() {
 
           {draft.mode === "custom" && (
             <>
-              <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
-                Days before due (comma-separated, 0 = due day)
+              <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
+                Notify this many days before due
               </Text>
-              <TextInput
-                value={draft.offsetsText}
-                onChangeText={(v) => setDraft({ ...draft, offsetsText: v })}
-                placeholder="7, 3, 1, 0"
-                placeholderTextColor="#64748b"
-                keyboardType="numbers-and-punctuation"
-                className="rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] mb-3"
-              />
+              <View className="mb-3">
+                <DaysBeforeDueField
+                  value={draft.offsets}
+                  onChange={(offsets) => setDraft({ ...draft, offsets })}
+                />
+              </View>
 
               <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
                 Time (24-hour, seconds always :00)
@@ -176,7 +166,7 @@ export function NotificationTimingCard() {
             <TouchableOpacity
               onPress={handleSave}
               disabled={isPending}
-              className="flex-1 bg-amber-500 rounded-lg py-2.5"
+              className="flex-1 bg-indigo-500 rounded-lg py-2.5"
             >
               <Text className="text-center text-white font-semibold text-[12px]">
                 {isPending ? "Saving..." : "Save"}

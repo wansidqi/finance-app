@@ -125,7 +125,7 @@ export function Reminders() {
         </View>
         <TouchableOpacity
           onPress={openAdd}
-          className="rounded-full bg-amber-500 px-5 py-3 active:opacity-80"
+          className="rounded-full bg-indigo-500 px-5 py-3 active:opacity-80"
         >
           <View className="flex-row items-center gap-1">
             <Ionicons name="add" size={20} color="white" />
@@ -136,34 +136,38 @@ export function Reminders() {
 
       <View className="px-6">
         {!isLoading && activeCount > 0 && (
-          <View className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-4 py-3.5">
-            <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              {activeCount} active {activeCount === 1 ? "reminder" : "reminders"}
-            </Text>
-          </View>
+          <Text className="mb-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            {activeCount} active {activeCount === 1 ? "reminder" : "reminders"}
+          </Text>
         )}
 
         <NotificationTimingCard />
-
-        <View className="flex-row gap-2 mb-4">
-          {TABS.map((t) => (
-            <TouchableOpacity
-              key={t.key}
-              onPress={() => setTab(t.key)}
-              className={`flex-1 rounded-lg py-2 items-center ${
-                tab === t.key ? "bg-amber-500/15 border border-amber-500/40" : "bg-white/[0.035] border border-white/10"
-              }`}
-            >
-              <Text
-                className={`text-[10px] font-bold ${tab === t.key ? "text-amber-400" : "text-slate-400"}`}
-              >
-                {t.label}
-                {counts[t.key] > 0 ? ` (${counts[t.key]})` : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ height: 44 }}
+        className="mb-4 flex-none"
+        contentContainerStyle={{ paddingHorizontal: 24, gap: 8, alignItems: "center" }}
+      >
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            onPress={() => setTab(t.key)}
+            className={`rounded-lg px-4 py-2 items-center ${
+              tab === t.key ? "bg-white/10 border border-white/20" : "bg-white/[0.035] border border-white/10"
+            }`}
+          >
+            <Text
+              className={`text-[12px] font-bold ${tab === t.key ? "text-white" : "text-slate-400"}`}
+            >
+              {t.label}
+              {counts[t.key] > 0 ? ` (${counts[t.key]})` : ""}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <ScrollView
         className="px-6 flex-1"
@@ -257,7 +261,7 @@ function ReminderListItem({
       : isOverdue
         ? "bg-red-500/20"
         : isDueToday
-          ? "bg-amber-500/20"
+          ? "bg-indigo-500/20"
           : "bg-white/10";
   const badgeText =
     isCompleted || isPaused
@@ -265,7 +269,7 @@ function ReminderListItem({
       : isOverdue
         ? "text-red-300"
         : isDueToday
-          ? "text-amber-300"
+          ? "text-indigo-300"
           : "text-slate-300";
 
   return (
@@ -298,10 +302,10 @@ function ReminderListItem({
         <View className="mt-3 pt-3 border-t border-white/10 flex-row gap-2">
           <TouchableOpacity
             onPress={onMarkPaid}
-            className="flex-1 bg-amber-500 rounded-lg py-2.5 flex-row items-center justify-center gap-1"
+            className="flex-1 bg-indigo-500/15 border border-indigo-500/40 rounded-lg py-2.5 flex-row items-center justify-center gap-1"
           >
-            <Ionicons name="checkmark-circle-outline" size={15} color="white" />
-            <Text className="text-center font-semibold text-white text-[12px]">Mark Done</Text>
+            <Ionicons name="checkmark-circle-outline" size={15} color="#818cf8" />
+            <Text className="text-center font-semibold text-indigo-400 text-[12px]">Mark Done</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onTogglePause}

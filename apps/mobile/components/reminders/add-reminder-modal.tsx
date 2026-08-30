@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DaysBeforeDueField, withDueDayIncluded } from "./days-before-due-picker";
 import { REMINDER_RECURRENCES, REMINDER_RECURRENCE_LABELS } from "./reminder-options";
 
 // Matches the floating tab bar height in app/(tabs)/_layout.tsx, so the
@@ -39,7 +40,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
   const [dueDate, setDueDate] = useState<Date | null>(null);
 
   const [timingMode, setTimingMode] = useState<ReminderTimingMode>("global");
-  const [offsetsText, setOffsetsText] = useState(DEFAULT_REMINDER_OFFSETS_DAYS.join(", "));
+  const [offsets, setOffsets] = useState<number[]>(DEFAULT_REMINDER_OFFSETS_DAYS);
   const [hourText, setHourText] = useState(String(DEFAULT_REMINDER_HOUR));
   const [minuteText, setMinuteText] = useState(pad(DEFAULT_REMINDER_MINUTE));
   const [timingError, setTimingError] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     setIntervalDays(reminder?.recurrence_interval_days?.toString() ?? "30");
 
     setTimingMode(reminder?.notification_mode ?? "global");
-    setOffsetsText((reminder?.notification_offsets_days ?? DEFAULT_REMINDER_OFFSETS_DAYS).join(", "));
+    setOffsets(withDueDayIncluded(reminder?.notification_offsets_days ?? DEFAULT_REMINDER_OFFSETS_DAYS));
     setHourText(String(reminder?.notification_hour ?? DEFAULT_REMINDER_HOUR));
     setMinuteText(pad(reminder?.notification_minute ?? DEFAULT_REMINDER_MINUTE));
     setTimingError(null);
@@ -74,20 +75,10 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     const isoDate = dueDate ? calendarDateToIso(dueDate) : null;
     if (!name.trim() || !isoDate) return;
 
-    let offsets: number[] = [];
     if (timingMode === "custom") {
-      offsets = offsetsText
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-        .map(Number);
       const hour = Number(hourText);
       const minute = Number(minuteText);
 
-      if (offsets.length === 0 || offsets.some((n) => Number.isNaN(n) || n < 0)) {
-        setTimingError("Enter one or more non-negative day counts, separated by commas");
-        return;
-      }
       if (Number.isNaN(hour) || hour < 0 || hour > 23) {
         setTimingError("Hour must be between 0 and 23");
         return;
@@ -192,13 +183,13 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                       onPress={() => setRecurrence(r)}
                       className={`rounded-lg px-3 py-2 border-2 ${
                         recurrence === r
-                          ? "border-amber-500 bg-amber-500/10"
+                          ? "border-indigo-500 bg-indigo-500/10"
                           : "border-slate-600 bg-slate-700/30"
                       }`}
                     >
                       <Text
                         className={`font-bold text-[12px] ${
-                          recurrence === r ? "text-amber-400" : "text-slate-300"
+                          recurrence === r ? "text-indigo-400" : "text-slate-300"
                         }`}
                       >
                         {REMINDER_RECURRENCE_LABELS[r]}
@@ -228,7 +219,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   {isEditing ? "Next Due Date" : "Due Date"}
                 </Text>
-                <DateField value={dueDate} onChange={setDueDate} accentColor="#f59e0b" />
+                <DateField value={dueDate} onChange={setDueDate} accentColor="#6366f1" />
               </View>
 
               <View className="mb-6">
@@ -242,13 +233,13 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                       onPress={() => setTimingMode(mode)}
                       className={`flex-1 rounded-lg py-2 items-center border-2 ${
                         timingMode === mode
-                          ? "border-amber-500 bg-amber-500/10"
+                          ? "border-indigo-500 bg-indigo-500/10"
                           : "border-slate-600 bg-slate-700/30"
                       }`}
                     >
                       <Text
                         className={`text-[11px] font-bold ${
-                          timingMode === mode ? "text-amber-400" : "text-slate-300"
+                          timingMode === mode ? "text-indigo-400" : "text-slate-300"
                         }`}
                       >
                         {mode === "global" ? "Use Global Setting" : "Customize"}
@@ -259,17 +250,12 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
                 {timingMode === "custom" && (
                   <>
-                    <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
-                      Days before due (comma-separated, 0 = due day)
+                    <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Notify this many days before due
                     </Text>
-                    <TextInput
-                      value={offsetsText}
-                      onChangeText={setOffsetsText}
-                      placeholder="7, 3, 1, 0"
-                      placeholderTextColor="#64748b"
-                      keyboardType="numbers-and-punctuation"
-                      className="rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] mb-3"
-                    />
+                    <View className="mb-3">
+                      <DaysBeforeDueField value={offsets} onChange={setOffsets} />
+                    </View>
 
                     <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
                       Time (24-hour)
@@ -316,7 +302,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                   onPress={handleSave}
                   className={`flex-1 rounded-lg py-3 ${
                     isComplete && !isSaving
-                      ? "bg-linear-to-r from-amber-500 to-amber-600"
+                      ? "bg-linear-to-r from-indigo-500 to-indigo-600"
                       : "bg-slate-600/30 opacity-50"
                   }`}
                 >
