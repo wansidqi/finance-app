@@ -1,5 +1,4 @@
 import { BooleanRenderer } from "@/components/BooleanRenderer";
-import { LogPaymentPanel } from "@/components/liability/log-payment-panel";
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
@@ -81,14 +80,12 @@ export function LiabilityCard(liability: LiabilityInterface) {
     name,
     total_balance,
     monthly_payment,
-    average_monthly_payment,
     remaining_month,
   } = liability;
 
   // Category casing is inconsistent between create ("Commitment") and edit
   // ("COMMITMENT") flows, so compare case-insensitively.
   const isCommitment = category?.toString().toUpperCase() === "COMMITMENT";
-  const avgPayment = average_monthly_payment ?? monthly_payment ?? 0;
 
   const [paymentAmount, setPaymentAmount] = useState(
     monthly_payment?.toString() || "",
@@ -305,15 +302,11 @@ export function LiabilityCard(liability: LiabilityInterface) {
 
         {/* Total Balance & Monthly Payment */}
         <View className="flex-row justify-between items-start mb-4 gap-2">
-          <View className="flex-1">
-            <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-              {isCommitment ? "Avg Monthly Payment" : "Total Balance"}
-            </Text>
-            {isCommitment ? (
-              <Text className="text-[16px] font-bold text-rose-400">
-                {formatRM(avgPayment)}
+          {!isCommitment && (
+            <View className="flex-1">
+              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                Total Balance
               </Text>
-            ) : (
               <BooleanRenderer
                 condition={isEdit}
                 editOff={
@@ -330,8 +323,8 @@ export function LiabilityCard(liability: LiabilityInterface) {
                   />
                 }
               />
-            )}
-          </View>
+            </View>
+          )}
           <View className="flex-1">
             <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
               Monthly Payment
@@ -339,7 +332,9 @@ export function LiabilityCard(liability: LiabilityInterface) {
             <BooleanRenderer
               condition={isEdit}
               editOff={
-                <Text className="text-[16px] font-bold text-slate-100">
+                <Text
+                  className={`text-[16px] font-bold ${isCommitment ? "text-rose-400" : "text-slate-100"}`}
+                >
                   {formatRM(monthly_payment ?? 0)}
                 </Text>
               }
@@ -382,56 +377,45 @@ export function LiabilityCard(liability: LiabilityInterface) {
         )}
 
         {/* Make Payment */}
-        {!isEdit && (
+        {!isEdit && !isCommitment && (
           <>
-            {isCommitment ? (
-              <LogPaymentPanel
-                liabilityId={id}
-                monthlyPaymentHint={monthly_payment}
-                onError={showError}
-                historyLimit={8}
-              />
-            ) : (
-              <>
-                <View className="mt-4">
-                  <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                    Make Payment
-                  </Text>
-                  <View className="flex-row gap-2.5">
-                    <TextInput
-                      value={paymentAmount}
-                      onChangeText={setPaymentAmount}
-                      placeholder="Amount (RM)"
-                      placeholderTextColor="#94a3b8"
-                      keyboardType="decimal-pad"
-                      editable={!isPaying}
-                      className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
-                      disabled={isPaying}
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
-                    >
-                      <Text className="text-[11px] font-bold text-slate-300">
-                        Reset
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
+            <View className="mt-4">
+              <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                Make Payment
+              </Text>
+              <View className="flex-row gap-2.5">
+                <TextInput
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  placeholder="Amount (RM)"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="decimal-pad"
+                  editable={!isPaying}
+                  className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
+                />
                 <TouchableOpacity
-                  onPress={() => handlePay(Number(paymentAmount))}
-                  disabled={isPaying || !Number(paymentAmount)}
-                  className={`mt-4 bg-rose-500 rounded-lg py-3 ${
-                    isPaying || !Number(paymentAmount) ? "opacity-50" : ""
-                  }`}
+                  onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
+                  disabled={isPaying}
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
                 >
-                  <Text className="text-center font-semibold text-white text-[13px]">
-                    {isPaying ? "Paying..." : "Pay Now"}
+                  <Text className="text-[11px] font-bold text-slate-300">
+                    Reset
                   </Text>
                 </TouchableOpacity>
-              </>
-            )}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => handlePay(Number(paymentAmount))}
+              disabled={isPaying || !Number(paymentAmount)}
+              className={`mt-4 bg-rose-500 rounded-lg py-3 ${
+                isPaying || !Number(paymentAmount) ? "opacity-50" : ""
+              }`}
+            >
+              <Text className="text-center font-semibold text-white text-[13px]">
+                {isPaying ? "Paying..." : "Pay Now"}
+              </Text>
+            </TouchableOpacity>
           </>
         )}
         {}

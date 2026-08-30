@@ -74,7 +74,7 @@ export default function DashboardScreen() {
   const netWorth = totalAssets - totalLiabilities;
   const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
   const avgMonthlyCommitment = (liabilities ?? []).reduce(
-    (sum, l) => sum + (l.average_monthly_payment ?? l.monthly_payment ?? 0),
+    (sum, l) => sum + (l.monthly_payment ?? 0),
     0,
   );
 

@@ -1,13 +1,8 @@
-import { LiabilityInterface, LiabilityPaymentInterface } from "@/interface/liability";
+import { LiabilityInterface } from "@/interface/liability";
 import { SQLiteBindValue } from "expo-sqlite";
 import { getDb } from "./db";
 
 // Ported from apps/backend/internal/liability (Go) — keep in sync if that changes.
-
-// How many of the most recent logged payments feed the average — recent
-// enough to track a plan's current pattern, long enough to smooth out a
-// one-off unusual month.
-const AVERAGE_PAYMENT_WINDOW = 6;
 
 interface LiabilityRow {
   id: number;
@@ -21,41 +16,7 @@ interface LiabilityRow {
   updated_at: string | null;
 }
 
-interface LiabilityPaymentRow {
-  id: number;
-  liability_id: number;
-  amount: number;
-  paid_date: string;
-  note: string | null;
-  created_at: string;
-}
-
-function rowToPaymentDto(row: LiabilityPaymentRow): LiabilityPaymentInterface {
-  return {
-    id: row.id,
-    liability_id: row.liability_id,
-    amount: row.amount,
-    paid_date: row.paid_date,
-    note: row.note,
-    created_at: row.created_at,
-  };
-}
-
-async function getAverageMonthlyPayment(
-  liabilityId: number,
-  fallback: number,
-): Promise<number> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<{ amount: number }>(
-    "SELECT amount FROM liability_payments WHERE liability_id = ? ORDER BY paid_date DESC, id DESC LIMIT ?",
-    liabilityId,
-    AVERAGE_PAYMENT_WINDOW,
-  );
-  if (rows.length === 0) return fallback;
-  return rows.reduce((sum, r) => sum + r.amount, 0) / rows.length;
-}
-
-async function rowToDto(row: LiabilityRow): Promise<LiabilityInterface> {
+function rowToDto(row: LiabilityRow): LiabilityInterface {
   const totalBalance = row.total_balance ?? 0;
   const remainingMonth =
     totalBalance !== 0 && row.monthly_payment !== 0
@@ -69,7 +30,6 @@ async function rowToDto(row: LiabilityRow): Promise<LiabilityInterface> {
     name: row.name ?? "",
     total_balance: row.total_balance,
     monthly_payment: row.monthly_payment,
-    average_monthly_payment: await getAverageMonthlyPayment(row.id, row.monthly_payment),
     remaining_month: remainingMonth,
     status: row.status as LiabilityInterface["status"],
     created_at: row.created_at,
@@ -82,53 +42,13 @@ export async function getAllLiabilities(): Promise<LiabilityInterface[]> {
   const rows = await db.getAllAsync<LiabilityRow>(
     "SELECT * FROM liabilities WHERE status = 'ACTIVE'",
   );
-  return Promise.all(rows.map(rowToDto));
+  return rows.map(rowToDto);
 }
 
 export async function getLiabilityById(id: number): Promise<LiabilityInterface | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<LiabilityRow>("SELECT * FROM liabilities WHERE id = ?", id);
   return row ? rowToDto(row) : null;
-}
-
-/** Logs an actual payment made against a liability (e.g. this month's variable Shopee/PayLater installment) without touching total_balance — meant for open-ended commitments, not amortizing debt. */
-export async function addLiabilityPayment(
-  liabilityId: number,
-  amount: number,
-  paidDate?: string,
-  note?: string | null,
-): Promise<LiabilityPaymentInterface> {
-  const db = await getDb();
-  const result = await db.runAsync(
-    `INSERT INTO liability_payments (liability_id, amount, paid_date, note)
-     VALUES (?, ?, ?, ?)`,
-    liabilityId,
-    amount,
-    paidDate ?? new Date().toISOString(),
-    note ?? null,
-  );
-  const row = await db.getFirstAsync<LiabilityPaymentRow>(
-    "SELECT * FROM liability_payments WHERE id = ?",
-    result.lastInsertRowId,
-  );
-  if (!row) throw new Error("failed to load created payment");
-  return rowToPaymentDto(row);
-}
-
-export async function getLiabilityPayments(
-  liabilityId: number,
-): Promise<LiabilityPaymentInterface[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<LiabilityPaymentRow>(
-    "SELECT * FROM liability_payments WHERE liability_id = ? ORDER BY paid_date DESC, id DESC",
-    liabilityId,
-  );
-  return rows.map(rowToPaymentDto);
-}
-
-export async function deleteLiabilityPayment(id: number): Promise<void> {
-  const db = await getDb();
-  await db.runAsync("DELETE FROM liability_payments WHERE id = ?", id);
 }
 
 export async function createLiability(

@@ -16,7 +16,6 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { AddDebtModal } from "./add-liability";
 import { LiabilitySkeletonLoader } from "./skeleton-loader";
-import { LogPaymentPanel } from "./log-payment-panel";
 
 export function Liability() {
   const { formatRM } = useFormatRM();
@@ -31,11 +30,7 @@ export function Liability() {
   };
 
   const totalAvgMonthlyCommitment = useMemo(
-    () =>
-      data.reduce(
-        (sum, l) => sum + (l.average_monthly_payment ?? l.monthly_payment ?? 0),
-        0,
-      ),
+    () => data.reduce((sum, l) => sum + (l.monthly_payment ?? 0), 0),
     [data],
   );
 
@@ -193,15 +188,12 @@ function LiabilityListItem({
     name,
     total_balance,
     monthly_payment,
-    average_monthly_payment,
     remaining_month,
   } = liability;
   const remainingMonths = remaining_month ?? 0;
   // Category casing is inconsistent between create ("Commitment") and edit
   // ("COMMITMENT") flows, so compare case-insensitively.
   const isCommitment = category?.toString().toUpperCase() === "COMMITMENT";
-  const avgPayment = average_monthly_payment ?? monthly_payment ?? 0;
-  const hasVariablePayments = Math.round(avgPayment) !== Math.round(monthly_payment ?? 0);
 
   const [paymentAmount, setPaymentAmount] = useState(
     monthly_payment?.toString() || "",
@@ -254,9 +246,7 @@ function LiabilityListItem({
           </Text>
           <Text className="text-[12px] text-slate-400">
             {isCommitment
-              ? hasVariablePayments
-                ? `${formatRM(avgPayment)}/month avg`
-                : `${formatRM(monthly_payment ?? 0)}/month`
+              ? `${formatRM(monthly_payment ?? 0)}/month`
               : `${formatRM(monthly_payment ?? 0)}/month • ${remainingMonths} ${
                   remainingMonths === 1 ? "month" : "months"
                 }`}
@@ -264,7 +254,7 @@ function LiabilityListItem({
         </View>
         <View className="items-end gap-2 ml-4">
           <Text className="text-[16px] font-bold text-rose-400">
-            {isCommitment ? formatRM(avgPayment) : formatRM(total_balance ?? 0)}
+            {isCommitment ? formatRM(monthly_payment ?? 0) : formatRM(total_balance ?? 0)}
           </Text>
           {!isCommitment && (
             <View className="bg-rose-500/20 rounded-lg px-2 py-1">
@@ -276,53 +266,45 @@ function LiabilityListItem({
         </View>
       </TouchableOpacity>
 
-      {isCommitment ? (
-        <LogPaymentPanel
-          liabilityId={id}
-          monthlyPaymentHint={monthly_payment}
-          onError={onError}
-        />
-      ) : (
-        remainingMonths > 0 && (
-          <View className="mt-3 pt-3 border-t border-white/10">
-            <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-              Make Payment
-            </Text>
-            <View className="flex-row gap-2.5">
-              <TextInput
-                value={paymentAmount}
-                onChangeText={setPaymentAmount}
-                placeholder="Amount (RM)"
-                placeholderTextColor="#64748b"
-                keyboardType="decimal-pad"
-                editable={!isPaying}
-                className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
-              />
-              <TouchableOpacity
-                onPress={() =>
-                  setPaymentAmount(monthly_payment?.toString() || "0")
-                }
-                disabled={isPaying}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
-              >
-                <Text className="text-[11px] font-bold text-slate-300">
-                  Reset
-                </Text>
-              </TouchableOpacity>
-            </View>
+      {!isCommitment && remainingMonths > 0 && (
+        <View className="mt-3 pt-3 border-t border-white/10">
+          <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+            Make Payment
+          </Text>
+          <View className="flex-row gap-2.5">
+            <TextInput
+              value={paymentAmount}
+              onChangeText={setPaymentAmount}
+              placeholder="Amount (RM)"
+              placeholderTextColor="#64748b"
+              keyboardType="decimal-pad"
+              editable={!isPaying}
+              className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
+            />
             <TouchableOpacity
-              onPress={handlePay}
-              disabled={isPaying || !Number(paymentAmount)}
-              className={`mt-2.5 bg-red-700 rounded-lg py-2.5 ${
-                isPaying || !Number(paymentAmount) ? "opacity-50" : ""
-              }`}
+              onPress={() =>
+                setPaymentAmount(monthly_payment?.toString() || "0")
+              }
+              disabled={isPaying}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
             >
-              <Text className="text-center font-semibold text-white text-[13px]">
-                {isPaying ? "Paying..." : "Pay Now"}
+              <Text className="text-[11px] font-bold text-slate-300">
+                Reset
               </Text>
             </TouchableOpacity>
           </View>
-        )
+          <TouchableOpacity
+            onPress={handlePay}
+            disabled={isPaying || !Number(paymentAmount)}
+            className={`mt-2.5 bg-red-700 rounded-lg py-2.5 ${
+              isPaying || !Number(paymentAmount) ? "opacity-50" : ""
+            }`}
+          >
+            <Text className="text-center font-semibold text-white text-[13px]">
+              {isPaying ? "Paying..." : "Pay Now"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
