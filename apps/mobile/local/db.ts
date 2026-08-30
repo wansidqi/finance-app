@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS liabilities (
   total_balance REAL NULL,
   monthly_payment REAL NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'ACTIVE',
+  reminder_id INTEGER NULL REFERENCES payment_reminders(id),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -351,6 +352,13 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
     // CREATE TABLE IF NOT EXISTS never picked it up there.
     version: 9,
     run: (db) => ensureColumn(db, "vault_documents", "folder", "folder TEXT"),
+  },
+  {
+    // Optional payment reminders for liabilities — a liability can link to a
+    // row in the existing `payment_reminders` table instead of duplicating
+    // its scheduling/notification logic.
+    version: 10,
+    run: (db) => ensureColumn(db, "liabilities", "reminder_id", "reminder_id INTEGER"),
   },
 ];
 

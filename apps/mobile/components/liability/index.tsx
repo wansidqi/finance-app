@@ -190,6 +190,7 @@ function LiabilityListItem({
     total_balance,
     monthly_payment,
     remaining_month,
+    reminder_due_date,
   } = liability;
   const remainingMonths = remaining_month ?? 0;
   // Category casing is inconsistent between create ("Commitment") and edit
@@ -241,6 +242,9 @@ function LiabilityListItem({
                 {category}
               </Text>
             </View>
+            {reminder_due_date && (
+              <Ionicons name="notifications" size={12} color="#818cf8" />
+            )}
           </View>
           <Text className="text-[16px] font-semibold text-white mb-1">
             {name}

@@ -1,6 +1,13 @@
 import { LiabilityInterface } from "@/interface/liability";
 import { SQLiteBindValue } from "expo-sqlite";
 import { getDb } from "./db";
+import {
+  advanceOverdueRecurringReminders,
+  createReminder,
+  deleteReminder,
+  pauseReminder,
+  updateReminder,
+} from "./reminder-service";
 
 // Ported from apps/backend/internal/liability (Go) — keep in sync if that changes.
 
@@ -12,9 +19,20 @@ interface LiabilityRow {
   total_balance: number | null;
   monthly_payment: number;
   status: string;
+  reminder_id: number | null;
+  reminder_due_date: string | null;
+  reminder_status: string | null;
   created_at: string;
   updated_at: string | null;
 }
+
+const SELECT_LIABILITY = `
+  SELECT liabilities.*,
+         payment_reminders.next_due_date AS reminder_due_date,
+         payment_reminders.status AS reminder_status
+  FROM liabilities
+  LEFT JOIN payment_reminders ON payment_reminders.id = liabilities.reminder_id
+`;
 
 function rowToDto(row: LiabilityRow): LiabilityInterface {
   const totalBalance = row.total_balance ?? 0;
@@ -32,22 +50,30 @@ function rowToDto(row: LiabilityRow): LiabilityInterface {
     monthly_payment: row.monthly_payment,
     remaining_month: remainingMonth,
     status: row.status as LiabilityInterface["status"],
+    reminder_id: row.reminder_id,
+    reminder_due_date: row.reminder_due_date,
+    reminder_status: row.reminder_status as LiabilityInterface["reminder_status"],
     created_at: row.created_at,
     updated_at: row.updated_at ?? undefined,
   };
 }
 
 export async function getAllLiabilities(): Promise<LiabilityInterface[]> {
+  await advanceOverdueRecurringReminders();
   const db = await getDb();
   const rows = await db.getAllAsync<LiabilityRow>(
-    "SELECT * FROM liabilities WHERE status = 'ACTIVE'",
+    `${SELECT_LIABILITY} WHERE liabilities.status = 'ACTIVE'`,
   );
   return rows.map(rowToDto);
 }
 
 export async function getLiabilityById(id: number): Promise<LiabilityInterface | null> {
+  await advanceOverdueRecurringReminders();
   const db = await getDb();
-  const row = await db.getFirstAsync<LiabilityRow>("SELECT * FROM liabilities WHERE id = ?", id);
+  const row = await db.getFirstAsync<LiabilityRow>(
+    `${SELECT_LIABILITY} WHERE liabilities.id = ?`,
+    id,
+  );
   return row ? rowToDto(row) : null;
 }
 
@@ -64,6 +90,20 @@ export async function createLiability(
     data.total_balance ?? 0,
     data.monthly_payment ?? 0,
   );
+
+  if (data.reminder_due_date) {
+    const reminder = await createReminder({
+      name: `${data.name ?? "Liability"} Payment`,
+      recurrence: "monthly",
+      next_due_date: data.reminder_due_date,
+      note: "Liability payment reminder",
+    });
+    await db.runAsync(
+      "UPDATE liabilities SET reminder_id = ? WHERE id = ?",
+      reminder.id,
+      result.lastInsertRowId,
+    );
+  }
 
   const created = await getLiabilityById(result.lastInsertRowId);
   if (!created) throw new Error("failed to load created liability");
@@ -91,7 +131,35 @@ export async function updateLiability(
   if (data.status !== undefined) setField("status", data.status);
   if (data.total_balance !== undefined) setField("total_balance", data.total_balance);
 
-  if (set.length === 1) return null;
+  // A paid-off liability drops off the active list with no way back to its
+  // detail page, so its reminder would otherwise keep firing monthly forever
+  // with nothing pointing at it. Pausing (not deleting) keeps history and
+  // lets a future "reactivate" flow resume it if one is ever added.
+  if (data.status === "INACTIVE" && existing.reminder_id) {
+    await pauseReminder(existing.reminder_id);
+  }
+
+  if (data.reminder_due_date !== undefined) {
+    if (data.reminder_due_date === null) {
+      if (existing.reminder_id) await deleteReminder(existing.reminder_id);
+      setField("reminder_id", null);
+    } else if (existing.reminder_id) {
+      await updateReminder(existing.reminder_id, {
+        next_due_date: data.reminder_due_date,
+        status: "ACTIVE",
+      });
+    } else {
+      const reminder = await createReminder({
+        name: `${data.name ?? existing.name ?? "Liability"} Payment`,
+        recurrence: "monthly",
+        next_due_date: data.reminder_due_date,
+        note: "Liability payment reminder",
+      });
+      setField("reminder_id", reminder.id);
+    }
+  }
+
+  if (set.length === 1) return existing;
 
   const db = await getDb();
   await db.runAsync(`UPDATE liabilities SET ${set.join(", ")} WHERE id = ?`, ...params, id);
@@ -100,6 +168,9 @@ export async function updateLiability(
 }
 
 export async function deleteLiability(id: number): Promise<void> {
+  const existing = await getLiabilityById(id);
+  if (existing?.reminder_id) await deleteReminder(existing.reminder_id);
+
   const db = await getDb();
   await db.runAsync("DELETE FROM liabilities WHERE id = ?", id);
 }

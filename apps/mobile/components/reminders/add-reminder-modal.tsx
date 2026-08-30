@@ -75,7 +75,11 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     const isoDate = dueDate ? calendarDateToIso(dueDate) : null;
     if (!name.trim() || !isoDate) return;
 
-    if (timingMode === "custom") {
+    // Daily reminders don't expose notification timing at all — they always
+    // just use the app-wide default time, once a day.
+    const effectiveTimingMode = recurrence === "daily" ? "global" : timingMode;
+
+    if (effectiveTimingMode === "custom") {
       const hour = Number(hourText);
       const minute = Number(minuteText);
 
@@ -96,10 +100,10 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
       recurrence_interval_days: recurrence === "custom" ? Number(intervalDays) || 30 : null,
       next_due_date: isoDate,
       note: note.trim() || null,
-      notification_mode: timingMode,
-      notification_offsets_days: timingMode === "custom" ? offsets : null,
-      notification_hour: timingMode === "custom" ? Number(hourText) : null,
-      notification_minute: timingMode === "custom" ? Number(minuteText) : null,
+      notification_mode: effectiveTimingMode,
+      notification_offsets_days: effectiveTimingMode === "custom" ? offsets : null,
+      notification_hour: effectiveTimingMode === "custom" ? Number(hourText) : null,
+      notification_minute: effectiveTimingMode === "custom" ? Number(minuteText) : null,
     };
 
     try {
@@ -223,6 +227,14 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                 <DateField value={dueDate} onChange={setDueDate} accentColor="#6366f1" />
               </View>
 
+              {recurrence === "daily" ? (
+                <View className="mb-6 bg-slate-700/30 border border-slate-600 rounded-lg px-3 py-3">
+                  <Text className="text-[11px] text-slate-400">
+                    Daily reminders notify once a day at the app-wide default time — no separate
+                    timing setup needed.
+                  </Text>
+                </View>
+              ) : (
               <View className="mb-6">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Notification Timing
@@ -287,6 +299,7 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
                 {timingError && <Text className="text-red-400 text-[11px] mt-2">{timingError}</Text>}
               </View>
+              )}
 
               <View className="flex-row gap-3">
                 <TouchableOpacity

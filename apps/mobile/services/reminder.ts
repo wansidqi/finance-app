@@ -8,9 +8,6 @@ import {
   deleteReminder as localDeleteReminder,
   getAllReminders,
   getReminderById,
-  markReminderPaid as localMarkReminderPaid,
-  pauseReminder as localPauseReminder,
-  resumeReminder as localResumeReminder,
   updateReminder as localUpdateReminder,
 } from "@/local/reminder-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -58,28 +55,6 @@ export const useDeleteReminder = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => localDeleteReminder(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: REMINDERS_KEY });
-    },
-  });
-};
-
-export const useMarkReminderPaid = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, paidDate }: { id: number; paidDate?: string }) =>
-      localMarkReminderPaid(id, paidDate),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: REMINDERS_KEY });
-    },
-  });
-};
-
-export const useSetReminderPaused = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, paused }: { id: number; paused: boolean }) =>
-      paused ? localPauseReminder(id) : localResumeReminder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REMINDERS_KEY });
     },

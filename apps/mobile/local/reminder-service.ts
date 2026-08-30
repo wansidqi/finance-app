@@ -1,8 +1,54 @@
-import { ReminderInterface } from "@/interface/reminder";
+import { ReminderInterface, ReminderRecurrence } from "@/interface/reminder";
 import { SQLiteBindValue } from "expo-sqlite";
 import { clampHour, clampMinute, sanitizeOffsets } from "./reminder-notification-settings-service";
 import { getDb } from "./db";
 import { computeNextDueDate, daysUntilDue } from "./reminder-recurrence";
+
+// Recurring reminders never need an explicit "mark done" — they just keep
+// rolling forward on their own for as long as they're switched on. Caps how
+// many cycles a single overdue reminder can catch up in one pass, so a
+// corrupted/degenerate recurrence (e.g. a custom interval that somehow
+// resolves to ~0 days) can't hang the app in an effectively infinite loop.
+const MAX_CATCH_UP_CYCLES = 1000;
+
+/**
+ * Rolls every overdue, still-ACTIVE recurring reminder's `next_due_date`
+ * forward until it's no longer in the past — one-time reminders are left
+ * alone since there's no "next cycle" for them, they just sit overdue until
+ * deleted. Handles being overdue by several cycles (e.g. app unopened for
+ * months) in one pass.
+ */
+export async function advanceOverdueRecurringReminders(): Promise<void> {
+  const db = await getDb();
+  const now = new Date();
+  const rows = await db.getAllAsync<{
+    id: number;
+    recurrence: ReminderRecurrence;
+    recurrence_interval_days: number | null;
+    next_due_date: string;
+  }>(
+    `SELECT id, recurrence, recurrence_interval_days, next_due_date
+       FROM payment_reminders
+      WHERE status = 'ACTIVE'
+        AND recurrence != 'one_time'
+        AND next_due_date < ?`,
+    now.toISOString(),
+  );
+
+  for (const row of rows) {
+    let due = new Date(row.next_due_date);
+    for (let i = 0; i < MAX_CATCH_UP_CYCLES && due.getTime() < now.getTime(); i++) {
+      const next = computeNextDueDate(due, row.recurrence, row.recurrence_interval_days);
+      if (!next || next.getTime() <= due.getTime()) break;
+      due = next;
+    }
+    await db.runAsync(
+      "UPDATE payment_reminders SET next_due_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      due.toISOString(),
+      row.id,
+    );
+  }
+}
 
 interface ReminderRow {
   id: number;
@@ -59,6 +105,7 @@ function rowToDto(row: ReminderRow, now: Date): ReminderInterface {
 }
 
 export async function getAllReminders(): Promise<ReminderInterface[]> {
+  await advanceOverdueRecurringReminders();
   const db = await getDb();
   const rows = await db.getAllAsync<ReminderRow>(
     "SELECT * FROM payment_reminders ORDER BY next_due_date ASC",
@@ -166,54 +213,14 @@ export async function updateReminder(
 
 export async function deleteReminder(id: number): Promise<void> {
   const db = await getDb();
+  // A liability may link to this reminder (see local/liability-service.ts) —
+  // clear that reference first so it doesn't dangle if the reminder is
+  // deleted directly from the Reminders screen instead of via the liability.
+  await db.runAsync("UPDATE liabilities SET reminder_id = NULL WHERE reminder_id = ?", id);
   await db.runAsync("DELETE FROM payment_reminders WHERE id = ?", id);
 }
 
+/** Used internally when a liability is paid off (see local/liability-service.ts) — not user-facing. */
 export async function pauseReminder(id: number): Promise<ReminderInterface | null> {
   return updateReminder(id, { status: "PAUSED" });
-}
-
-export async function resumeReminder(id: number): Promise<ReminderInterface | null> {
-  return updateReminder(id, { status: "ACTIVE" });
-}
-
-/**
- * Marks the current cycle paid, then either advances to the next cycle
- * (recurring reminders) or marks the reminder COMPLETED (one-time).
- */
-export async function markReminderPaid(
-  id: number,
-  paidDate?: string,
-): Promise<ReminderInterface | null> {
-  const existing = await getReminderById(id);
-  if (!existing) throw new Error("reminder not found");
-
-  const paidAt = paidDate ?? new Date().toISOString();
-  const nextDue = computeNextDueDate(
-    new Date(existing.next_due_date),
-    existing.recurrence,
-    existing.recurrence_interval_days,
-  );
-
-  const db = await getDb();
-  if (nextDue) {
-    await db.runAsync(
-      `UPDATE payment_reminders
-         SET last_paid_date = ?, next_due_date = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      paidAt,
-      nextDue.toISOString(),
-      id,
-    );
-  } else {
-    await db.runAsync(
-      `UPDATE payment_reminders
-         SET last_paid_date = ?, status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      paidAt,
-      id,
-    );
-  }
-
-  return getReminderById(id);
 }

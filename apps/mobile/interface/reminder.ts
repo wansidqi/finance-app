@@ -1,4 +1,11 @@
-export type ReminderRecurrence = "one_time" | "monthly" | "yearly" | "custom";
+export type ReminderRecurrence =
+  | "one_time"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly"
+  | "custom";
 
 export type ReminderStatus = "ACTIVE" | "PAUSED" | "COMPLETED";
 

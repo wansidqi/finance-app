@@ -37,16 +37,17 @@ export function addYearsClamped(date: Date, years: number): Date {
   return addMonthsClamped(date, years * 12);
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const copy = new Date(date);
   copy.setUTCDate(copy.getUTCDate() + days);
   return copy;
 }
 
 /**
- * Computes the next due date after a reminder is marked paid. Returns `null`
- * for a "one_time" reminder — there is no next cycle, the caller should mark
- * it COMPLETED instead.
+ * Computes a recurring reminder's next due date, one cycle ahead of
+ * `currentDueDate`. Returns `null` for a "one_time" reminder — there is no
+ * next cycle, callers should leave it as-is (it just stays overdue until
+ * deleted).
  */
 export function computeNextDueDate(
   currentDueDate: Date,
@@ -56,12 +57,21 @@ export function computeNextDueDate(
   switch (recurrence) {
     case "one_time":
       return null;
+    case "daily":
+      return addDays(currentDueDate, 1);
+    case "weekly":
+      return addDays(currentDueDate, 7);
     case "monthly":
       return addMonthsClamped(currentDueDate, 1);
+    case "quarterly":
+      return addMonthsClamped(currentDueDate, 3);
     case "yearly":
       return addYearsClamped(currentDueDate, 1);
     case "custom":
-      return addDays(currentDueDate, recurrenceIntervalDays ?? 30);
+      // Guards against a non-positive interval (e.g. bad data from before
+      // validation existed) looping forever wherever this feeds an
+      // advance-until-caught-up loop.
+      return addDays(currentDueDate, recurrenceIntervalDays && recurrenceIntervalDays > 0 ? recurrenceIntervalDays : 30);
   }
 }
 

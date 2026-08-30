@@ -1,4 +1,5 @@
 import { BooleanRenderer } from "@/components/BooleanRenderer";
+import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/components/date-field";
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
@@ -82,6 +83,8 @@ export function LiabilityCard(liability: LiabilityInterface) {
     total_balance,
     monthly_payment,
     remaining_month,
+    reminder_due_date,
+    reminder_status,
   } = liability;
 
   // Category casing is inconsistent between create ("Commitment") and edit
@@ -112,6 +115,11 @@ export function LiabilityCard(liability: LiabilityInterface) {
   );
   const [monthlyPaymentText, setMonthlyPaymentText] = useState(
     monthly_payment?.toString() ?? "",
+  );
+
+  const [reminderEnabled, setReminderEnabled] = useState(!!reminder_due_date);
+  const [reminderDate, setReminderDate] = useState<Date>(
+    reminder_due_date ? isoToCalendarDate(reminder_due_date) : today(),
   );
 
   const { mutateAsync: updateLiability } = useUpdateLiabilityById(id);
@@ -165,6 +173,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
           ...editLiability,
           total_balance: totalBalanceText.trim() ? Number(totalBalanceText) : null,
           monthly_payment: monthlyPaymentText.trim() ? Number(monthlyPaymentText) : 0,
+          reminder_due_date: reminderEnabled ? calendarDateToIso(reminderDate) : null,
         },
       });
       setIsEdit(false);
@@ -375,6 +384,64 @@ export function LiabilityCard(liability: LiabilityInterface) {
               </View>
             </View>
           </View>
+        )}
+
+        {/* Payment Reminder (optional) */}
+        {(isEdit || reminder_due_date) && (
+        <View className="mb-4">
+          <BooleanRenderer
+            condition={isEdit}
+            editOff={
+              reminder_due_date ? (
+                <View className="flex-row items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2.5">
+                  <Ionicons name="notifications-outline" size={16} color="#818cf8" />
+                  <Text className="text-[12px] font-semibold text-indigo-300">
+                    Reminder due {new Date(reminder_due_date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                    {reminder_status === "PAUSED" ? " (paused)" : ""}
+                  </Text>
+                </View>
+              ) : null
+            }
+            editOn={
+              <>
+                <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                  Payment Reminder
+                </Text>
+                <View className="flex-row gap-2 mb-2">
+                  {[
+                    { label: "No Reminder", value: false },
+                    { label: "Remind Me", value: true },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      onPress={() => setReminderEnabled(opt.value)}
+                      className={`flex-1 rounded-lg py-2.5 items-center border-2 ${
+                        reminderEnabled === opt.value
+                          ? "border-indigo-500 bg-indigo-500/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <Text
+                        className={`font-bold text-[12px] ${
+                          reminderEnabled === opt.value ? "text-indigo-400" : "text-slate-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {reminderEnabled && (
+                  <DateField value={reminderDate} onChange={setReminderDate} accentColor="#6366f1" />
+                )}
+              </>
+            }
+          />
+        </View>
         )}
 
         {/* Make Payment */}

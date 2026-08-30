@@ -1,3 +1,4 @@
+import { calendarDateToIso, DateField, today } from "@/components/date-field";
 import { useCreateLiability } from "@/services/liability";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
@@ -29,6 +30,8 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
   const [category, setCategory] = useState<"Debt" | "Commitment">("Debt");
   const [totalBalance, setTotalBalance] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderDate, setReminderDate] = useState<Date>(today());
   const { mutateAsync } = useCreateLiability();
   const { error, isVisible, hideError, showError } = useErrorModal();
 
@@ -38,6 +41,7 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
       category: category as "debt" | "commitment" | undefined,
       monthly_payment: Number(monthlyPayment),
       total_balance: totalBalance ? Number(totalBalance) : null,
+      reminder_due_date: reminderEnabled ? calendarDateToIso(reminderDate) : undefined,
     };
 
     try {
@@ -54,6 +58,8 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
     setCategory("Debt");
     setTotalBalance("");
     setMonthlyPayment("");
+    setReminderEnabled(false);
+    setReminderDate(today());
   };
 
   const isComplete = name && (category === "Commitment" || totalBalance);
@@ -174,6 +180,45 @@ export function AddDebtModal({ visible, onClose, onSave }: Props) {
                     className="flex-1 text-[13px] text-white"
                   />
                 </View>
+              </View>
+
+              {/* Payment Reminder (optional) */}
+              <View className="mb-6">
+                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                  Payment Reminder (optional)
+                </Text>
+                <View className="flex-row gap-2">
+                  {[
+                    { label: "No Reminder", value: false },
+                    { label: "Remind Me", value: true },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      onPress={() => setReminderEnabled(opt.value)}
+                      className={`flex-1 rounded-lg py-3 items-center border-2 ${
+                        reminderEnabled === opt.value
+                          ? "border-indigo-500 bg-indigo-500/10"
+                          : "border-slate-600 bg-slate-700/30"
+                      }`}
+                    >
+                      <Text
+                        className={`font-bold text-[13px] ${
+                          reminderEnabled === opt.value ? "text-indigo-400" : "text-slate-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {reminderEnabled && (
+                  <View className="mt-3">
+                    <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Due Date
+                    </Text>
+                    <DateField value={reminderDate} onChange={setReminderDate} accentColor="#6366f1" />
+                  </View>
+                )}
               </View>
 
               {/* Info Box */}

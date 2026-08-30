@@ -73,6 +73,28 @@ export async function syncReminderNotifications(reminders: ReminderInterface[]) 
   for (const reminder of reminders) {
     if (reminder.status !== "ACTIVE") continue;
 
+    // Daily reminders aren't "N days before a due date" — every day is the
+    // due date — so they skip the offsets system entirely and use a single
+    // native repeating trigger at the app-wide default time instead of
+    // being recomputed from `next_due_date` like every other recurrence.
+    if (reminder.recurrence === "daily") {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${NOTIFICATION_PREFIX}${reminder.id}-daily`,
+        content: {
+          title: reminder.name,
+          body: reminder.note?.trim() || "Due today.",
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: globalSettings.hour,
+          minute: globalSettings.minute,
+          channelId: ANDROID_CHANNEL_ID,
+        },
+      });
+      continue;
+    }
+
     const dueDate = new Date(reminder.next_due_date);
     const settings = resolveTiming(reminder, globalSettings);
 
