@@ -57,6 +57,54 @@ export async function addVaultDocument(data: {
   return row;
 }
 
+export async function updateVaultDocument(
+  id: number,
+  data: {
+    name: string;
+    expiry_date?: string | null;
+    note?: string | null;
+    folder?: string | null;
+    file?: { file_name: string; mime_type: string; bytes: Uint8Array } | null;
+  },
+): Promise<VaultDocumentInterface> {
+  const db = await getDb();
+
+  if (data.file) {
+    await db.runAsync(
+      `UPDATE vault_documents
+       SET name = ?, expiry_date = ?, note = ?, folder = ?, file_name = ?, mime_type = ?, size_bytes = ?, data = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      data.name,
+      data.expiry_date ?? null,
+      data.note ?? null,
+      data.folder ?? null,
+      data.file.file_name,
+      data.file.mime_type,
+      data.file.bytes.byteLength,
+      data.file.bytes,
+      id,
+    );
+  } else {
+    await db.runAsync(
+      `UPDATE vault_documents
+       SET name = ?, expiry_date = ?, note = ?, folder = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      data.name,
+      data.expiry_date ?? null,
+      data.note ?? null,
+      data.folder ?? null,
+      id,
+    );
+  }
+
+  const row = await db.getFirstAsync<VaultDocumentInterface>(
+    `SELECT ${META_COLUMNS} FROM vault_documents WHERE id = ?`,
+    id,
+  );
+  if (!row) throw new Error("failed to load updated document");
+  return row;
+}
+
 export async function deleteVaultDocument(id: number): Promise<void> {
   const db = await getDb();
   await db.runAsync("DELETE FROM vault_documents WHERE id = ?", id);

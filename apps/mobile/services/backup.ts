@@ -11,7 +11,7 @@ import Constants from "expo-constants";
 import { Directory, File, Paths } from "expo-file-system";
 import * as SQLite from "expo-sqlite";
 import { decryptBytes, encryptBytes, generateIv, getOrCreateEncryptionKey } from "./backup-encryption";
-import { computeRetention, formatBackupFilename, parseBackupFilename } from "./backup-naming";
+import { formatBackupFilename, parseBackupFilename, selectStaleBackups } from "./backup-naming";
 import {
   deleteBackupFile,
   downloadBackupFile,
@@ -72,7 +72,7 @@ async function createSnapshot(destination: Directory, filename: string): Promise
 /**
  * Runs the full "Backup Now" flow: snapshot the live database, optionally
  * encrypt it, upload it to the app's hidden Drive folder, record the
- * attempt locally, and prune old backups per the retention settings.
+ * attempt locally, and delete any older backups so exactly one remains.
  */
 export async function backupNow(): Promise<BackupMetadataInterface> {
   const settings = await getBackupSettings();
@@ -142,9 +142,8 @@ export async function backupNow(): Promise<BackupMetadataInterface> {
   }
 }
 
-/** Deletes Drive backups (and their local metadata mirror) that have aged out of the configured daily/weekly/monthly retention windows. */
+/** Deletes every Drive backup (and its local metadata mirror) except the newest — the app only ever keeps one backup at a time. */
 export async function pruneRetention(): Promise<void> {
-  const settings = await getBackupSettings();
   const driveFiles = await listBackupFiles();
 
   const candidates = driveFiles
@@ -155,11 +154,7 @@ export async function pruneRetention(): Promise<void> {
     })
     .filter((c): c is { id: string; createdAt: Date } => c !== null);
 
-  const { remove } = computeRetention(candidates, {
-    daily: settings.retention_daily,
-    weekly: settings.retention_weekly,
-    monthly: settings.retention_monthly,
-  });
+  const remove = selectStaleBackups(candidates);
 
   for (const driveFileId of remove) {
     await deleteBackupFile(driveFileId).catch(() => {});

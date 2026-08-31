@@ -22,18 +22,29 @@ jest.mock("expo-sqlite", () => {
 });
 
 import { resolveNisab } from "../nisab-resolver";
-import { syncOneState } from "../nisab-state-sync-service";
+import { invalidateStateNisabCache } from "../nisab-state-sync-service";
 
 const originalFetch = global.fetch;
-afterEach(() => {
-  global.fetch = originalFetch;
+const originalUrl = process.env.EXPO_PUBLIC_API_URL;
+
+beforeEach(() => {
+  invalidateStateNisabCache();
 });
 
-test("falls back to gold-price nisab when no location has ever been detected", async () => {
-  const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "gold_price" });
-  expect(result.nisabRM).toBeGreaterThan(0);
+afterEach(() => {
+  global.fetch = originalFetch;
+  if (originalUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+  else process.env.EXPO_PUBLIC_API_URL = originalUrl;
+  invalidateStateNisabCache();
 });
+
+function mockBackendStates(states: object[]) {
+  process.env.EXPO_PUBLIC_API_URL = "https://api.example.com";
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ states }),
+  }) as any;
+}
 
 async function seedLocation(state: string): Promise<void> {
   const db = await require("../db").getDb();
@@ -46,47 +57,57 @@ async function seedLocation(state: string): Promise<void> {
   );
 }
 
-test("falls back to gold-price nisab when the detected state has no synced rate", async () => {
-  await seedLocation("sarawak");
+test("falls back to gold-price nisab when no location has ever been detected", async () => {
+  const result = await resolveNisab();
+  expect(result.source).toEqual({ kind: "gold_price" });
+  expect(result.nisabRM).toBeGreaterThan(0);
+});
+
+test("falls back to gold-price nisab when the backend isn't configured", async () => {
+  await seedLocation("johor");
+  delete process.env.EXPO_PUBLIC_API_URL;
 
   const result = await resolveNisab();
   expect(result.source).toEqual({ kind: "gold_price" });
 });
 
-test("uses the state's synced rate when the detected state has one cached", async () => {
+test("uses the state's scraped rate (isScraped: true) when the backend has one for the detected state", async () => {
   await seedLocation("johor");
-
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    text: async () => "<p>Kadar Nisab Zakat Semasa Terkini: RM45,825.48</p>",
-  }) as any;
-  await syncOneState({
-    state: "johor",
-    authorityName: "MAIJ",
-    url: "https://www.maij.gov.my/?page_id=110",
-    anchorText: "kadar nisab zakat semasa terkini",
-  });
+  mockBackendStates([
+    { state: "johor", zakatAgency: "MAIJ", nisabRM: 45825.48, sourceUrl: "https://www.maij.gov.my/", isScraped: true, asOf: "2026-08-31" },
+  ]);
 
   const result = await resolveNisab();
   expect(result.nisabRM).toBe(45825.48);
-  expect(result.source).toMatchObject({ kind: "state", state: "johor" });
+  expect(result.source).toMatchObject({ kind: "state", state: "johor", sourceUrl: "https://www.maij.gov.my/" });
 });
 
-test("falls back to PPZ's rate when the detected state has none of its own, but PPZ does", async () => {
-  await seedLocation("kelantan"); // no live source configured for Kelantan
+test("uses the AI-fallback rate (isScraped: false) for the detected state when that's all the backend has for it", async () => {
+  await seedLocation("kelantan");
+  mockBackendStates([
+    { state: "kelantan", zakatAgency: "MAIK", nisabRM: 37401, isScraped: false, asOf: "2026-08" },
+  ]);
 
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    text: async () => "<p>Nisab 2026: RM33,996.00</p>",
-  }) as any;
-  await syncOneState({
-    state: "wp_kl_putrajaya_labuan",
-    authorityName: "PPZ-MAIWP",
-    url: "https://www.zakat.com.my/info-zakat/jenis-jenis-zakat/zakat-pendapatan/",
-    anchorText: "nisab 2026",
-  });
+  const result = await resolveNisab();
+  expect(result.nisabRM).toBe(37401);
+  expect(result.source).toMatchObject({ kind: "ai_fallback", state: "kelantan" });
+});
+
+test("falls back to PPZ's rate when the detected state has none, but PPZ does", async () => {
+  await seedLocation("perlis");
+  mockBackendStates([
+    { state: "wp_kl_putrajaya_labuan", zakatAgency: "PPZ-MAIWP", nisabRM: 33996, sourceUrl: "https://www.zakat.com.my/", isScraped: true, asOf: "2026-08-31" },
+  ]);
 
   const result = await resolveNisab();
   expect(result.nisabRM).toBe(33996);
   expect(result.source).toMatchObject({ kind: "ppz_fallback" });
+});
+
+test("falls back to gold-price nisab when the backend has neither the detected state nor PPZ", async () => {
+  await seedLocation("perlis");
+  mockBackendStates([]);
+
+  const result = await resolveNisab();
+  expect(result.source).toEqual({ kind: "gold_price" });
 });

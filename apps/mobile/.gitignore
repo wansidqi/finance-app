@@ -24,6 +24,7 @@ credentials/
 
 # Metro
 .metro-health-check*
+.bundle-scratch/
 
 # debug
 npm-debug.*

@@ -56,16 +56,22 @@ export const MALAYSIA_STATES: MalaysiaStateKey[] = [
  * source configured — not the user's own detected jurisdiction.
  */
 export type NisabSource =
-  | { kind: "state"; state: MalaysiaStateKey; sourceUrl: string; asOf: string }
-  | { kind: "ppz_fallback"; sourceUrl: string; asOf: string }
+  | { kind: "state"; state: MalaysiaStateKey; sourceUrl: string | null; asOf: string }
+  | { kind: "ai_fallback"; state: MalaysiaStateKey; asOf: string }
+  | { kind: "ppz_fallback"; sourceUrl: string | null; asOf: string }
   | { kind: "gold_price" };
 
 export interface StateNisabRate {
   state: MalaysiaStateKey;
   nisabRM: number;
-  sourceUrl: string;
-  lastCheckedAt: string;
-  lastError: string | null;
+  /** The zakat authority name this figure is attributed to — from apps/backend, scraped or AI-sourced. */
+  zakatAgency: string;
+  /** Customary worn-jewelry exemption threshold in grams (zakat uruf), when the source publishes one. */
+  goldUrufWornGrams: number | null;
+  sourceUrl: string | null;
+  /** True when apps/backend got this from a live scrape of the state's own site; false when it's the Gemini AI fallback. */
+  isScraped: boolean;
+  asOf: string;
 }
 
 export type LocationDetectionMethod = "gps" | "unavailable";

@@ -7,6 +7,7 @@ import * as Sharing from "expo-sharing";
 import { useMemo, useState } from "react";
 import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AddDocumentModal } from "./add-document-modal";
+import { EditDocumentModal } from "./edit-document-modal";
 import { DocumentPreviewModal } from "./preview-modal";
 
 // Scratch space for a document's bytes while it's open for previewing/
@@ -63,8 +64,10 @@ export function DocumentVault() {
   const [query, setQuery] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingDoc, setEditingDoc] = useState<VaultDocumentInterface | null>(null);
   const [viewing, setViewing] = useState<{ uri: string; mimeType: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,6 +136,20 @@ export function DocumentVault() {
     setDeletingId(null);
   };
 
+  const toggleFolder = (folder: string) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folder)) next.delete(folder);
+      else next.add(folder);
+      return next;
+    });
+  };
+
+  const allFoldersCollapsed = groups.length > 0 && groups.every((g) => collapsedFolders.has(g.folder));
+  const toggleAllFolders = () => {
+    setCollapsedFolders(allFoldersCollapsed ? new Set() : new Set(groups.map((g) => g.folder)));
+  };
+
   return (
     <View className="flex-1 bg-slate-950">
       <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
@@ -179,29 +196,60 @@ export function DocumentVault() {
       >
         {!isLoading && filtered.length > 0 ? (
           <View className="gap-5">
-            {groups.map((group) => (
-              <View key={group.folder} className="gap-3">
-                <View className="flex-row items-center gap-2 px-1">
-                  <Ionicons name="folder" size={14} color="#2dd4bf" />
-                  <Text className="text-[12px] font-bold text-teal-400 uppercase tracking-wider">
-                    {group.folder}
-                  </Text>
-                  <Text className="text-[11px] text-slate-500">
-                    {group.docs.length} {group.docs.length === 1 ? "document" : "documents"}
-                  </Text>
+            {groups.length > 0 && (
+              <TouchableOpacity
+                onPress={toggleAllFolders}
+                className="self-end flex-row items-center gap-1.5 px-1 -mb-2"
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={allFoldersCollapsed ? "chevron-expand-outline" : "chevron-collapse-outline"}
+                  size={13}
+                  color="#2dd4bf"
+                />
+                <Text className="text-[11px] font-semibold text-teal-400">
+                  {allFoldersCollapsed ? "Expand all" : "Collapse all"}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {groups.map((group) => {
+              const isCollapsed = collapsedFolders.has(group.folder);
+              return (
+                <View key={group.folder} className="gap-3">
+                  <TouchableOpacity
+                    onPress={() => toggleFolder(group.folder)}
+                    className="flex-row items-center gap-2 px-1"
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isCollapsed ? "chevron-forward" : "chevron-down"}
+                      size={14}
+                      color="#64748b"
+                    />
+                    <Ionicons name="folder" size={14} color="#2dd4bf" />
+                    <Text className="text-[12px] font-bold text-teal-400 uppercase tracking-wider">
+                      {group.folder}
+                    </Text>
+                    <Text className="text-[11px] text-slate-500">
+                      {group.docs.length} {group.docs.length === 1 ? "document" : "documents"}
+                    </Text>
+                  </TouchableOpacity>
+                  {!isCollapsed &&
+                    group.docs.map((doc) => (
+                      <DocumentListItem
+                        key={doc.id}
+                        doc={doc}
+                        isBusy={busyId === doc.id}
+                        onPreview={() => handlePreview(doc)}
+                        onDownload={() => handleDownload(doc)}
+                        onEdit={() => setEditingDoc(doc)}
+                        onDelete={() => setDeletingId(doc.id)}
+                      />
+                    ))}
                 </View>
-                {group.docs.map((doc) => (
-                  <DocumentListItem
-                    key={doc.id}
-                    doc={doc}
-                    isBusy={busyId === doc.id}
-                    onPreview={() => handlePreview(doc)}
-                    onDownload={() => handleDownload(doc)}
-                    onDelete={() => setDeletingId(doc.id)}
-                  />
-                ))}
-              </View>
-            ))}
+              );
+            })}
 
             {ungrouped.length > 0 && (
               <View className="gap-3">
@@ -217,6 +265,7 @@ export function DocumentVault() {
                     isBusy={busyId === doc.id}
                     onPreview={() => handlePreview(doc)}
                     onDownload={() => handleDownload(doc)}
+                    onEdit={() => setEditingDoc(doc)}
                     onDelete={() => setDeletingId(doc.id)}
                   />
                 ))}
@@ -239,6 +288,8 @@ export function DocumentVault() {
       </ScrollView>
 
       <AddDocumentModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+
+      <EditDocumentModal doc={editingDoc} onClose={() => setEditingDoc(null)} />
 
       <ConfirmDeleteModal
         visible={deletingId != null}
@@ -264,12 +315,14 @@ function DocumentListItem({
   isBusy,
   onPreview,
   onDownload,
+  onEdit,
   onDelete,
 }: {
   doc: VaultDocumentInterface;
   isBusy: boolean;
   onPreview: () => void;
   onDownload: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const expiryDays = doc.expiry_date ? daysUntil(doc.expiry_date) : null;
@@ -291,12 +344,12 @@ function DocumentListItem({
 
   return (
     <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
-      <TouchableOpacity
-        onPress={onPreview}
-        disabled={isBusy}
-        className="flex-row items-center justify-between active:opacity-70"
-      >
-        <View className="flex-1 flex-row items-center gap-3">
+      <View className="flex-row items-start gap-2">
+        <TouchableOpacity
+          onPress={onPreview}
+          disabled={isBusy}
+          className="flex-1 flex-row items-center gap-3 active:opacity-70"
+        >
           <View className="h-10 w-10 rounded-full bg-teal-500/15 items-center justify-center">
             <Ionicons
               name={doc.mime_type.startsWith("image/") ? "image" : "document-text"}
@@ -329,8 +382,16 @@ function DocumentListItem({
               </Text>
             )}
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onEdit}
+          disabled={isBusy}
+          hitSlop={8}
+          className="p-1.5 -mt-1 -mr-1"
+        >
+          <Ionicons name="pencil-outline" size={16} color="#cbd5e1" />
+        </TouchableOpacity>
+      </View>
 
       <View className="mt-3 pt-3 border-t border-white/10 flex-row gap-2">
         <TouchableOpacity

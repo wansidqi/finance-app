@@ -1,7 +1,7 @@
 import {
-  computeRetention,
   formatBackupFilename,
   parseBackupFilename,
+  selectStaleBackups,
 } from "../backup-naming";
 
 describe("formatBackupFilename / parseBackupFilename", () => {
@@ -38,49 +38,26 @@ function daysAgo(n: number): Date {
   return d;
 }
 
-describe("computeRetention", () => {
-  test("keeps everything when under every window", () => {
-    const backups = [
-      { id: "a", createdAt: daysAgo(0) },
-      { id: "b", createdAt: daysAgo(1) },
-    ];
-    const { keep, remove } = computeRetention(backups, { daily: 30, weekly: 12, monthly: 12 });
-    expect(keep.sort()).toEqual(["a", "b"]);
-    expect(remove).toEqual([]);
+describe("selectStaleBackups", () => {
+  test("keeps everything when there's zero or one backup", () => {
+    expect(selectStaleBackups([])).toEqual([]);
+    expect(selectStaleBackups([{ id: "a", createdAt: daysAgo(0) }])).toEqual([]);
   });
 
-  test("keeps only one per day within the daily window, dropping same-day duplicates", () => {
-    const sameDayOlder = new Date(daysAgo(0));
-    sameDayOlder.setUTCHours(1, 0, 0, 0);
+  test("marks every backup except the newest as stale", () => {
     const backups = [
       { id: "newer", createdAt: daysAgo(0) },
-      { id: "older-same-day", createdAt: sameDayOlder },
-    ];
-    const { keep, remove } = computeRetention(backups, { daily: 30, weekly: 12, monthly: 12 });
-    expect(keep).toEqual(["newer"]);
-    expect(remove).toEqual(["older-same-day"]);
-  });
-
-  test("falls back to weekly bucket once the daily window is exhausted", () => {
-    const backups = [
-      { id: "day0", createdAt: daysAgo(0) },
-      { id: "day1", createdAt: daysAgo(1) },
-      // 10 days ago falls outside a 2-day daily window but should be kept as
-      // that week's representative.
-      { id: "day10", createdAt: daysAgo(10) },
-    ];
-    const { keep, remove } = computeRetention(backups, { daily: 2, weekly: 12, monthly: 12 });
-    expect(keep.sort()).toEqual(["day0", "day1", "day10"]);
-    expect(remove).toEqual([]);
-  });
-
-  test("drops backups outside every window", () => {
-    const backups = [
-      { id: "recent", createdAt: daysAgo(0) },
+      { id: "older", createdAt: daysAgo(1) },
       { id: "ancient", createdAt: daysAgo(1000) },
     ];
-    const { keep, remove } = computeRetention(backups, { daily: 1, weekly: 0, monthly: 0 });
-    expect(keep).toEqual(["recent"]);
-    expect(remove).toEqual(["ancient"]);
+    expect(selectStaleBackups(backups).sort()).toEqual(["ancient", "older"]);
+  });
+
+  test("doesn't depend on input order", () => {
+    const backups = [
+      { id: "older", createdAt: daysAgo(1) },
+      { id: "newer", createdAt: daysAgo(0) },
+    ];
+    expect(selectStaleBackups(backups)).toEqual(["older"]);
   });
 });

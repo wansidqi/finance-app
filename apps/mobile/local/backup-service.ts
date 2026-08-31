@@ -4,9 +4,6 @@ import { getDb } from "./db";
 interface BackupSettingsRow {
   auto_backup_enabled: number;
   encryption_enabled: number;
-  retention_daily: number;
-  retention_weekly: number;
-  retention_monthly: number;
   google_account_email: string | null;
   last_backup_at: string | null;
   last_backup_status: string | null;
@@ -16,9 +13,6 @@ interface BackupSettingsRow {
 const DEFAULT_SETTINGS: BackupSettingsInterface = {
   auto_backup_enabled: false,
   encryption_enabled: false,
-  retention_daily: 30,
-  retention_weekly: 12,
-  retention_monthly: 12,
   google_account_email: null,
   last_backup_at: null,
   last_backup_status: null,
@@ -30,9 +24,6 @@ function rowToSettings(row: BackupSettingsRow | null): BackupSettingsInterface {
   return {
     auto_backup_enabled: !!row.auto_backup_enabled,
     encryption_enabled: !!row.encryption_enabled,
-    retention_daily: row.retention_daily,
-    retention_weekly: row.retention_weekly,
-    retention_monthly: row.retention_monthly,
     google_account_email: row.google_account_email,
     last_backup_at: row.last_backup_at,
     last_backup_status: row.last_backup_status as BackupStatus | null,
@@ -57,16 +48,12 @@ export async function updateBackupSettings(
   const db = await getDb();
   await db.runAsync(
     `INSERT INTO backup_settings
-       (id, auto_backup_enabled, encryption_enabled, retention_daily, retention_weekly,
-        retention_monthly, google_account_email, last_backup_at, last_backup_status,
-        last_backup_error, updated_at)
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       (id, auto_backup_enabled, encryption_enabled, google_account_email,
+        last_backup_at, last_backup_status, last_backup_error, updated_at)
+     VALUES (1, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(id) DO UPDATE SET
        auto_backup_enabled = excluded.auto_backup_enabled,
        encryption_enabled = excluded.encryption_enabled,
-       retention_daily = excluded.retention_daily,
-       retention_weekly = excluded.retention_weekly,
-       retention_monthly = excluded.retention_monthly,
        google_account_email = excluded.google_account_email,
        last_backup_at = excluded.last_backup_at,
        last_backup_status = excluded.last_backup_status,
@@ -74,9 +61,6 @@ export async function updateBackupSettings(
        updated_at = CURRENT_TIMESTAMP`,
     merged.auto_backup_enabled ? 1 : 0,
     merged.encryption_enabled ? 1 : 0,
-    merged.retention_daily,
-    merged.retention_weekly,
-    merged.retention_monthly,
     merged.google_account_email,
     merged.last_backup_at,
     merged.last_backup_status,

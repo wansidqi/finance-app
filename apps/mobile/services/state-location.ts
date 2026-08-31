@@ -1,4 +1,4 @@
-import { getAllStateNisabRates, syncAllStates } from "@/local/nisab-state-sync-service";
+import { getAllStateNisabRates, invalidateStateNisabCache } from "@/local/nisab-state-sync-service";
 import { detectAndStoreLocation, getStoredLocation } from "@/local/state-location-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -9,7 +9,7 @@ export const useGetDetectedLocation = () => {
   });
 };
 
-/** All jurisdictions with a successfully scraped nisab figure on record. States with no live source configured, or whose last sync attempt failed, simply won't appear — callers cross-reference against `STATE_AUTHORITIES`/`MALAYSIA_STATES` to show those explicitly. */
+/** Every jurisdiction apps/backend currently has a nisab figure for — scraped or AI fallback, tagged via `isScraped`. Empty if no backend is configured/reachable, which is expected until EXPO_PUBLIC_API_URL is set. */
 export const useGetAllStateNisabRates = () => {
   return useQuery({
     queryKey: ["zakat-state-nisab-rates"],
@@ -23,27 +23,16 @@ export const useDetectLocation = () => {
   return useMutation({
     mutationFn: async () => {
       const location = await detectAndStoreLocation();
-      // Detecting a state is the moment a live rate for it becomes useful —
-      // sync immediately rather than waiting for the periodic background
-      // check, so the user sees their state's actual nisab right away.
-      await syncAllStates();
+      // Detecting a state is the moment its rate becomes useful to show —
+      // bust the short-lived in-memory cache so the next read is fresh
+      // rather than possibly up to CACHE_TTL_MS stale. No scrape/AI call
+      // to trigger here anymore: apps/backend already keeps all 14 states
+      // refreshed on its own schedule, independent of any single device.
+      invalidateStateNisabCache();
       return location;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zakat-detected-location"] });
-      queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
-      queryClient.invalidateQueries({ queryKey: ["zakat-state-nisab-rates"] });
-    },
-  });
-};
-
-/** Runs the periodic (every `STATE_SYNC_INTERVAL_DAYS`) background refresh of all configured states' nisab rates, if due. Safe to call on every screen mount — it's a no-op most of the time. */
-export const useRunScheduledStateSync = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: syncAllStates,
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zakat-categories"] });
       queryClient.invalidateQueries({ queryKey: ["zakat-state-nisab-rates"] });
     },

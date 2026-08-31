@@ -9,10 +9,36 @@ import {
 } from "@/services/backup-hooks";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 import { RecoveryKeyModal } from "./recovery-key-modal";
 import { RestoreModal } from "./restore-modal";
+
+/** A continuously rotating icon — used wherever the UI needs to signal an in-progress async operation (backup upload, etc.) beyond just disabling the button. */
+function SpinningIcon({ size, color }: { size: number; color: string }) {
+  const rotation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [rotation]);
+
+  const spin = rotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <Ionicons name="sync-outline" size={size} color={color} />
+    </Animated.View>
+  );
+}
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-MY", {
@@ -35,11 +61,6 @@ export function Backup() {
   const { error, isVisible, hideError, showError } = useErrorModal();
   const [restoreVisible, setRestoreVisible] = useState(false);
   const [recoveryVisible, setRecoveryVisible] = useState(false);
-  const [retentionDraft, setRetentionDraft] = useState<{
-    daily: string;
-    weekly: string;
-    monthly: string;
-  } | null>(null);
 
   const isConnected = !!settings?.google_account_email;
 
@@ -80,29 +101,6 @@ export function Backup() {
       await updateSettings({ encryption_enabled: value });
     } catch (err: any) {
       showError({ message: err?.message ?? "Failed to update setting" });
-    }
-  };
-
-  const startEditingRetention = () => {
-    if (!settings) return;
-    setRetentionDraft({
-      daily: String(settings.retention_daily),
-      weekly: String(settings.retention_weekly),
-      monthly: String(settings.retention_monthly),
-    });
-  };
-
-  const saveRetention = async () => {
-    if (!retentionDraft) return;
-    try {
-      await updateSettings({
-        retention_daily: Number(retentionDraft.daily) || 0,
-        retention_weekly: Number(retentionDraft.weekly) || 0,
-        retention_monthly: Number(retentionDraft.monthly) || 0,
-      });
-      setRetentionDraft(null);
-    } catch (err: any) {
-      showError({ message: err?.message ?? "Failed to update retention" });
     }
   };
 
@@ -181,10 +179,11 @@ export function Backup() {
           <TouchableOpacity
             onPress={handleBackupNow}
             disabled={!isConnected || isBackingUp}
-            className={`mt-2 rounded-lg py-3 ${
-              isConnected && !isBackingUp ? "bg-amber-500" : "bg-slate-600/30 opacity-50"
+            className={`mt-2 rounded-lg py-3 flex-row items-center justify-center gap-2 ${
+              isConnected ? "bg-amber-500" : "bg-slate-600/30 opacity-50"
             }`}
           >
+            {isBackingUp && <SpinningIcon size={15} color="white" />}
             <Text className="text-center text-white font-semibold text-[13px]">
               {isBackingUp ? "Backing up..." : "Backup Now"}
             </Text>
@@ -240,87 +239,10 @@ export function Backup() {
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Retention */}
-        <View className="bg-white/[0.035] border border-white/10 rounded-2xl p-4 mb-4">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-white font-semibold text-[14px]">Retention</Text>
-            {!retentionDraft && (
-              <TouchableOpacity onPress={startEditingRetention}>
-                <Text className="text-amber-400 text-[12px] font-semibold">Edit</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {retentionDraft ? (
-            <>
-              <View className="flex-row gap-3 mb-3">
-                <RetentionField
-                  label="Daily"
-                  value={retentionDraft.daily}
-                  onChange={(v) => setRetentionDraft({ ...retentionDraft, daily: v })}
-                />
-                <RetentionField
-                  label="Weekly"
-                  value={retentionDraft.weekly}
-                  onChange={(v) => setRetentionDraft({ ...retentionDraft, weekly: v })}
-                />
-                <RetentionField
-                  label="Monthly"
-                  value={retentionDraft.monthly}
-                  onChange={(v) => setRetentionDraft({ ...retentionDraft, monthly: v })}
-                />
-              </View>
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => setRetentionDraft(null)}
-                  className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg py-2.5"
-                >
-                  <Text className="text-center text-slate-200 font-semibold text-[12px]">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={saveRetention}
-                  className="flex-1 bg-amber-500 rounded-lg py-2.5"
-                >
-                  <Text className="text-center text-white font-semibold text-[12px]">Save</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <Text className="text-slate-400 text-[12px]">
-              Keep {settings?.retention_daily ?? 30} daily · {settings?.retention_weekly ?? 12}{" "}
-              weekly · {settings?.retention_monthly ?? 12} monthly backups
-            </Text>
-          )}
-        </View>
       </ScrollView>
 
       <RestoreModal visible={restoreVisible} onClose={() => setRestoreVisible(false)} />
       <RecoveryKeyModal visible={recoveryVisible} onClose={() => setRecoveryVisible(false)} />
-    </View>
-  );
-}
-
-function RetentionField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <View className="flex-1">
-      <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        keyboardType="number-pad"
-        className="bg-slate-700/30 border border-slate-600 rounded-lg px-2 py-2.5 text-white text-center text-[13px]"
-      />
     </View>
   );
 }

@@ -15,7 +15,7 @@ export const BACKUP_BACKGROUND_TASK = "finance-backup-background-sync";
 // without ever backing up more than once in a ~day.
 const MIN_HOURS_BETWEEN_BACKUPS = 20;
 
-async function shouldBackupNow(): Promise<boolean> {
+export async function shouldBackupNow(): Promise<boolean> {
   const settings = await getBackupSettings();
   if (!settings.auto_backup_enabled) return false;
   if (!isGoogleDriveConnected()) return false;

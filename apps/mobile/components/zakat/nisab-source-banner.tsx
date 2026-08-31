@@ -72,6 +72,31 @@ export function NisabSourceBanner({
     );
   }
 
+  if (source.kind === "ai_fallback") {
+    const asOf = new Date(source.asOf).toLocaleDateString("en-MY", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    return (
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 pr-3">
+          <Text className="text-[11px] text-slate-300">
+            Nisab from an AI summary for {MALAYSIA_STATE_LABELS[source.state]}
+          </Text>
+          <Text className="text-[10px] text-slate-500 mt-0.5">
+            Checked {asOf}
+          </Text>
+        </View>
+        <BannerActions
+          onDetect={onDetect}
+          isDetecting={isDetecting}
+          onShowStateList={onShowStateList}
+        />
+      </View>
+    );
+  }
+
   if (source.kind === "ppz_fallback") {
     const asOf = new Date(source.asOf).toLocaleDateString("en-MY", {
       day: "numeric",

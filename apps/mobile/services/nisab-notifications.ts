@@ -15,6 +15,9 @@ function describe(resolved: ResolvedNisab): string {
   if (resolved.source.kind === "state") {
     return `${amount}, based on ${MALAYSIA_STATE_LABELS[resolved.source.state]}'s official rate`;
   }
+  if (resolved.source.kind === "ai_fallback") {
+    return `${amount}, based on an AI-summarized rate for ${MALAYSIA_STATE_LABELS[resolved.source.state]}`;
+  }
   if (resolved.source.kind === "ppz_fallback") {
     return `${amount}, based on PPZ-MAIWP's published rate`;
   }
@@ -32,7 +35,8 @@ function describe(resolved: ResolvedNisab): string {
  */
 export async function notifyIfNisabChanged(resolved: ResolvedNisab): Promise<void> {
   const last = await getLastNotifiedNisab();
-  const currentState = resolved.source.kind === "state" ? resolved.source.state : null;
+  const currentState =
+    resolved.source.kind === "state" || resolved.source.kind === "ai_fallback" ? resolved.source.state : null;
 
   const unchanged =
     last !== null &&

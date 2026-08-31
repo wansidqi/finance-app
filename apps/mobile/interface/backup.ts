@@ -3,9 +3,6 @@ export type BackupStatus = "PENDING" | "SUCCESS" | "FAILED";
 export interface BackupSettingsInterface {
   auto_backup_enabled: boolean;
   encryption_enabled: boolean;
-  retention_daily: number;
-  retention_weekly: number;
-  retention_monthly: number;
   google_account_email: string | null;
   last_backup_at: string | null;
   last_backup_status: BackupStatus | null;

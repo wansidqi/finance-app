@@ -102,9 +102,9 @@ CREATE TABLE IF NOT EXISTS backup_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   auto_backup_enabled INTEGER NOT NULL DEFAULT 0,
   encryption_enabled INTEGER NOT NULL DEFAULT 0,
-  retention_daily INTEGER NOT NULL DEFAULT 30,
-  retention_weekly INTEGER NOT NULL DEFAULT 12,
-  retention_monthly INTEGER NOT NULL DEFAULT 12,
+  retention_daily INTEGER NOT NULL DEFAULT 1,
+  retention_weekly INTEGER NOT NULL DEFAULT 0,
+  retention_monthly INTEGER NOT NULL DEFAULT 0,
   google_account_email TEXT NULL,
   last_backup_at TEXT NULL,
   last_backup_status TEXT NULL,
@@ -359,6 +359,20 @@ const MIGRATIONS: { version: number; run: (db: SQLite.SQLiteDatabase) => Promise
     // its scheduling/notification logic.
     version: 10,
     run: (db) => ensureColumn(db, "liabilities", "reminder_id", "reminder_id INTEGER"),
+  },
+  {
+    // Retention default changed from a 30/12/12 grandfather-father-son
+    // schedule to "keep only the newest backup" — only touches rows still
+    // sitting on the old shipped default, so a user who already customized
+    // their own retention keeps their choice.
+    version: 11,
+    run: async (db) => {
+      await db.runAsync(
+        `UPDATE backup_settings
+         SET retention_daily = 1, retention_weekly = 0, retention_monthly = 0
+         WHERE id = 1 AND retention_daily = 30 AND retention_weekly = 12 AND retention_monthly = 12`,
+      );
+    },
   },
 ];
 
