@@ -4,6 +4,7 @@ import (
 	asset "go-fiber-app/internal/assets"
 	"go-fiber-app/internal/liability"
 	"go-fiber-app/internal/middleware"
+	"go-fiber-app/internal/nisabstate"
 	"go-fiber-app/internal/zakat"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-func SetupRoutes(app *fiber.App) {
+func SetupRoutes(app *fiber.App, googleAIAPIKey string) {
 	// Setup metrics, health check, and logging
 	setupMetrics(app)
 
@@ -27,4 +28,5 @@ func SetupRoutes(app *fiber.App) {
 	asset.SetupAssetRoutes(api)
 	liability.SetupLiabilitytRoutes(api)
 	zakat.SetupAssetRoutes(api)
+	nisabstate.SetupRoutes(api, googleAIAPIKey)
 }

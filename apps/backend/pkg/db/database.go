@@ -64,6 +64,17 @@ CREATE TABLE IF NOT EXISTS hijri_cache (
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS nisab_ai_cache (
+	state VARCHAR(50) NOT NULL,
+	cached_month VARCHAR(7) NOT NULL,
+	zakat_agency VARCHAR(255) NULL,
+	nisab_rm REAL NOT NULL,
+	gold_uruf_worn_grams REAL NULL,
+	source_url VARCHAR(500) NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (state, cached_month)
+);
+
 CREATE TABLE IF NOT EXISTS nisab_cache (
 	id INTEGER PRIMARY KEY CHECK (id = 1),
 	effective_date VARCHAR(10) NOT NULL,
@@ -71,6 +82,24 @@ CREATE TABLE IF NOT EXISTS nisab_cache (
 	nisab_rm REAL NOT NULL,
 	cached_on VARCHAR(10) NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Official-source scrape results, mirroring apps/mobile's now-retired
+-- client-side nisab_state_rates table — scraping moved server-side so it
+-- runs once and is shared by every app install instead of once per device.
+CREATE TABLE IF NOT EXISTS nisab_scrape_cache (
+	state VARCHAR(50) PRIMARY KEY,
+	zakat_agency VARCHAR(255) NOT NULL,
+	nisab_rm REAL NULL,
+	source_url VARCHAR(500) NOT NULL,
+	last_checked_at DATETIME NOT NULL,
+	last_error TEXT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nisab_scrape_sync_state (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	last_synced_at DATETIME NOT NULL
 );
 `
 
@@ -83,6 +112,9 @@ var assetColumnMigrations = []string{
 	"ALTER TABLE zakat_tracker ADD COLUMN haul_start_date DATETIME NULL",
 	"ALTER TABLE hijri_cache ADD COLUMN cached_on VARCHAR(10) NOT NULL DEFAULT ''",
 	"ALTER TABLE assets ADD COLUMN use_live_gold_price BOOLEAN NOT NULL DEFAULT 0",
+	"ALTER TABLE nisab_ai_cache ADD COLUMN zakat_agency VARCHAR(255) NULL",
+	"ALTER TABLE nisab_ai_cache ADD COLUMN gold_uruf_worn_grams REAL NULL",
+	"ALTER TABLE nisab_ai_cache ADD COLUMN source_url VARCHAR(500) NULL",
 }
 
 func migrateSchema(db *sqlx.DB) error {

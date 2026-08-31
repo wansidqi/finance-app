@@ -45,7 +45,7 @@ func main() {
 	}))
 
 	// Setup routes
-	router.SetupRoutes(app)
+	router.SetupRoutes(app, cfg.GoogleAIAPIKey)
 
 	// Start server
 	log.Fatal(app.Listen(cfg.ServerPort))
