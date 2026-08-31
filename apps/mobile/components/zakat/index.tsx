@@ -88,6 +88,9 @@ export function ZakatTrackerScreen() {
     return hijri ? `${gregorian} • ${hijri}` : gregorian;
   };
 
+  const formatNisab = (nisab: number | null) =>
+    nisab != null ? formatRM(nisab, { alwaysShow: true }) : "—";
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -197,7 +200,7 @@ export function ZakatTrackerScreen() {
         {zakatData.map((category) => {
           const cardStatus = category.haul_status;
           const nisabPercent =
-            category.nisab > 0
+            category.nisab != null && category.nisab > 0
               ? (category.value / category.nisab) * 100
               : 0;
           // Cap the *displayed* percentage below 100 unless nisab is
@@ -260,8 +263,7 @@ export function ZakatTrackerScreen() {
 
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-[11px] text-slate-500">
-                    {formatRM(category.value)} /{" "}
-                    {formatRM(category.nisab, { alwaysShow: true })}
+                    {formatRM(category.value)} / {formatNisab(category.nisab)}
                   </Text>
                   <Text className="text-[11px] font-semibold text-slate-400">
                     {displayPercent.toFixed(0)}%
@@ -292,14 +294,20 @@ export function ZakatTrackerScreen() {
                     />
                     <InfoCard
                       label="NISAB"
-                      value={formatRM(category.nisab, { alwaysShow: true })}
+                      value={formatNisab(category.nisab)}
                     />
                   </View>
 
                   <DetailRow
                     label="Nisab Reached"
-                    value={category.nisab_reached ? "YES" : "NO"}
-                    success={category.nisab_reached}
+                    value={
+                      category.nisab_reached === null
+                        ? "UNKNOWN"
+                        : category.nisab_reached
+                          ? "YES"
+                          : "NO"
+                    }
+                    success={category.nisab_reached ?? undefined}
                   />
 
                   <DetailRow

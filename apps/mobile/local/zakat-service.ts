@@ -128,7 +128,12 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
 
   for (const [category, agg] of categories) {
     const value = agg.value;
-    const nisabReached = value >= currentNisab;
+    // Null (not false!) when nisab itself is unavailable — treating unknown
+    // as "not reached" would be actively wrong here, since the tracker
+    // below uses nisabReached === false as the trigger to wipe an in-progress
+    // haul cycle. An outage in the nisab source must never look like the
+    // user's holdings actually dropped below nisab.
+    const nisabReached = currentNisab === null ? null : value >= currentNisab;
     const zakatDue = nisabReached ? value * ZAKAT_RATE : 0;
 
     const platformBreakdown: PlatformShare[] = [];
@@ -146,7 +151,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
       created_at: null,
       updated_at: null,
       is_tracked: true,
-      haul_status: "PENDING",
+      haul_status: "UNKNOWN",
       nisab: currentNisab,
       nisab_source: nisabSource,
       nisab_reached: nisabReached,
@@ -174,25 +179,42 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
       }
 
       const haulStart = parseDate(tracker.haul_start_date);
-      const { status, nextDue, newHaulStart } = computeHaulStatus(
-        haulStart,
-        lastPaidDate,
-        nisabReached,
-        now,
-      );
-      dto.haul_status = status;
-      dto.next_due_date = nextDue ? nextDue.toISOString() : null;
-      dto.haul_start_date = newHaulStart ? newHaulStart.toISOString() : null;
-      if (nextDue) {
-        dto.next_due_date_hijri = await formatHijri(nextDue);
-      }
+      dto.haul_start_date = tracker.haul_start_date;
 
-      if (!nisabReached && (lastPaidDate !== null || haulStart !== null)) {
-        await resetHaulAndPayment(category);
-        dto.last_paid_date = null;
-        dto.last_paid_date_hijri = null;
-      } else if ((haulStart === null) !== (newHaulStart === null)) {
-        await updateHaulStartDate(category, newHaulStart);
+      if (nisabReached === null) {
+        // Nisab is unavailable right now — never write to the tracker in
+        // this branch (no reset, no haul-start update). We can't
+        // responsibly assess whether nisab is still held, so the existing
+        // stored cycle is left exactly as-is and only surfaced as
+        // informational (next_due_date, if a cycle was already in
+        // progress) rather than asserting a real PENDING/DUE/OVERDUE status.
+        dto.haul_status = "UNKNOWN";
+        if (haulStart) {
+          const due = addHijriYear(haulStart);
+          dto.next_due_date = due.toISOString();
+          dto.next_due_date_hijri = await formatHijri(due);
+        }
+      } else {
+        const { status, nextDue, newHaulStart } = computeHaulStatus(
+          haulStart,
+          lastPaidDate,
+          nisabReached,
+          now,
+        );
+        dto.haul_status = status;
+        dto.next_due_date = nextDue ? nextDue.toISOString() : null;
+        dto.haul_start_date = newHaulStart ? newHaulStart.toISOString() : null;
+        if (nextDue) {
+          dto.next_due_date_hijri = await formatHijri(nextDue);
+        }
+
+        if (!nisabReached && (lastPaidDate !== null || haulStart !== null)) {
+          await resetHaulAndPayment(category);
+          dto.last_paid_date = null;
+          dto.last_paid_date_hijri = null;
+        } else if ((haulStart === null) !== (newHaulStart === null)) {
+          await updateHaulStartDate(category, newHaulStart);
+        }
       }
     }
 

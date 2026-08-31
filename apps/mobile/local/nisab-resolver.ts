@@ -1,27 +1,28 @@
 import { MalaysiaStateKey, NisabSource } from "@/interface/nisab-state";
 import { getDb } from "./db";
 import { getAllStateNisabRates } from "./nisab-state-sync-service";
-import { value as goldPriceNisabValue } from "./nisab";
 import { getStoredLocation } from "./state-location-service";
 
 export interface ResolvedNisab {
-  nisabRM: number;
+  /** Null when no real source (state, AI-with-citation, or PPZ) had a figure — deliberately no computed fallback stands in for one, see NisabSource's "unavailable" kind. */
+  nisabRM: number | null;
   source: NisabSource;
 }
 
 const PPZ_STATE_KEY: MalaysiaStateKey = "wp_kl_putrajaya_labuan";
 
 /**
- * Three-tier fallback, all backed by one request to apps/backend
+ * Two-tier fallback, both backed by one request to apps/backend
  * (local/nisab-state-sync-service.ts): (1) the user's own detected state's
- * figure, whether it's a live scrape or the AI fallback — apps/backend
- * already resolved which source wins for that state, this just reads its
+ * figure, whether it's AI-with-a-cited-source or not — apps/backend already
+ * resolved which source wins for that state, this just reads its
  * `isScraped` tag to label it; (2) PPZ-MAIWP's published rate as a generic
- * stand-in for a user whose own state has neither, still a real
- * officially-cited figure so a better default than our own computed one;
- * (3) the nationwide gold-price-derived nisab, which is always a
- * fiqh-valid nisab on its own and never depends on the backend being
- * reachable at all.
+ * stand-in for a user whose own state has none, still a real
+ * officially-cited figure so a better default than nothing. When neither is
+ * available, this deliberately returns `nisabRM: null` rather than falling
+ * back to a computed nationwide gold-price nisab — showing a specific-looking
+ * number that isn't actually from any real source was judged more confusing
+ * than surfacing "unavailable" and letting the UI show a placeholder.
  */
 export async function resolveNisab(): Promise<ResolvedNisab> {
   const location = await getStoredLocation();
@@ -47,7 +48,7 @@ export async function resolveNisab(): Promise<ResolvedNisab> {
     };
   }
 
-  return { nisabRM: await goldPriceNisabValue(), source: { kind: "gold_price" } };
+  return { nisabRM: null, source: { kind: "unavailable" } };
 }
 
 interface LastNotifiedRow {

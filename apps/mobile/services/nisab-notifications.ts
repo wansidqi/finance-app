@@ -10,18 +10,15 @@ async function ensureChannel() {
   await ensureAndroidChannel({ id: ANDROID_CHANNEL_ID, name: "Zakat Nisab Updates", color: "#10b981" });
 }
 
-function describe(resolved: ResolvedNisab): string {
-  const amount = `RM${resolved.nisabRM.toLocaleString()}`;
-  if (resolved.source.kind === "state") {
-    return `${amount}, based on ${MALAYSIA_STATE_LABELS[resolved.source.state]}'s official rate`;
+function describe(nisabRM: number, source: ResolvedNisab["source"]): string {
+  const amount = `RM${nisabRM.toLocaleString()}`;
+  if (source.kind === "state") {
+    return `${amount}, based on ${MALAYSIA_STATE_LABELS[source.state]}'s official rate`;
   }
-  if (resolved.source.kind === "ai_fallback") {
-    return `${amount}, based on an AI-summarized rate for ${MALAYSIA_STATE_LABELS[resolved.source.state]}`;
+  if (source.kind === "ai_fallback") {
+    return `${amount}, based on an AI-summarized rate for ${MALAYSIA_STATE_LABELS[source.state]}`;
   }
-  if (resolved.source.kind === "ppz_fallback") {
-    return `${amount}, based on PPZ-MAIWP's published rate`;
-  }
-  return `${amount} (nationwide gold-price rate)`;
+  return `${amount}, based on PPZ-MAIWP's published rate`;
 }
 
 /**
@@ -34,13 +31,19 @@ function describe(resolved: ResolvedNisab): string {
  * changed" for a figure the user has never seen before.
  */
 export async function notifyIfNisabChanged(resolved: ResolvedNisab): Promise<void> {
+  // Nothing to compare or announce when nisab is currently unavailable —
+  // don't record this as a "last notified" state either, so the next
+  // successful resolution is always treated as fresh news once it returns.
+  if (resolved.nisabRM === null) return;
+  const nisabRM = resolved.nisabRM;
+
   const last = await getLastNotifiedNisab();
   const currentState =
     resolved.source.kind === "state" || resolved.source.kind === "ai_fallback" ? resolved.source.state : null;
 
   const unchanged =
     last !== null &&
-    last.nisabRM === resolved.nisabRM &&
+    last.nisabRM === nisabRM &&
     last.sourceKind === resolved.source.kind &&
     last.sourceState === currentState;
 
@@ -54,7 +57,7 @@ export async function notifyIfNisabChanged(resolved: ResolvedNisab): Promise<voi
         identifier: NOTIFICATION_IDENTIFIER,
         content: {
           title: "Zakat Nisab Updated",
-          body: `Your Zakat nisab is now ${describe(resolved)}.`,
+          body: `Your Zakat nisab is now ${describe(nisabRM, resolved.source)}.`,
           sound: true,
         },
         trigger: null,

@@ -1,0 +1,22 @@
+name = "finance-notifier-backend-v2"
+main = "src/index.ts"
+compatibility_date = "2024-11-27"
+compatibility_flags = ["nodejs_compat"]
+
+# GOOGLE_AI_API_KEY is a secret, not a plain var — set it via
+# `wrangler secret put GOOGLE_AI_API_KEY` (prod) and .dev.vars (local dev),
+# never committed here.
+
+[[kv_namespaces]]
+binding = "NISAB_CACHE"
+id = "REPLACE_WITH_REAL_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_REAL_KV_PREVIEW_NAMESPACE_ID"
+
+# Runs the monthly nisab refresh independently of any request — mirrors the
+# Go backend's lazy on-request background refresh, but as a real scheduled
+# job instead of a trick to avoid needing one. Cron syntax: "at 03:00 UTC on
+# the 1st of every month" — the handler itself still checks whether a
+# refresh is actually due (see shouldRefresh in src/lib/cache.ts) so a
+# manual redeploy or an extra trigger doesn't force an unwanted re-fetch.
+[triggers]
+crons = ["0 3 1 * *"]

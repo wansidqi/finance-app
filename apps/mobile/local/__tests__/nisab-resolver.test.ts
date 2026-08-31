@@ -57,18 +57,19 @@ async function seedLocation(state: string): Promise<void> {
   );
 }
 
-test("falls back to gold-price nisab when no location has ever been detected", async () => {
+test("resolves as unavailable, with a null nisabRM, when no location has ever been detected", async () => {
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "gold_price" });
-  expect(result.nisabRM).toBeGreaterThan(0);
+  expect(result.source).toEqual({ kind: "unavailable" });
+  expect(result.nisabRM).toBeNull();
 });
 
-test("falls back to gold-price nisab when the backend isn't configured", async () => {
+test("resolves as unavailable when the backend isn't configured", async () => {
   await seedLocation("johor");
   delete process.env.EXPO_PUBLIC_API_URL;
 
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "gold_price" });
+  expect(result.source).toEqual({ kind: "unavailable" });
+  expect(result.nisabRM).toBeNull();
 });
 
 test("uses the state's scraped rate (isScraped: true) when the backend has one for the detected state", async () => {
@@ -104,10 +105,11 @@ test("falls back to PPZ's rate when the detected state has none, but PPZ does", 
   expect(result.source).toMatchObject({ kind: "ppz_fallback" });
 });
 
-test("falls back to gold-price nisab when the backend has neither the detected state nor PPZ", async () => {
+test("resolves as unavailable when the backend has neither the detected state nor PPZ", async () => {
   await seedLocation("perlis");
   mockBackendStates([]);
 
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "gold_price" });
+  expect(result.source).toEqual({ kind: "unavailable" });
+  expect(result.nisabRM).toBeNull();
 });

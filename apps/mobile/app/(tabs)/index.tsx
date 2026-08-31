@@ -206,10 +206,9 @@ export default function DashboardScreen() {
                   Nisab Threshold
                 </Text>
                 <Text className="text-[15px] font-bold text-white">
-                  {formatRM(zakatCategories?.[0]?.nisab ?? 0, {
-                    decimals: true,
-                    alwaysShow: true,
-                  })}
+                  {zakatCategories?.[0]?.nisab != null
+                    ? formatRM(zakatCategories[0].nisab, { decimals: true, alwaysShow: true })
+                    : "—"}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">

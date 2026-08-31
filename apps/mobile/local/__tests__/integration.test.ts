@@ -33,9 +33,44 @@ import {
   getReminderNotificationSettings,
   setReminderNotificationSettings,
 } from "../reminder-notification-settings-service";
+import { invalidateStateNisabCache } from "../nisab-state-sync-service";
 import { getAllCategories, upsertTracker } from "../zakat-service";
 
 describe("local-first integration (real SQLite via node:sqlite)", () => {
+  // getAllCategories() resolves nisab via apps/backend now (no more
+  // client-side gold-price fallback) — mock a fixed PPZ-fallback figure so
+  // the nisab-crossing/haul-reset tests below have a real, stable number to
+  // compare against. No location is ever seeded in this file, so
+  // resolveNisab() always falls through to this PPZ entry.
+  const MOCK_NISAB_RM = 100000;
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  beforeAll(() => {
+    process.env.EXPO_PUBLIC_API_URL = "https://api.example.com";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        states: [
+          {
+            state: "wp_kl_putrajaya_labuan",
+            zakatAgency: "PPZ-MAIWP",
+            nisabRM: MOCK_NISAB_RM,
+            sourceUrl: "https://www.zakat.com.my/",
+            isScraped: true,
+            asOf: "2026-08-31",
+          },
+        ],
+      }),
+    }) as any;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+    else process.env.EXPO_PUBLIC_API_URL = originalUrl;
+  });
+
   test("create a CASH asset and see it reflected in getAllAssets", async () => {
     const created = await createAsset({
       category: "CASH" as any,
@@ -115,9 +150,8 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
 
   test("upsertTracker sets last_paid_date and starts a haul cycle reflected in getAllCategories", async () => {
     // Nisab must be currently held for last_paid_date/haul_start_date to
-    // stick — top CASH up well past any plausible live nisab first, since
-    // the existing CASH total (45500) may already sit below the live
-    // gold-price nisab fetched during this test run.
+    // stick — top CASH up past the mocked nisab (MOCK_NISAB_RM), since the
+    // existing CASH total (45500) alone sits below it.
     await createAsset({
       category: "CASH" as any,
       name: "Nisab Top-up",
@@ -136,6 +170,43 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     expect(cash!.last_paid_date).toBe(paidDate);
     expect(cash!.haul_start_date).toBe(paidDate);
     expect(cash!.next_due_date).not.toBeNull();
+  }, 15000);
+
+  test("an active haul cycle is left untouched (not reset) when nisab is temporarily unavailable", async () => {
+    // Simulate the backend having nothing for this state right now (e.g.
+    // an outage) — resolveNisab() returns nisabRM: null rather than a
+    // computed fallback. This must NEVER be treated as "nisab not held":
+    // that would silently wipe the in-progress haul cycle from the
+    // previous test just because the data source was temporarily down.
+    invalidateStateNisabCache();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ states: [] }) }) as any;
+
+    const categories = await getAllCategories();
+    const cash = categories.find((c) => c.category === "CASH");
+    expect(cash!.nisab).toBeNull();
+    expect(cash!.nisab_reached).toBeNull();
+    expect(cash!.haul_status).toBe("UNKNOWN");
+    // The cycle from the previous test must survive completely untouched.
+    expect(cash!.last_paid_date).not.toBeNull();
+    expect(cash!.haul_start_date).not.toBeNull();
+
+    // Restore the normal mock for the remaining tests in this file.
+    invalidateStateNisabCache();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        states: [
+          {
+            state: "wp_kl_putrajaya_labuan",
+            zakatAgency: "PPZ-MAIWP",
+            nisabRM: MOCK_NISAB_RM,
+            sourceUrl: "https://www.zakat.com.my/",
+            isScraped: true,
+            asOf: "2026-08-31",
+          },
+        ],
+      }),
+    }) as any;
   }, 15000);
 
   test("last_paid_date and haul_start_date are wiped once nisab is no longer held", async () => {

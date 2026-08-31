@@ -125,12 +125,15 @@ export function NisabSourceBanner({
     );
   }
 
-  // gold_price fallback — but *why* varies, and the difference matters:
-  // never detected vs. detected-but-unsupported look identical from the
-  // resolved nisab alone, so without this the banner never visibly changes
-  // after tapping "detect", which reads as "the tap did nothing."
-  let title = "Using nationwide gold-price nisab";
-  let subtitle = "Detect your state for its official nisab rate";
+  // "unavailable" — but *why* varies, and the difference matters: never
+  // detected vs. detected-but-unsupported look identical from the resolved
+  // nisab alone, so without this the banner never visibly changes after
+  // tapping "detect", which reads as "the tap did nothing." No computed
+  // fallback (e.g. a nationwide gold-price nisab) stands in here — a
+  // specific-looking number with no real source behind it was judged more
+  // confusing than plainly saying nisab isn't available yet.
+  let title = "Nisab unavailable";
+  let subtitle = "Detect your state, or check back shortly";
 
   if (detectedLocation) {
     if (detectedLocation.method === "unavailable") {
@@ -138,10 +141,10 @@ export function NisabSourceBanner({
       subtitle = "Check that location access is allowed for this app, then try again";
     } else if (detectedLocation.state) {
       title = `Detected: ${MALAYSIA_STATE_LABELS[detectedLocation.state]}`;
-      subtitle = "This state's official rate isn't available yet — using nationwide gold-price nisab";
+      subtitle = "Nisab unavailable for this state right now — check back shortly";
     } else {
       title = "Couldn't match your location to a state";
-      subtitle = "Using nationwide gold-price nisab";
+      subtitle = "Nisab unavailable right now — check back shortly";
     }
   }
 
