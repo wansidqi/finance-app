@@ -114,7 +114,7 @@ export function EditDocumentModal({ doc, onClose }: Props) {
   };
 
   const handleChooseDocument = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"] });
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
     setReplacementAsset({

@@ -2,6 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Modal, ScrollView, TouchableOpacity, View } from "react-native";
 import Pdf from "react-native-pdf";
+import WebView from "react-native-webview";
+
+const HTML_MIME_TYPES = new Set(["text/html", "application/xhtml+xml"]);
 
 type Props = {
   visible: boolean;
@@ -24,6 +27,16 @@ export function DocumentPreviewModal({ visible, uri, mimeType, onClose }: Props)
         {mimeType === "application/pdf" ? (
           <View className="flex-1 pt-24">
             <Pdf source={{ uri: uri ?? "" }} style={{ flex: 1, backgroundColor: "transparent" }} />
+          </View>
+        ) : mimeType && HTML_MIME_TYPES.has(mimeType) ? (
+          <View className="flex-1 pt-24 bg-white">
+            <WebView
+              source={{ uri: uri ?? "" }}
+              style={{ flex: 1 }}
+              originWhitelist={["file://*"]}
+              allowFileAccess
+              allowingReadAccessToURL={uri ?? undefined}
+            />
           </View>
         ) : (
           <ScrollView

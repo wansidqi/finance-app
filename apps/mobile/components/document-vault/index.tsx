@@ -14,7 +14,7 @@ import { DocumentPreviewModal } from "./preview-modal";
 // downloading — overwritten on every open, never relied on to persist.
 const VIEW_DIR = new Directory(Paths.cache, "vault-document-view");
 
-const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf"]);
+const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf", "text/html", "application/xhtml+xml"]);
 const isPreviewable = (mimeType: string) =>
   mimeType.startsWith("image/") || PREVIEWABLE_MIME_TYPES.has(mimeType);
 

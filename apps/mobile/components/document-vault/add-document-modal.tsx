@@ -16,7 +16,7 @@ import { DocumentPreviewModal } from "./preview-modal";
 // sheet's bottom row of buttons doesn't sit underneath it.
 const TAB_BAR_BASE_HEIGHT = 52;
 
-const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf"]);
+const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf", "text/html", "application/xhtml+xml"]);
 const isPreviewable = (mimeType: string) =>
   mimeType.startsWith("image/") || PREVIEWABLE_MIME_TYPES.has(mimeType);
 
@@ -126,7 +126,7 @@ export function AddDocumentModal({ visible, onClose }: Props) {
   };
 
   const handleChooseDocument = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/*"] });
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
     setPickedAsset({
