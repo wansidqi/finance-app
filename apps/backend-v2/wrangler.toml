@@ -9,8 +9,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "NISAB_CACHE"
-id = "REPLACE_WITH_REAL_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_REAL_KV_PREVIEW_NAMESPACE_ID"
+id = "6dc90b41d6064f7bb0398194395c7721"
+preview_id = "743d84d4e0cc4a83b341b14d5963c409"
 
 # Runs the monthly nisab refresh independently of any request — mirrors the
 # Go backend's lazy on-request background refresh, but as a real scheduled
