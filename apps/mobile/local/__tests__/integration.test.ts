@@ -34,6 +34,7 @@ import {
   setReminderNotificationSettings,
 } from "../reminder-notification-settings-service";
 import { invalidateStateNisabCache } from "../nisab-state-sync-service";
+import { STATIC_NISAB_FALLBACK } from "../nisab-static-fallback";
 import { getAllCategories, upsertTracker } from "../zakat-service";
 
 describe("local-first integration (real SQLite via node:sqlite)", () => {
@@ -172,20 +173,21 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     expect(cash!.next_due_date).not.toBeNull();
   }, 15000);
 
-  test("an active haul cycle is left untouched (not reset) when nisab is temporarily unavailable", async () => {
-    // Simulate the backend having nothing for this state right now (e.g.
-    // an outage) — resolveNisab() returns nisabRM: null rather than a
-    // computed fallback. This must NEVER be treated as "nisab not held":
-    // that would silently wipe the in-progress haul cycle from the
-    // previous test just because the data source was temporarily down.
+  test("an active haul cycle keeps evaluating against the local static fallback rate when the backend is temporarily down", async () => {
+    // Simulate the backend having nothing right now (e.g. an outage) —
+    // resolveNisab() no longer goes all the way to nisabRM: null in this
+    // case, since nisab-static-fallback.ts's hand-collected snapshot covers
+    // every state (including PPZ, which is what a request with no seeded
+    // location resolves through). The haul cycle from the previous test
+    // must survive untouched, still evaluated against a real number.
     invalidateStateNisabCache();
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ states: [] }) }) as any;
 
+    const ppzFallback = STATIC_NISAB_FALLBACK.find((r) => r.state === "wp_kl_putrajaya_labuan")!;
     const categories = await getAllCategories();
     const cash = categories.find((c) => c.category === "CASH");
-    expect(cash!.nisab).toBeNull();
-    expect(cash!.nisab_reached).toBeNull();
-    expect(cash!.haul_status).toBe("UNKNOWN");
+    expect(cash!.nisab).toBe(ppzFallback.nisabRM);
+    expect(cash!.nisab_reached).toBe(true);
     // The cycle from the previous test must survive completely untouched.
     expect(cash!.last_paid_date).not.toBeNull();
     expect(cash!.haul_start_date).not.toBeNull();

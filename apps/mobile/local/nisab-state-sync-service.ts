@@ -1,4 +1,5 @@
 import { MalaysiaStateKey, StateNisabRate } from "@/interface/nisab-state";
+import { STATIC_NISAB_FALLBACK } from "./nisab-static-fallback";
 
 /**
  * All 14 states' nisab now come from one backend endpoint
@@ -9,8 +10,11 @@ import { MalaysiaStateKey, StateNisabRate } from "@/interface/nisab-state";
  * itself, independently, on every single device (8 external site fetches
  * per sync) — now it just reads one small JSON response instead.
  * `EXPO_PUBLIC_API_URL` is optional: unset, unreachable, or a bad response
- * simply resolves to an empty list, and callers (local/nisab-resolver.ts)
- * fall back further (nationwide gold-price nisab) — never throws.
+ * simply resolves to an empty list — getAllStateNisabRates() then fills any
+ * state that's still missing from `nisab-static-fallback.ts`'s hand-collected
+ * snapshot, so the app has real per-state numbers even with no backend
+ * configured. Callers (local/nisab-resolver.ts) only see "unavailable" if
+ * even that local fallback is missing a state.
  */
 
 const FETCH_TIMEOUT_MS = 6000;
@@ -71,11 +75,21 @@ async function fetchAllStateNisabRates(): Promise<StateNisabRate[]> {
   }
 }
 
-/** All jurisdictions the backend currently has a figure for — scraped or AI. Empty if no backend is configured/reachable. */
+/**
+ * Every jurisdiction with a figure — backend-provided where available, with
+ * `nisab-static-fallback.ts`'s hand-collected snapshot filling in any state
+ * the backend doesn't have (no backend configured, unreachable, or that
+ * state missing from its response). A backend value always wins over the
+ * static one when both exist.
+ */
 export async function getAllStateNisabRates(): Promise<StateNisabRate[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) return cache.rates;
 
-  const rates = await fetchAllStateNisabRates();
+  const backendRates = await fetchAllStateNisabRates();
+  const backendStates = new Set(backendRates.map((r) => r.state));
+  const fallback = STATIC_NISAB_FALLBACK.filter((r) => !backendStates.has(r.state));
+  const rates = [...backendRates, ...fallback];
+
   cache = { rates, fetchedAt: Date.now() };
   return rates;
 }

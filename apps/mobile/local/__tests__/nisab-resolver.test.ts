@@ -23,6 +23,7 @@ jest.mock("expo-sqlite", () => {
 
 import { resolveNisab } from "../nisab-resolver";
 import { invalidateStateNisabCache } from "../nisab-state-sync-service";
+import { STATIC_NISAB_FALLBACK } from "../nisab-static-fallback";
 
 const originalFetch = global.fetch;
 const originalUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -57,19 +58,26 @@ async function seedLocation(state: string): Promise<void> {
   );
 }
 
-test("resolves as unavailable, with a null nisabRM, when no location has ever been detected", async () => {
+// The static local fallback (nisab-static-fallback.ts) now covers all 14
+// states plus PPZ, so with no location detected and no backend reachable,
+// resolveNisab still finds PPZ's static figure rather than coming up empty
+// — "unavailable" is reserved for the (no longer normally reachable) case
+// where even that local snapshot has nothing.
+test("falls back to PPZ's static figure when no location has ever been detected", async () => {
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "unavailable" });
-  expect(result.nisabRM).toBeNull();
+  const ppz = STATIC_NISAB_FALLBACK.find((r) => r.state === "wp_kl_putrajaya_labuan")!;
+  expect(result.nisabRM).toBe(ppz.nisabRM);
+  expect(result.source).toEqual({ kind: "ppz_fallback", sourceUrl: ppz.sourceUrl, asOf: ppz.asOf });
 });
 
-test("resolves as unavailable when the backend isn't configured", async () => {
+test("resolves the detected state's static fallback rate when the backend isn't configured", async () => {
   await seedLocation("johor");
   delete process.env.EXPO_PUBLIC_API_URL;
 
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "unavailable" });
-  expect(result.nisabRM).toBeNull();
+  const johor = STATIC_NISAB_FALLBACK.find((r) => r.state === "johor")!;
+  expect(result.nisabRM).toBe(johor.nisabRM);
+  expect(result.source).toMatchObject({ kind: "state", state: "johor", sourceUrl: johor.sourceUrl });
 });
 
 test("uses the state's scraped rate (isScraped: true) when the backend has one for the detected state", async () => {
@@ -94,22 +102,30 @@ test("uses the AI-fallback rate (isScraped: false) for the detected state when t
   expect(result.source).toMatchObject({ kind: "ai_fallback", state: "kelantan" });
 });
 
-test("falls back to PPZ's rate when the detected state has none, but PPZ does", async () => {
+// "perlis" has no live-scraped backend entry here, but the local static
+// fallback (nisab-static-fallback.ts) has a figure for every one of the 14
+// states, so the detected state itself resolves rather than falling all the
+// way through to PPZ — PPZ-fallback is only reached today for a detected
+// state genuinely missing from that local snapshot, which no longer happens
+// for any real MalaysiaStateKey.
+test("resolves the detected state's static fallback rate even when the backend only has PPZ", async () => {
   await seedLocation("perlis");
   mockBackendStates([
     { state: "wp_kl_putrajaya_labuan", zakatAgency: "PPZ-MAIWP", nisabRM: 33996, sourceUrl: "https://www.zakat.com.my/", isScraped: true, asOf: "2026-08-31" },
   ]);
 
   const result = await resolveNisab();
-  expect(result.nisabRM).toBe(33996);
-  expect(result.source).toMatchObject({ kind: "ppz_fallback" });
+  const perlis = STATIC_NISAB_FALLBACK.find((r) => r.state === "perlis")!;
+  expect(result.nisabRM).toBe(perlis.nisabRM);
+  expect(result.source).toMatchObject({ state: "perlis" });
 });
 
-test("resolves as unavailable when the backend has neither the detected state nor PPZ", async () => {
+test("resolves the detected state's static fallback rate when the backend has nothing at all", async () => {
   await seedLocation("perlis");
   mockBackendStates([]);
 
   const result = await resolveNisab();
-  expect(result.source).toEqual({ kind: "unavailable" });
-  expect(result.nisabRM).toBeNull();
+  const perlis = STATIC_NISAB_FALLBACK.find((r) => r.state === "perlis")!;
+  expect(result.nisabRM).toBe(perlis.nisabRM);
+  expect(result.source).toMatchObject({ state: "perlis" });
 });
