@@ -126,6 +126,9 @@ export function Asset() {
   const [modalPlatform, setModalPlatform] = useState<string | undefined>();
   const [modalLinkId, setModalLinkId] = useState<number | undefined>();
   const [balanceGroup, setBalanceGroup] = useState<PlatformGroup | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<AssetCategory>>(
+    new Set(),
+  );
   const router = useRouter();
   const { mutate: updateAsset } = useUpdateAsset();
 
@@ -183,6 +186,23 @@ export function Asset() {
 
   const toggleCalculate = (asset: AssetInterface) => {
     updateAsset({ id: asset.id, is_calculate: !asset.is_calculate });
+  };
+
+  const toggleCategory = (category: AssetCategory) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
+
+  const allCategoriesCollapsed =
+    sections.length > 0 && sections.every((s) => collapsedCategories.has(s.category));
+  const toggleAllCategories = () => {
+    setCollapsedCategories(
+      allCategoriesCollapsed ? new Set() : new Set(sections.map((s) => s.category)),
+    );
   };
 
   const goToDetail = (assetId: number) =>
@@ -300,42 +320,69 @@ export function Asset() {
               </View>
 
               <Section title="Holdings">
-                <View className="gap-6">
+                <View className="gap-4">
+                  {sections.length > 1 && (
+                    <TouchableOpacity
+                      onPress={toggleAllCategories}
+                      className="self-end flex-row items-center gap-1.5 px-1 -mb-2"
+                      hitSlop={8}
+                    >
+                      <Ionicons
+                        name={
+                          allCategoriesCollapsed
+                            ? "chevron-expand-outline"
+                            : "chevron-collapse-outline"
+                        }
+                        size={13}
+                        color="#34d399"
+                      />
+                      <Text className="text-[11px] font-semibold text-emerald-400">
+                        {allCategoriesCollapsed ? "Expand all" : "Collapse all"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {sections.map((section) => {
                     const categoryColor = CATEGORY_DIST_META[section.category].color;
+                    const isCollapsed = collapsedCategories.has(section.category);
                     return (
                       <View key={section.category} className="gap-2.5">
-                        <CategorySectionHeader section={section} />
-                        <View className="gap-3">
-                          {section.items.map((item) =>
-                            item.type === "group" ? (
-                              <PlatformGroupCard
-                                key={`group-${item.group.platform}`}
-                                group={item.group}
-                                color={categoryColor}
-                                onToggle={toggleCalculate}
-                                onPressEntry={goToDetail}
-                                onAdd={() => openAddModal(item.group.platform)}
-                                onUpdateBalance={
-                                  item.group.entries.length > 1
-                                    ? () => setBalanceGroup(item.group)
-                                    : undefined
-                                }
-                              />
-                            ) : (
-                              <StandaloneAssetCard
-                                key={`single-${item.asset.id}`}
-                                asset={item.asset}
-                                color={categoryColor}
-                                onToggle={() => toggleCalculate(item.asset)}
-                                onPress={() => goToDetail(item.asset.id)}
-                                onAdd={() =>
-                                  openAddModal(item.asset.name, item.asset.id)
-                                }
-                              />
-                            ),
-                          )}
-                        </View>
+                        <CategorySectionHeader
+                          section={section}
+                          isCollapsed={isCollapsed}
+                          onToggle={() => toggleCategory(section.category)}
+                        />
+                        {!isCollapsed && (
+                          <View className="gap-3">
+                            {section.items.map((item) =>
+                              item.type === "group" ? (
+                                <PlatformGroupCard
+                                  key={`group-${item.group.platform}`}
+                                  group={item.group}
+                                  color={categoryColor}
+                                  onToggle={toggleCalculate}
+                                  onPressEntry={goToDetail}
+                                  onAdd={() => openAddModal(item.group.platform)}
+                                  onUpdateBalance={
+                                    item.group.entries.length > 1
+                                      ? () => setBalanceGroup(item.group)
+                                      : undefined
+                                  }
+                                />
+                              ) : (
+                                <StandaloneAssetCard
+                                  key={`single-${item.asset.id}`}
+                                  asset={item.asset}
+                                  color={categoryColor}
+                                  onToggle={() => toggleCalculate(item.asset)}
+                                  onPress={() => goToDetail(item.asset.id)}
+                                  onAdd={() =>
+                                    openAddModal(item.asset.name, item.asset.id)
+                                  }
+                                />
+                              ),
+                            )}
+                          </View>
+                        )}
                       </View>
                     );
                   })}
@@ -491,14 +538,31 @@ function UpdateBalanceModal({
   );
 }
 
-function CategorySectionHeader({ section }: { section: CategorySection }) {
+function CategorySectionHeader({
+  section,
+  isCollapsed,
+  onToggle,
+}: {
+  section: CategorySection;
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
   const { formatRM } = useFormatRM();
   const hasExcluded = section.zakatableTotal !== section.total;
   const meta = CATEGORY_DIST_META[section.category];
 
   return (
-    <View className="flex-row items-center justify-between px-1">
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.7}
+      className="flex-row items-center justify-between px-1"
+    >
       <View className="flex-row items-center gap-2">
+        <Ionicons
+          name={isCollapsed ? "chevron-forward" : "chevron-down"}
+          size={14}
+          color="#64748b"
+        />
         <View className="p-1.5 rounded-full" style={{ backgroundColor: `${meta.color}26` }}>
           <Ionicons
             name={CATEGORY_ICON[section.category]}
@@ -523,7 +587,7 @@ function CategorySectionHeader({ section }: { section: CategorySection }) {
           </Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
