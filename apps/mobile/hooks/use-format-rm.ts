@@ -1,7 +1,7 @@
 import { hideAmountsAtom } from "@/state/privacy.state";
 import { useAtom } from "jotai";
 
-const MASK = "RM••••••";
+const MASK = "RM****";
 
 /**
  * Formats a Ringgit amount, respecting the app-wide "hide amounts" toggle.

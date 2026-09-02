@@ -11,6 +11,7 @@ import { AppState, AppStateStatus, Platform } from "react-native";
 import "react-native-reanimated";
 
 import { BackupForegroundSync } from "@/components/backup/backup-foreground-sync";
+import { PrivacySync } from "@/components/privacy/privacy-sync";
 import { PaymentReminderSync } from "@/components/reminders/reminder-sync";
 import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
 import { StateNisabSync } from "@/components/zakat/state-nisab-sync";
@@ -88,6 +89,7 @@ export default function RootLayout() {
             <StateNisabSync />
             <PaymentReminderSync />
             <BackupForegroundSync />
+            <PrivacySync />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen
