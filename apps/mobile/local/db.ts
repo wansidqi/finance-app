@@ -193,6 +193,12 @@ CREATE TABLE IF NOT EXISTS vault_documents (
   updated_at TEXT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS ui_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  hide_amounts INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS backup_metadata (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   drive_file_id TEXT NULL,
