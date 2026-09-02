@@ -404,6 +404,14 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
 export function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = SQLite.openDatabaseAsync(DB_NAME).then(async (db) => {
+      // expo-sqlite doesn't serialize concurrent async calls on one
+      // connection, and leaves SQLite's busy_timeout at its default of 0 —
+      // so any two calls that land in the same tick (e.g. the several
+      // sync effects mounted together in app/_layout.tsx on cold launch)
+      // can collide and abort immediately with "database is locked"
+      // instead of one just waiting for the other to finish. This makes
+      // SQLite retry internally for up to 5s before giving up.
+      await db.execAsync("PRAGMA busy_timeout = 5000;");
       await db.execAsync(SCHEMA);
       await migrate(db);
       return db;
@@ -417,10 +425,31 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
  * so a plain file copy of the main .db file (no matching -wal/-shm sidecar
  * needed) reflects every committed write — used before creating a backup
  * snapshot.
+ *
+ * expo-sqlite doesn't serialize concurrent async calls on one connection
+ * (see its own docs on `withExclusiveTransactionAsync`) — an unrelated query
+ * from one of the app's other startup sync effects (zakat/reminders/nisab/
+ * privacy, all mounted alongside this one in app/_layout.tsx) can be
+ * in-flight on the same connection at cold launch, and this checkpoint needs
+ * exclusive access. There's no `busy_timeout` configured, so that collision
+ * fails instantly rather than waiting — retry a few times instead, since the
+ * colliding queries are all quick and clear within milliseconds.
  */
 export async function checkpointWal(): Promise<void> {
   const db = await getDb();
-  await db.execAsync("PRAGMA wal_checkpoint(TRUNCATE);");
+  const MAX_ATTEMPTS = 5;
+  const RETRY_DELAY_MS = 150;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await db.execAsync("PRAGMA wal_checkpoint(TRUNCATE);");
+      return;
+    } catch (err: any) {
+      const isLocked = typeof err?.message === "string" && err.message.includes("locked");
+      if (!isLocked || attempt === MAX_ATTEMPTS) throw err;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    }
+  }
 }
 
 /**
