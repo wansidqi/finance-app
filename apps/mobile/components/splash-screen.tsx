@@ -1,8 +1,8 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, Text, View } from "react-native";
+import { Animated, Text, View } from "react-native";
 
-const { width, height } = Dimensions.get("window");
+const splashImage = require("../assets/images/zakat-splash.jpeg");
 
 export function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -76,52 +76,29 @@ export function SplashScreen() {
   });
 
   return (
-    <View className="flex-1 bg-slate-950 items-center justify-center overflow-hidden">
-      {/* Background Gradient Orbs */}
-      <View
-        className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20"
-        style={{
-          backgroundColor: "#10b981",
-        }}
-      />
-      <View
-        className="absolute bottom-0 left-0 w-72 h-72 rounded-full opacity-10"
-        style={{
-          backgroundColor: "#f59e0b",
-        }}
+    <View className="flex-1 bg-slate-950 overflow-hidden">
+      {/* Full-bleed background artwork */}
+      <Image
+        source={splashImage}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        contentFit="cover"
       />
 
-      {/* Main Content */}
+      {/* Main Content — anchored low, in the artwork's open lower area */}
       <Animated.View
         style={{
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }, { translateY: slideAnim }],
         }}
-        className="items-center"
+        className="flex-1 items-center justify-end pb-28"
       >
-        {/* Logo Container with Shimmer */}
-        <View className="mb-8 relative">
-          {/* Outer Glow Ring */}
-          <Animated.View
-            style={{
-              opacity: shimmerOpacity,
-            }}
-            className="absolute inset-0 rounded-full border-2 border-emerald-500"
-          />
-
-          {/* Main Logo */}
-          <View className="w-24 h-24 rounded-full bg-linear-to-br from-emerald-500 to-teal-600 items-center justify-center shadow-2xl border border-emerald-300/30">
-            <Ionicons name="hand-right" size={48} color="#ffffff" />
-          </View>
-
-          {/* Accent Ring */}
-          <View className="absolute inset-0 rounded-full border border-emerald-400/20" />
-        </View>
-
         {/* Title */}
-        <Text className="text-[32px] font-black text-white text-center tracking-tight mb-1">
-          Zakat
-        </Text>
+        <Animated.View
+          style={{ opacity: shimmerOpacity }}
+          className="mb-1"
+        >
+          <Text className="text-[32px] font-black text-white text-center tracking-tight">Zakat</Text>
+        </Animated.View>
         <Text className="text-[14px] font-semibold text-emerald-400 uppercase tracking-widest mb-12">
           Wealth Tracker
         </Text>
@@ -140,12 +117,12 @@ export function SplashScreen() {
         </View>
 
         {/* Loading Text */}
-        <Text className="text-[12px] text-slate-400 font-semibold uppercase tracking-widest">
+        <Text className="text-[12px] text-slate-300 font-semibold uppercase tracking-widest">
           Loading Your Dashboard
         </Text>
 
         {/* Progress Bar */}
-        <View className="mt-8 w-32 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+        <View className="mt-8 w-32 h-1.5 rounded-full bg-slate-700/80 overflow-hidden">
           <Animated.View
             style={{
               width: shimmerAnim.interpolate({
@@ -158,22 +135,9 @@ export function SplashScreen() {
         </View>
       </Animated.View>
 
-      {/* Bottom Text */}
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        }}
-        className="absolute bottom-16 items-center"
-      >
-        <Text className="text-[11px] text-slate-500 text-center max-w-xs">
-          Manage your wealth, calculate zakat, track liabilities
-        </Text>
-      </Animated.View>
-
       {/* Version/Footer */}
-      <View className="absolute bottom-4 items-center">
-        <Text className="text-[10px] text-slate-600">v1.0.0</Text>
+      <View className="absolute bottom-4 w-full items-center">
+        <Text className="text-[10px] text-slate-400">v1.0.0</Text>
       </View>
     </View>
   );

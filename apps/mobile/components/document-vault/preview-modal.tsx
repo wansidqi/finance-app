@@ -18,18 +18,19 @@ export function DocumentPreviewModal({ visible, uri, mimeType, onClose }: Props)
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/95">
-        <TouchableOpacity
-          onPress={onClose}
-          className="absolute top-14 right-6 z-10 p-2.5 rounded-full bg-white/10"
-        >
-          <Ionicons name="close" size={22} color="white" />
-        </TouchableOpacity>
+        <View className="flex-row justify-end items-center pt-14 pb-3 px-4 bg-black/95">
+          <TouchableOpacity onPress={onClose} className="p-2.5 rounded-full bg-white/10">
+            <Ionicons name="close" size={22} color="white" />
+          </TouchableOpacity>
+        </View>
         {mimeType === "application/pdf" ? (
-          <View className="flex-1 pt-24">
-            <Pdf source={{ uri: uri ?? "" }} style={{ flex: 1, backgroundColor: "transparent" }} />
-          </View>
+          <Pdf
+            source={{ uri: uri ?? "" }}
+            fitPolicy={0}
+            style={{ flex: 1, backgroundColor: "transparent" }}
+          />
         ) : mimeType && HTML_MIME_TYPES.has(mimeType) ? (
-          <View className="flex-1 pt-24 bg-white">
+          <View className="flex-1 bg-white">
             <WebView
               source={{ uri: uri ?? "" }}
               style={{ flex: 1 }}
