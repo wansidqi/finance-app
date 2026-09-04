@@ -211,8 +211,11 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     }) as any;
   }, 15000);
 
-  test("last_paid_date and haul_start_date are wiped once nisab is no longer held", async () => {
+  test("a mid-cycle dip below nisab does not reset the haul cycle", async () => {
     // Take CASH back below nisab by zeroing out the top-up asset added above.
+    // Per the "start & end only" haul position, this is only evaluated at
+    // the next annual checkpoint — a dip in between is ignored, so the
+    // existing cycle (and its payment record) must survive untouched.
     const all = await getAllAssets();
     const topUp = all.find((a) => a.name === "Nisab Top-up");
     await updateAsset({ id: topUp!.id, price: 0 });
@@ -220,9 +223,9 @@ describe("local-first integration (real SQLite via node:sqlite)", () => {
     const categories = await getAllCategories();
     const cash = categories.find((c) => c.category === "CASH");
     expect(cash!.nisab_reached).toBe(false);
-    expect(cash!.last_paid_date).toBeNull();
-    expect(cash!.haul_start_date).toBeNull();
-    expect(cash!.next_due_date).toBeNull();
+    expect(cash!.last_paid_date).not.toBeNull();
+    expect(cash!.haul_start_date).not.toBeNull();
+    expect(cash!.next_due_date).not.toBeNull();
     expect(cash!.haul_status).toBe("PENDING");
   }, 15000);
 

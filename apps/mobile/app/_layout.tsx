@@ -13,6 +13,7 @@ import "react-native-reanimated";
 import { BackupForegroundSync } from "@/components/backup/backup-foreground-sync";
 import { PrivacySync } from "@/components/privacy/privacy-sync";
 import { PaymentReminderSync } from "@/components/reminders/reminder-sync";
+import { SplashScreen as AppSplashScreen } from "@/components/splash-screen";
 import { ZakatReminderSync } from "@/components/zakat/reminder-sync";
 import { StateNisabSync } from "@/components/zakat/state-nisab-sync";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -47,15 +48,16 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [queryClient] = useState(() => new QueryClient());
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Simulate loading time and then hide splash screen
-    const hideSpashScreen = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      await SplashScreen.hideAsync();
-    };
-
-    hideSpashScreen();
+    // Android 12+ constrains the native OS splash to a small centered icon
+    // regardless of config, so we hide it as soon as possible and hand off
+    // to our own full-bleed animated splash (AppSplashScreen) in JS instead
+    // of holding the native one on screen.
+    SplashScreen.hideAsync();
+    const timer = setTimeout(() => setIsReady(true), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -85,26 +87,32 @@ export default function RootLayout() {
           <ThemeProvider
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
-            <ZakatReminderSync />
-            <StateNisabSync />
-            <PaymentReminderSync />
-            <BackupForegroundSync />
-            <PrivacySync />
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="asset/[id]"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="liability/[id]"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen name="backup" options={{ headerShown: false }} />
-              <Stack.Screen name="reminders" options={{ headerShown: false }} />
-              <Stack.Screen name="tax-relief" options={{ headerShown: false }} />
-            </Stack>
-            <StatusBar style="auto" />
+            {isReady ? (
+              <>
+                <ZakatReminderSync />
+                <StateNisabSync />
+                <PaymentReminderSync />
+                <BackupForegroundSync />
+                <PrivacySync />
+                <Stack>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="asset/[id]"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="liability/[id]"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="backup" options={{ headerShown: false }} />
+                  <Stack.Screen name="reminders" options={{ headerShown: false }} />
+                  <Stack.Screen name="tax-relief" options={{ headerShown: false }} />
+                </Stack>
+                <StatusBar style="auto" />
+              </>
+            ) : (
+              <AppSplashScreen />
+            )}
           </ThemeProvider>
         </QueryClientProvider>
       </KeyboardProvider>

@@ -1,15 +1,18 @@
-# Open question: does a mid-cycle nisab dip reset the haul?
+# Resolved: does a mid-cycle nisab dip reset the haul?
 
-Unresolved fiqh question affecting `computeHaulStatus` in `local/zakat-service.ts`.
-Needs a decision before this can be considered final — currently implemented as
-**Option B (continuous holding)** below, per explicit instruction, but that's a
-stricter minority position and may not be what should actually ship.
+Previously an open fiqh question affecting `computeHaulStatus` in
+`local/zakat-service.ts`. **Resolved: Option A ("start & end only").**
+Confirmed against two independent sources consulted directly on this exact
+scenario (a savings haul that dips below nisab mid-year, then recovers
+before the next annual checkpoint) — both gave the same answer: the
+checkpoint date is fixed and recurring, checked only once a year; a dip in
+between doesn't matter and doesn't move the anchor.
 
 ## The two positions
 
-|          | **Option A — "start & end only"** (majority view, e.g. Hanafi; this was the _original_ code's behavior)                                         | **Option B — "continuous holding"** (current implementation)                                 |
+|          | **Option A — "start & end only"** (majority view, e.g. Hanafi; also the _original_ code's behavior, before it was changed to Option B) | **Option B — "continuous holding"** (was the implementation until this fix) |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Rule** | Nisab only needs to be held at the _start_ of the haul and _again at the end_. Dips in between don't matter, as long as wealth never hits zero. | Nisab must be held on _every single day_ of the haul. Any dip, even for a moment, breaks it. |
+| **Rule** | Nisab only needs to be held at the _start_ of the haul and _again at the end_ (the annual checkpoint). Dips in between don't matter, as long as wealth never hits zero. | Nisab must be held on _every single day_ of the haul. Any dip, even for a moment, breaks it. |
 
 ## Worked example
 
@@ -18,37 +21,43 @@ Timeline: Savings reach nisab on **1 Muharram 1450H**. Mid-year, on **1 Jumada
 nisab on **1 Sya'ban 1450H** and stay there. One full year from the original
 start would land on **1 Muharram 1451H**.
 
-|                                                     | **Option A — start & end only**                                                | **Option B — continuous holding**                                                                                    |
-| --------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| **1 Muharram 1450H** — nisab first reached          | Haul starts.                                                                   | Haul starts.                                                                                                         |
-| **1 Jumada 1450H** — dips below nisab               | Ignored. Haul keeps counting toward 1 Muharram 1451H.                          | Haul is wiped. `haul_start_date` and `last_paid_date` reset to null. Status goes back to PENDING / "Awaiting nisab." |
-| **1 Sya'ban 1450H** — back above nisab              | Nothing changes — haul was never interrupted.                                  | **New** haul starts counting from _this_ date, not the original one.                                                 |
-| **1 Muharram 1451H** (one year from original start) | Nisab is checked. It's held → **zakat is due today**, as originally scheduled. | Nothing happens here — the original cycle no longer exists.                                                          |
-| **When does zakat actually become due?**            | **1 Muharram 1451H** — on schedule, unaffected by the dip.                     | **1 Sya'ban 1451H** — a full year _after the dip recovered_, several months later than the original schedule.        |
+|                                                     | **Option A — start & end only** (now implemented)                                                             |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **1 Muharram 1450H** — nisab first reached          | Haul starts (`haul_start_date` set).                                                                                          |
+| **1 Jumada 1450H** — dips below nisab               | Ignored entirely — no write to the tracker, haul keeps counting toward 1 Muharram 1451H.                                     |
+| **1 Sya'ban 1450H** — back above nisab              | Nothing changes — haul was never interrupted, anchor is still 1 Muharram.                                                     |
+| **1 Muharram 1451H** (checkpoint)                   | Nisab is evaluated. If held → zakat is due (`OVERDUE`). If not held → that year is skipped, but the anchor stays fixed and the next checkpoint is 1 Muharram 1452H, not a new cycle from wherever balance later recovered. |
 
-## Why this matters
-
-Option A is the more commonly followed position in most zakat calculators and
-fatwas. Option B is a stricter minority position. For anyone whose balance
-fluctuates around the nisab line, the two options can produce due dates months
-apart — this isn't a cosmetic difference, it changes when zakat is actually owed.
-
-## Current state in code
+## Current implementation
 
 `local/zakat-service.ts`:
 
-- `computeHaulStatus` returns an immediate reset (`{ status: "PENDING", nextDue: null, newHaulStart: null }`) the instant `nisabReached` is `false`, regardless of where in the cycle it happens (Option B).
-- `getAllCategories` persists that reset via `resetHaulAndPayment`, which clears **both** `haul_start_date` and `last_paid_date` in the DB.
-- Covered by `local/__tests__/zakat-service.test.ts` ("mid-cycle dip below nisab resets the haul immediately") and `local/__tests__/integration.test.ts` ("last_paid_date and haul_start_date are wiped once nisab is no longer held").
+- `computeHaulStatus`: once a cycle has a `haulStart`, nisab is evaluated
+  only at annual checkpoints (`haulStart + N hijri years`). A dip between
+  checkpoints never resets or clears anything. If a checkpoint is reached
+  and nisab isn't currently held, that year is skipped and the function
+  rolls forward to the next annual checkpoint on the *same* anchor date —
+  since there's no stored history of nisab per past checkpoint, the current
+  `nisabReached` is used as a stand-in for whichever checkpoint is nearest
+  to `now`.
+- `getAllCategories` no longer wipes `last_paid_date`/`haul_start_date` on a
+  mid-cycle dip — the only DB write is starting a brand-new cycle when none
+  existed yet. The old `resetHaulAndPayment` helper was removed as
+  unused.
+- The anchor date (`haul_start_date`) only moves when the user actually
+  records a payment (`upsertTracker`, unchanged by this fix) — never
+  automatically.
+- Covered by `local/__tests__/zakat-service.test.ts` ("checkpoint reached
+  without nisab held...", "mid-cycle dip below nisab is ignored...") and
+  `local/__tests__/integration.test.ts` ("a mid-cycle dip below nisab does
+  not reset the haul cycle").
 
-## To resolve
+## Out of scope (not implemented)
 
-Confirm which position to follow (check against a trusted fatwa source or the
-specific mazhab this app should follow), then either:
-
-- **Keep Option B** as-is, or
-- **Revert to Option A**: in `computeHaulStatus`, only check `nisabReached` at
-  the start (when `haulStart` is `null`) and at cycle completion
-  (`daysUntilDue <= 0`) — not on every call — so a mid-cycle dip no longer
-  clears `newHaulStart`. Also remove/adjust `resetHaulAndPayment`'s mid-cycle
-  trigger in `getAllCategories` accordingly.
+One source also noted that if a mid-cycle increase comes from a **windfall**
+(bonus, inheritance) rather than organic savings growth, that portion should
+be zakat'd immediately as *zakat pendapatan* (income zakat), separate from
+the annual savings checkpoint. The app has no concept of income vs. savings
+zakat today — everything goes through the same asset-category haul. This
+would be a separate, larger feature (classifying *why* a balance changed),
+not part of this fix.

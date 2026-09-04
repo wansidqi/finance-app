@@ -52,19 +52,19 @@ describe("computeHaulStatus", () => {
     expect(nextDue).not.toBeNull();
   });
 
-  test("cycle completes without nisab held resets the haul", () => {
+  test("checkpoint reached without nisab held: that year is skipped, anchor stays fixed, rolls to the next annual checkpoint", () => {
     const start = addDays(now, -400);
     const { status, nextDue, newHaulStart } = computeHaulStatus(start, null, false, now);
     expect(status).toBe("PENDING");
-    expect(nextDue).toBeNull();
-    expect(newHaulStart).toBeNull();
+    expect(newHaulStart).toEqual(start);
+    expect(nextDue).toEqual(addHijriYear(addHijriYear(start)));
   });
 
-  test("mid-cycle dip below nisab resets the haul immediately", () => {
+  test("mid-cycle dip below nisab is ignored — anchor and due date are unaffected", () => {
     const start = addDays(now, -100);
     const { status, nextDue, newHaulStart } = computeHaulStatus(start, null, false, now);
     expect(status).toBe("PENDING");
-    expect(nextDue).toBeNull();
-    expect(newHaulStart).toBeNull();
+    expect(newHaulStart).toEqual(start);
+    expect(nextDue).toEqual(addHijriYear(start));
   });
 });

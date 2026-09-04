@@ -41,15 +41,24 @@ export interface HaulResult {
  * Derives the haul (zakat year) status from the category's current haul
  * start date and whether nisab is currently held.
  *
- * Nisab must be held continuously — any dip below it, at any point, wipes
- * the cycle entirely (caller also clears last_paid_date alongside
- * haulStart, see getAllCategories). The next time nisab is reached it's
- * treated as a brand-new occurrence, not a continuation.
+ * Nisab only has to be held at the start of a cycle and again at each
+ * annual checkpoint (haulStart + N hijri years) — a dip in between is
+ * ignored, per the "start & end only" majority position (confirmed against
+ * two independent sources, see zakat-haul-nisab-question.md history). The
+ * anchor date itself never moves except when the user records a payment
+ * (see upsertTracker); it is not reset just because nisab was briefly
+ * unmet.
  *
- * When there's no recorded haul start yet, it anchors to lastPaidDate (the
- * last time zakat was actually paid, which starts a fresh cycle) rather
- * than "now" — "now" is only used as a last resort when zakat has never
- * been paid for this category either.
+ * If a checkpoint is reached without nisab held, that year's zakat is
+ * skipped and we roll forward to the next annual checkpoint on the same
+ * anchor — we don't have historical nisab snapshots, so the checkpoint
+ * closest to "now" is evaluated using the current nisabReached as a stand-in
+ * for its value on that date.
+ *
+ * When there's no recorded haul start yet, a new cycle anchors to
+ * lastPaidDate (the last time zakat was actually paid) rather than "now" —
+ * "now" is only used as a last resort when zakat has never been paid for
+ * this category either.
  */
 export function computeHaulStatus(
   haulStart: Date | null,
@@ -57,13 +66,22 @@ export function computeHaulStatus(
   nisabReached: boolean,
   now: Date,
 ): HaulResult {
-  if (!nisabReached) {
-    return { status: "PENDING", nextDue: null, newHaulStart: null };
+  if (!haulStart) {
+    if (!nisabReached) {
+      return { status: "PENDING", nextDue: null, newHaulStart: null };
+    }
+    const start = lastPaidDate ?? now;
+    return statusFromDue(start, addHijriYear(start), now);
   }
 
-  const start = haulStart ?? lastPaidDate ?? now;
+  let due = addHijriYear(haulStart);
+  while (due.getTime() <= now.getTime() && !nisabReached) {
+    due = addHijriYear(due);
+  }
+  return statusFromDue(haulStart, due, now);
+}
 
-  const due = addHijriYear(start);
+function statusFromDue(start: Date, due: Date, now: Date): HaulResult {
   const hours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
   const daysUntilDue = Math.trunc(hours / 24);
 
@@ -88,15 +106,6 @@ async function updateHaulStartDate(category: string, haulStart: Date | null): Pr
   await db.runAsync(
     "UPDATE zakat_tracker SET haul_start_date = ?, updated_at = CURRENT_TIMESTAMP WHERE category = ?",
     haulStart ? haulStart.toISOString() : null,
-    category,
-  );
-}
-
-/** Wipes both the haul cycle and its payment record for a category that's lost nisab — the next time nisab is reached it starts as a brand-new occurrence rather than resuming the old one. */
-async function resetHaulAndPayment(category: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    "UPDATE zakat_tracker SET last_paid_date = NULL, haul_start_date = NULL, updated_at = CURRENT_TIMESTAMP WHERE category = ?",
     category,
   );
 }
@@ -129,10 +138,9 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
   for (const [category, agg] of categories) {
     const value = agg.value;
     // Null (not false!) when nisab itself is unavailable — treating unknown
-    // as "not reached" would be actively wrong here, since the tracker
-    // below uses nisabReached === false as the trigger to wipe an in-progress
-    // haul cycle. An outage in the nisab source must never look like the
-    // user's holdings actually dropped below nisab.
+    // as "not reached" would be actively wrong here, since an outage in the
+    // nisab source must never look like the user's holdings actually
+    // dropped below nisab (see the nisabReached === null branch below).
     const nisabReached = currentNisab === null ? null : value >= currentNisab;
     const zakatDue = nisabReached ? value * ZAKAT_RATE : 0;
 
@@ -208,11 +216,7 @@ export async function getAllCategories(): Promise<ZakatTrackerDto[]> {
           dto.next_due_date_hijri = await formatHijri(nextDue);
         }
 
-        if (!nisabReached && (lastPaidDate !== null || haulStart !== null)) {
-          await resetHaulAndPayment(category);
-          dto.last_paid_date = null;
-          dto.last_paid_date_hijri = null;
-        } else if ((haulStart === null) !== (newHaulStart === null)) {
+        if (haulStart === null && newHaulStart !== null) {
           await updateHaulStartDate(category, newHaulStart);
         }
       }
