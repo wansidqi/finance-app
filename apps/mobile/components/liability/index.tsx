@@ -18,7 +18,7 @@ import { AddDebtModal } from "./add-liability";
 import { LiabilitySkeletonLoader } from "./skeleton-loader";
 
 export function Liability() {
-  const { formatRM } = useFormatRM();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const { data = [], isLoading } = useGetLiabilities();
   const router = useRouter();
 
@@ -52,15 +52,27 @@ export function Liability() {
             My Liabilities
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          className="rounded-full bg-red-700 px-5 py-3 active:opacity-80"
-        >
-          <View className="flex-row items-center gap-1">
-            <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-semibold text-[14px]">Add</Text>
-          </View>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => setHideAmounts(!hideAmounts)}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons
+              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#cbd5e1"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setModalVisible(true)}
+            className="rounded-full bg-red-700 px-5 py-3 active:opacity-80"
+          >
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="add" size={20} color="white" />
+              <Text className="text-white font-semibold text-[14px]">Add</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView behavior="padding" className="flex-1 bg-slate-950">

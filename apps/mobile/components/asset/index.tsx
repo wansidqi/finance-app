@@ -120,7 +120,7 @@ function groupByPlatform(assets: AssetInterface[]): DisplayItem[] {
 }
 
 export function Asset() {
-  const { formatRM } = useFormatRM();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const { data: assets, isLoading } = useGetAssets();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalPlatform, setModalPlatform] = useState<string | undefined>();
@@ -222,17 +222,29 @@ export function Asset() {
             My Assets
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => openAddModal()}
-          className="rounded-full bg-emerald-500 px-5 py-3 active:opacity-80"
-        >
-          <View className="flex-row items-center gap-1">
-            <Ionicons name="add" size={20} color="#022c22" />
-            <Text className="text-emerald-950 font-semibold text-[14px]">
-              Add
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => setHideAmounts(!hideAmounts)}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons
+              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#cbd5e1"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => openAddModal()}
+            className="rounded-full bg-emerald-500 px-5 py-3 active:opacity-80"
+          >
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="add" size={20} color="#022c22" />
+              <Text className="text-emerald-950 font-semibold text-[14px]">
+                Add
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
       <View className="flex-1 bg-slate-950">
         <ScrollView

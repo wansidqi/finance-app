@@ -1,6 +1,7 @@
 import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/components/date-field";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { TimeField } from "@/components/time-field";
 import { ReminderInterface, ReminderRecurrence, ReminderTimingMode } from "@/interface/reminder";
 import {
   DEFAULT_REMINDER_HOUR,
@@ -20,10 +21,6 @@ import { REMINDER_RECURRENCES, REMINDER_RECURRENCE_LABELS } from "./reminder-opt
 // sheet's bottom row of buttons doesn't sit underneath it.
 const TAB_BAR_BASE_HEIGHT = 52;
 
-function pad(n: number) {
-  return n.toString().padStart(2, "0");
-}
-
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -41,9 +38,8 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
   const [timingMode, setTimingMode] = useState<ReminderTimingMode>("global");
   const [offsets, setOffsets] = useState<number[]>(DEFAULT_REMINDER_OFFSETS_DAYS);
-  const [hourText, setHourText] = useState(String(DEFAULT_REMINDER_HOUR));
-  const [minuteText, setMinuteText] = useState(pad(DEFAULT_REMINDER_MINUTE));
-  const [timingError, setTimingError] = useState<string | null>(null);
+  const [hour, setHour] = useState(DEFAULT_REMINDER_HOUR);
+  const [minute, setMinute] = useState(DEFAULT_REMINDER_MINUTE);
 
   const { mutateAsync: createReminder, isPending: isCreating } = useCreateReminder();
   const { mutateAsync: updateReminder, isPending: isUpdating } = useUpdateReminder();
@@ -62,9 +58,8 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
     setTimingMode(reminder?.notification_mode ?? "global");
     setOffsets(withDueDayIncluded(reminder?.notification_offsets_days ?? DEFAULT_REMINDER_OFFSETS_DAYS));
-    setHourText(String(reminder?.notification_hour ?? DEFAULT_REMINDER_HOUR));
-    setMinuteText(pad(reminder?.notification_minute ?? DEFAULT_REMINDER_MINUTE));
-    setTimingError(null);
+    setHour(reminder?.notification_hour ?? DEFAULT_REMINDER_HOUR);
+    setMinute(reminder?.notification_minute ?? DEFAULT_REMINDER_MINUTE);
   }, [visible, reminder]);
 
   const resetAndClose = () => {
@@ -75,35 +70,18 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
     const isoDate = dueDate ? calendarDateToIso(dueDate) : null;
     if (!name.trim() || !isoDate) return;
 
-    // Daily reminders don't expose notification timing at all — they always
-    // just use the app-wide default time, once a day.
-    const effectiveTimingMode = recurrence === "daily" ? "global" : timingMode;
-
-    if (effectiveTimingMode === "custom") {
-      const hour = Number(hourText);
-      const minute = Number(minuteText);
-
-      if (Number.isNaN(hour) || hour < 0 || hour > 23) {
-        setTimingError("Hour must be between 0 and 23");
-        return;
-      }
-      if (Number.isNaN(minute) || minute < 0 || minute > 59) {
-        setTimingError("Minute must be between 0 and 59");
-        return;
-      }
-      setTimingError(null);
-    }
-
+    // Daily reminders fire every day, so "days before due" doesn't apply —
+    // only the time is customizable for them.
     const data: Partial<ReminderInterface> = {
       name: name.trim(),
       recurrence,
       recurrence_interval_days: recurrence === "custom" ? Number(intervalDays) || 30 : null,
       next_due_date: isoDate,
       note: note.trim() || null,
-      notification_mode: effectiveTimingMode,
-      notification_offsets_days: effectiveTimingMode === "custom" ? offsets : null,
-      notification_hour: effectiveTimingMode === "custom" ? Number(hourText) : null,
-      notification_minute: effectiveTimingMode === "custom" ? Number(minuteText) : null,
+      notification_mode: timingMode,
+      notification_offsets_days: timingMode === "custom" && recurrence !== "daily" ? offsets : null,
+      notification_hour: timingMode === "custom" ? hour : null,
+      notification_minute: timingMode === "custom" ? minute : null,
     };
 
     try {
@@ -227,14 +205,6 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
                 <DateField value={dueDate} onChange={setDueDate} accentColor="#6366f1" />
               </View>
 
-              {recurrence === "daily" ? (
-                <View className="mb-6 bg-slate-700/30 border border-slate-600 rounded-lg px-3 py-3">
-                  <Text className="text-[11px] text-slate-400">
-                    Daily reminders notify once a day at the app-wide default time — no separate
-                    timing setup needed.
-                  </Text>
-                </View>
-              ) : (
               <View className="mb-6">
                 <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
                   Notification Timing
@@ -263,43 +233,31 @@ export function AddReminderModal({ visible, onClose, reminder }: Props) {
 
                 {timingMode === "custom" && (
                   <>
-                    <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
-                      Notify this many days before due
-                    </Text>
-                    <View className="mb-3">
-                      <DaysBeforeDueField value={offsets} onChange={setOffsets} />
-                    </View>
+                    {recurrence !== "daily" && (
+                      <>
+                        <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
+                          Notify this many days before due
+                        </Text>
+                        <View className="mb-3">
+                          <DaysBeforeDueField value={offsets} onChange={setOffsets} />
+                        </View>
+                      </>
+                    )}
 
                     <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
-                      Time (24-hour)
+                      Time
                     </Text>
-                    <View className="flex-row items-center gap-2">
-                      <TextInput
-                        value={hourText}
-                        onChangeText={setHourText}
-                        placeholder="HH"
-                        placeholderTextColor="#64748b"
-                        keyboardType="number-pad"
-                        maxLength={2}
-                        className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
-                      />
-                      <Text className="text-slate-400 font-bold">:</Text>
-                      <TextInput
-                        value={minuteText}
-                        onChangeText={setMinuteText}
-                        placeholder="MM"
-                        placeholderTextColor="#64748b"
-                        keyboardType="number-pad"
-                        maxLength={2}
-                        className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
-                      />
-                    </View>
+                    <TimeField
+                      hour={hour}
+                      minute={minute}
+                      onChange={(h, m) => {
+                        setHour(h);
+                        setMinute(m);
+                      }}
+                    />
                   </>
                 )}
-
-                {timingError && <Text className="text-red-400 text-[11px] mt-2">{timingError}</Text>}
               </View>
-              )}
 
               <View className="flex-row gap-3">
                 <TouchableOpacity

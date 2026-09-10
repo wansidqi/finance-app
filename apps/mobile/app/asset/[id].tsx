@@ -30,6 +30,7 @@ export default function AssetDetailPage() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { data: asset, isLoading } = useGetAssetsById(id as string);
+  const { hideAmounts, setHideAmounts } = useFormatRM();
 
   if (!id) return null;
 
@@ -59,6 +60,16 @@ export default function AssetDetailPage() {
         <Text className="text-[18px] font-bold text-white flex-1 ml-2">
           Asset Details
         </Text>
+        <TouchableOpacity
+          onPress={() => setHideAmounts(!hideAmounts)}
+          className="p-2 rounded-full bg-white/5 active:opacity-70"
+        >
+          <Ionicons
+            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color="#cbd5e1"
+          />
+        </TouchableOpacity>
       </View>
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView

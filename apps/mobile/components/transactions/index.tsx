@@ -15,7 +15,7 @@ const INFLOW_TYPES: TransactionType[] = ["income", "dividend", "interest", "inve
 
 export function Transactions() {
   const router = useRouter();
-  const { formatRM, hideAmounts } = useFormatRM();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const { data: transactions = [], isLoading } = useGetTransactions();
 
   const [addVisible, setAddVisible] = useState(false);
@@ -71,6 +71,16 @@ export function Transactions() {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => setHideAmounts(!hideAmounts)}
+            className="p-2 rounded-full bg-white/5 active:opacity-70"
+          >
+            <Ionicons
+              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#cbd5e1"
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/tax-relief")}
             className="p-2 rounded-full bg-white/5 active:opacity-70"

@@ -25,7 +25,7 @@ function csvEscape(value: string): string {
 
 export default function TaxReliefScreen() {
   const router = useRouter();
-  const { formatRM } = useFormatRM();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const [year, setYear] = useState(new Date().getFullYear());
   const [editingCategory, setEditingCategory] = useState<TaxReliefCategoryKey | null>(null);
   const [capInput, setCapInput] = useState("");
@@ -146,6 +146,16 @@ export default function TaxReliefScreen() {
           <Ionicons name="chevron-back" size={28} color="white" />
         </TouchableOpacity>
         <Text className="text-[18px] font-bold text-white flex-1 ml-2">Tax Relief</Text>
+        <TouchableOpacity
+          onPress={() => setHideAmounts(!hideAmounts)}
+          className="p-2 rounded-full bg-white/5 active:opacity-70"
+        >
+          <Ionicons
+            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color="#cbd5e1"
+          />
+        </TouchableOpacity>
       </View>
 
       <View className="flex-row items-center justify-center gap-6 mb-4">

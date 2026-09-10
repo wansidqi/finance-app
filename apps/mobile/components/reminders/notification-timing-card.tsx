@@ -1,10 +1,11 @@
+import { TimeField } from "@/components/time-field";
 import { ReminderNotificationMode } from "@/interface/reminder";
 import {
   useReminderNotificationSettings,
   useSetReminderNotificationSettings,
 } from "@/services/reminder";
 import { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { DaysBeforeDueField, withDueDayIncluded } from "./days-before-due-picker";
 
 function pad(n: number) {
@@ -31,20 +32,18 @@ export function NotificationTimingCard() {
   const [draft, setDraft] = useState<{
     mode: ReminderNotificationMode;
     offsets: number[];
-    hourText: string;
-    minuteText: string;
+    hour: number;
+    minute: number;
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const startEditing = () => {
     if (!settings) return;
     setDraft({
       mode: settings.mode,
       offsets: withDueDayIncluded(settings.offsets_days),
-      hourText: String(settings.hour),
-      minuteText: pad(settings.minute),
+      hour: settings.hour,
+      minute: settings.minute,
     });
-    setError(null);
   };
 
   const handleSave = async () => {
@@ -56,19 +55,7 @@ export function NotificationTimingCard() {
       return;
     }
 
-    const hour = Number(draft.hourText);
-    const minute = Number(draft.minuteText);
-
-    if (Number.isNaN(hour) || hour < 0 || hour > 23) {
-      setError("Hour must be between 0 and 23");
-      return;
-    }
-    if (Number.isNaN(minute) || minute < 0 || minute > 59) {
-      setError("Minute must be between 0 and 59");
-      return;
-    }
-
-    await save({ mode: "custom", offsetsDays: draft.offsets, hour, minute });
+    await save({ mode: "custom", offsetsDays: draft.offsets, hour: draft.hour, minute: draft.minute });
     setDraft(null);
   };
 
@@ -127,33 +114,17 @@ export function NotificationTimingCard() {
               </View>
 
               <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
-                Time (24-hour, seconds always :00)
+                Time
               </Text>
-              <View className="flex-row items-center gap-2 mb-3">
-                <TextInput
-                  value={draft.hourText}
-                  onChangeText={(v) => setDraft({ ...draft, hourText: v })}
-                  placeholder="HH"
-                  placeholderTextColor="#64748b"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
-                />
-                <Text className="text-slate-400 font-bold">:</Text>
-                <TextInput
-                  value={draft.minuteText}
-                  onChangeText={(v) => setDraft({ ...draft, minuteText: v })}
-                  placeholder="MM"
-                  placeholderTextColor="#64748b"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  className="flex-1 rounded-lg border border-slate-600 px-3 py-2.5 text-white bg-slate-700/30 text-[13px] text-center"
+              <View className="mb-3">
+                <TimeField
+                  hour={draft.hour}
+                  minute={draft.minute}
+                  onChange={(h, m) => setDraft({ ...draft, hour: h, minute: m })}
                 />
               </View>
             </>
           )}
-
-          {error && <Text className="text-red-400 text-[11px] mb-2">{error}</Text>}
 
           <View className="flex-row gap-3">
             <TouchableOpacity

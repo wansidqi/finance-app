@@ -39,7 +39,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function ZakatTrackerScreen() {
-  const { formatRM } = useFormatRM();
+  const { formatRM, hideAmounts, setHideAmounts } = useFormatRM();
   const { data: zakatData, isLoading, isError } = useGetZakatCategories();
   const updateTracker = useUpdateZakatTracker();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
@@ -154,11 +154,23 @@ export function ZakatTrackerScreen() {
   return (
     <View className="flex-1 bg-slate-950">
       {/* Header */}
-      <View className="px-6 pt-20 pb-6">
-        <Text className="text-[13px] font-medium text-slate-500">Islamic Finance</Text>
-        <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-          Zakat Tracker
-        </Text>
+      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
+        <View>
+          <Text className="text-[13px] font-medium text-slate-500">Islamic Finance</Text>
+          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
+            Zakat Tracker
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setHideAmounts(!hideAmounts)}
+          className="p-2 rounded-full bg-white/5 active:opacity-70"
+        >
+          <Ionicons
+            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color="#cbd5e1"
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
