@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { DriveBackupFile } from "@/interface/backup";
 import { useAvailableBackups, useRestoreBackup } from "@/services/backup-hooks";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,66 +58,64 @@ export function RestoreModal({ visible, onClose }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-end">
-        <View className="rounded-t-3xl bg-slate-900 border-t border-slate-700 pt-4 pb-8 max-h-[85%]">
+        <View className="rounded-t-card bg-modal-surface border-t border-glass-edge shadow-modal pt-4 pb-8 max-h-[85%]">
           <View className="flex-row items-center justify-between px-6 mb-3">
-            <Text className="text-white text-[18px] font-bold">Restore Backup</Text>
-            <TouchableOpacity onPress={onClose} className="p-2 rounded-full bg-slate-700/50">
-              <Ionicons name="close" size={18} color="#cbd5e1" />
-            </TouchableOpacity>
+            <Text className="font-display text-[18px] text-white">Restore Backup</Text>
+            <IconButton onPress={onClose} icon="close" label="Close" size={18} />
           </View>
 
           {restored ? (
             <View className="px-6 py-8 items-center">
-              <Ionicons name="checkmark-circle" size={48} color="#34d399" />
-              <Text className="text-white text-[15px] font-semibold mt-4 text-center">
+              <Ionicons name="checkmark-circle-outline" size={48} color="#d1e4fa" />
+              <Text className="font-sans text-white text-[15px] font-semibold mt-4 text-center">
                 Restore complete
               </Text>
-              <Text className="text-slate-400 text-[12px] mt-1 text-center">
+              <Text className="font-sans text-fog text-[12px] mt-1 text-center">
                 Your data has been replaced with the selected backup.
               </Text>
-              <TouchableOpacity
-                onPress={handleDone}
-                className="mt-6 bg-emerald-500 rounded-lg px-6 py-3"
-              >
-                <Text className="text-white font-semibold text-[13px]">Done</Text>
-              </TouchableOpacity>
+              <Button label="Done" variant="primary" onPress={handleDone} className="mt-6 px-6" />
             </View>
           ) : selected ? (
             <View className="px-6">
-              <View className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
-                <Text className="text-amber-300 text-[13px] font-semibold mb-1">
-                  Restore this backup?
-                </Text>
-                <Text className="text-slate-300 text-[12px] mb-2">
+              <View className="bg-white/5 border border-glass-edge rounded-card p-4 mb-4">
+                <View className="flex-row items-center gap-1.5 mb-1">
+                  <Ionicons name="warning-outline" size={14} color="#d1e4fa" />
+                  <Text className="font-sans text-frost text-[13px] font-semibold">
+                    Restore this backup?
+                  </Text>
+                </View>
+                <Text className="font-sans text-mist text-[12px] mb-2">
                   {formatDate(selected.createdAt)} · {formatSize(selected.sizeBytes)}
                 </Text>
-                <Text className="text-slate-400 text-[11px]">
+                <Text className="font-sans text-fog text-[11px]">
                   This replaces your current financial data with the selected backup. A safety
                   copy of your current data is created on-device first.
                 </Text>
               </View>
 
-              {error && <Text className="text-red-400 text-[12px] mb-3">{error}</Text>}
+              {error && (
+                <View className="flex-row items-center gap-1.5 mb-3">
+                  <Ionicons name="alert-circle-outline" size={13} color="#d1e4fa" />
+                  <Text className="font-sans text-frost text-[12px]">{error}</Text>
+                </View>
+              )}
 
               <View className="flex-row gap-3">
-                <TouchableOpacity
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  disabled={isPending}
                   onPress={() => setSelected(null)}
+                  className="flex-1"
+                />
+                <Button
+                  label={isPending ? "Restoring..." : "Restore"}
+                  variant="primary"
                   disabled={isPending}
-                  className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg py-3"
-                >
-                  <Text className="text-center text-slate-200 font-semibold text-[13px]">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                  loading={isPending}
                   onPress={handleRestore}
-                  disabled={isPending}
-                  className={`flex-1 rounded-lg py-3 ${isPending ? "bg-amber-500/50" : "bg-amber-500"}`}
-                >
-                  <Text className="text-center text-white font-semibold text-[13px]">
-                    {isPending ? "Restoring..." : "Restore"}
-                  </Text>
-                </TouchableOpacity>
+                  className="flex-1"
+                />
               </View>
             </View>
           ) : (
@@ -126,14 +126,14 @@ export function RestoreModal({ visible, onClose }: Props) {
             >
               {isLoading || isRefetching ? (
                 <View className="py-10 items-center">
-                  <ActivityIndicator color="#f59e0b" />
+                  <ActivityIndicator color="#663af3" />
                 </View>
               ) : data.length === 0 ? (
                 <View className="py-10 items-center">
-                  <Ionicons name="cloud-offline-outline" size={40} color="#64748b" />
-                  <Text className="text-slate-400 text-[13px] mt-3">No backups found</Text>
+                  <Ionicons name="cloud-offline-outline" size={40} color="#9da7ba" />
+                  <Text className="font-sans text-fog text-[13px] mt-3">No backups found</Text>
                   <TouchableOpacity onPress={() => refetch()} className="mt-3">
-                    <Text className="text-amber-400 text-[12px] font-semibold">Refresh</Text>
+                    <Text className="font-sans text-frost text-[12px] font-semibold">Refresh</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -142,17 +142,17 @@ export function RestoreModal({ visible, onClose }: Props) {
                     <TouchableOpacity
                       key={file.driveFileId}
                       onPress={() => setSelected(file)}
-                      className="flex-row items-center justify-between bg-white/[0.035] border border-white/10 rounded-xl px-4 py-3.5"
+                      className="flex-row items-center justify-between bg-glass-surface border border-glass-edge rounded-card px-4 py-3.5"
                     >
                       <View>
-                        <Text className="text-white text-[13px] font-semibold">
+                        <Text className="font-sans text-white text-[13px] font-semibold">
                           {formatDate(file.createdAt)}
                         </Text>
-                        <Text className="text-slate-400 text-[11px] mt-0.5">
+                        <Text className="font-sans text-fog text-[11px] mt-0.5">
                           {formatSize(file.sizeBytes)}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color="#64748b" />
+                      <Ionicons name="chevron-forward-outline" size={18} color="#9da7ba" />
                     </TouchableOpacity>
                   ))}
                 </View>

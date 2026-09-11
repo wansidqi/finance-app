@@ -41,9 +41,9 @@ module.exports = {
           image: "./assets/images/zakat.png",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#1c274d",
+          backgroundColor: "#05060f",
           dark: {
-            backgroundColor: "#1c274d",
+            backgroundColor: "#05060f",
           },
         },
       ],
@@ -51,7 +51,7 @@ module.exports = {
         "expo-notifications",
         {
           icon: "./assets/images/android-icon-monochrome.png",
-          color: "#10b981",
+          color: "#663af3",
         },
       ],
       "expo-background-task",

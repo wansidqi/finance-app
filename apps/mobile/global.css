@@ -1,2 +1,37 @@
 @import 'tailwindcss';
 @import 'uniwind';
+
+@theme {
+  /* Frosted glass cathedral — colors */
+  --color-canvas: #05060f;
+  --color-steel: #2f343e;
+  --color-fog: #9da7ba;
+  --color-mist: #c7d3ea;
+  --color-frost: #d1e4fa;
+  --color-ice: #d8ecf8;
+  --color-violet: #663af3;
+  --color-glass-edge: #bad7f71f;
+  --color-glass-surface: #bad6f708;
+  --color-luminous-fill: #c7d3ea1f;
+  --color-modal-surface: #05060ff7;
+
+  /* Typography — plain platform defaults for now (custom Google Fonts
+     package caused a Metro resolution error on device; revisit once
+     that's sorted out). Kept as tokens so font-sans/font-display/font-mono
+     classNames used throughout stay valid no-ops instead of missing. */
+  --font-sans: 'sans-serif';
+  --font-display: 'sans-serif';
+  --font-mono: 'monospace';
+
+  /* Radius — one radius per component role, never mixed */
+  --radius-card: 16px;
+  --radius-badge: 6px;
+  --radius-input: 6px;
+  --radius-button: 999px;
+  --radius-icon: 9999px;
+
+  /* Elevation — inset frost highlight + soft dark drop, no flat drop-shadows */
+  --shadow-card: rgba(199, 211, 234, 0.12) 0px 1px 1px 0px inset, rgba(199, 211, 234, 0.05) 0px 24px 48px 0px inset, rgba(6, 6, 14, 0.7) 0px 24px 32px 0px;
+  --shadow-modal: rgba(216, 236, 248, 0.2) 0px 1px 1px 0px inset, rgba(168, 216, 245, 0.06) 0px 24px 48px 0px inset, rgba(0, 0, 0, 0.3) 0px 16px 32px 0px;
+  --shadow-glow: rgba(186, 207, 247, 0.32) 0px 0px 6px 0px, rgba(238, 186, 247, 0.24) 0px 0px 12px 0px;
+}

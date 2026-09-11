@@ -1,13 +1,9 @@
-import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
 import { Animated, Text, View } from "react-native";
 
-const splashImage = require("../assets/images/zakat-splash.jpeg");
-
 export function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.3)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.94)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const dotAnim = [
     useRef(new Animated.Value(0)).current,
@@ -16,11 +12,10 @@ export function SplashScreen() {
   ];
 
   useEffect(() => {
-    // Main entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 600,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -28,14 +23,8 @@ export function SplashScreen() {
         friction: 8,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
     ]).start();
 
-    // Shimmer effect loop
     Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
@@ -44,14 +33,13 @@ export function SplashScreen() {
       }),
     ).start();
 
-    // Bouncing dots animation
     const animateDot = (anim: Animated.Value, delay: number) => {
       return Animated.sequence([
         Animated.delay(delay),
         Animated.loop(
           Animated.sequence([
             Animated.timing(anim, {
-              toValue: -12,
+              toValue: -10,
               duration: 400,
               useNativeDriver: true,
             }),
@@ -70,59 +58,41 @@ export function SplashScreen() {
     });
   }, []);
 
-  const shimmerOpacity = shimmerAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.4, 1, 0.4],
-  });
-
   return (
-    <View className="flex-1 bg-slate-950 overflow-hidden">
-      {/* Full-bleed background artwork */}
-      <Image
-        source={splashImage}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        contentFit="cover"
-      />
+    <View className="flex-1 bg-canvas overflow-hidden items-center justify-center">
+      {/* Ambient spotlight halo behind the wordmark — stand-in for the
+          reference's conic-gradient spotlight, built from stacked soft
+          circles since RN has no conic-gradient primitive. */}
+      <View className="absolute h-[420px] w-[420px] rounded-full bg-violet/5" />
+      <View className="absolute h-[280px] w-[280px] rounded-full bg-violet/6" />
+      <View className="absolute h-[160px] w-[160px] rounded-full bg-violet/8" />
 
-      {/* Main Content — anchored low, in the artwork's open lower area */}
       <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }, { translateY: slideAnim }],
-        }}
-        className="flex-1 items-center justify-end pb-28"
+        style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}
+        className="items-center"
       >
-        {/* Title */}
-        <Animated.View
-          style={{ opacity: shimmerOpacity }}
-          className="mb-1"
-        >
-          <Text className="text-[32px] font-black text-white text-center tracking-tight">Zakat</Text>
-        </Animated.View>
-        <Text className="text-[14px] font-semibold text-emerald-400 uppercase tracking-widest mb-12">
-          Wealth Tracker
+        <Text className="font-display text-[44px] text-ice text-center">
+          Zakat Tracker
+        </Text>
+        <Text className="font-mono text-[12px] uppercase tracking-[3px] text-mist mt-2">
+          Wealth, Tracked
         </Text>
 
-        {/* Loading Dots */}
-        <View className="flex-row gap-3 mb-8 h-3">
+        <View className="flex-row gap-3 mt-16 mb-6 h-3">
           {dotAnim.map((anim, index) => (
             <Animated.View
               key={index}
-              style={{
-                transform: [{ translateY: anim }],
-              }}
-              className="w-3 h-3 rounded-full bg-emerald-500"
+              style={{ transform: [{ translateY: anim }] }}
+              className="w-2.5 h-2.5 rounded-full bg-frost"
             />
           ))}
         </View>
 
-        {/* Loading Text */}
-        <Text className="text-[12px] text-slate-300 font-semibold uppercase tracking-widest">
+        <Text className="font-mono text-[11px] text-fog uppercase tracking-[2px]">
           Loading Your Dashboard
         </Text>
 
-        {/* Progress Bar */}
-        <View className="mt-8 w-32 h-1.5 rounded-full bg-slate-700/80 overflow-hidden">
+        <View className="mt-6 w-32 h-1.5 rounded-full bg-luminous-fill overflow-hidden">
           <Animated.View
             style={{
               width: shimmerAnim.interpolate({
@@ -130,14 +100,13 @@ export function SplashScreen() {
                 outputRange: ["0%", "100%"],
               }),
             }}
-            className="h-full bg-linear-to-r from-emerald-500 to-teal-500 rounded-full"
+            className="h-full bg-linear-to-r from-ice to-frost rounded-full"
           />
         </View>
       </Animated.View>
 
-      {/* Version/Footer */}
       <View className="absolute bottom-4 w-full items-center">
-        <Text className="text-[10px] text-slate-400">v1.0.0</Text>
+        <Text className="font-sans text-[10px] text-fog">v1.0.0</Text>
       </View>
     </View>
   );

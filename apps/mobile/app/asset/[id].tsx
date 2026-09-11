@@ -3,7 +3,17 @@ import { BooleanRenderer } from "@/components/BooleanRenderer";
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChipGroup } from "@/components/ui/chip-group";
+import { FieldLabel } from "@/components/ui/field-label";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { Switch } from "@/components/ui/switch";
+import { TextField } from "@/components/ui/text-field";
 
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetInterface, BaseAsset } from "@/interface/asset";
 import {
@@ -15,16 +25,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+
+const CATEGORY_ICON = {
+  CASH: "cash-outline",
+  GOLD: "diamond-outline",
+  CRYPTO: "logo-bitcoin",
+  STOCK: "trending-up-outline",
+} as const;
 
 export default function AssetDetailPage() {
   const { id } = useLocalSearchParams();
@@ -36,45 +45,36 @@ export default function AssetDetailPage() {
 
   if (isLoading)
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <Text className="text-slate-300">Loading...</Text>
+      <View className="flex-1 bg-canvas items-center justify-center">
+        <Text className="font-sans text-mist">Loading...</Text>
       </View>
     );
 
   if (!asset)
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <Text className="text-slate-300">Asset not found</Text>
+      <View className="flex-1 bg-canvas items-center justify-center">
+        <Text className="font-sans text-mist">Asset not found</Text>
       </View>
     );
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-3 pt-20 pb-6">
-        <TouchableOpacity
-          onPress={() => router.navigate("/(tabs)/asset")}
-          className="p-2"
-        >
-          <Ionicons name="chevron-back" size={28} color="white" />
-        </TouchableOpacity>
-        <Text className="text-[18px] font-bold text-white flex-1 ml-2">
-          Asset Details
-        </Text>
-        <TouchableOpacity
-          onPress={() => setHideAmounts(!hideAmounts)}
-          className="p-2 rounded-full bg-white/5 active:opacity-70"
-        >
-          <Ionicons
-            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        variant="back"
+        title="Asset Details"
+        onBack={() => router.navigate("/(tabs)/asset")}
+        right={
+          <IconButton
+            onPress={() => setHideAmounts(!hideAmounts)}
+            icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            label={hideAmounts ? "Show amounts" : "Hide amounts"}
           />
-        </TouchableOpacity>
-      </View>
+        }
+      />
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView
           className="px-6"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -216,7 +216,7 @@ export function AssetCard(asset: AssetInterface) {
 
   return (
     <Animated.View
-      className="rounded-3xl overflow-hidden shadow-lg"
+      className="rounded-card overflow-hidden shadow-card"
       style={{
         opacity: editAnimRef.interpolate({
           inputRange: [0, 1],
@@ -236,101 +236,58 @@ export function AssetCard(asset: AssetInterface) {
 
       <View
         className={`${
-          isEdit ? "bg-slate-800" : "bg-slate-900"
-        } px-6 py-6 border border-white/10`}
+          isEdit ? "bg-modal-surface" : "bg-glass-surface"
+        } px-6 py-6 border border-glass-edge`}
       >
         {/* Category & Edit/Delete Buttons */}
         <View className="flex-row items-center justify-between mb-4">
           <BooleanRenderer
             condition={isEdit}
             editOn={
-              <View className="flex-1 flex-row gap-2">
-                {CATEGORIES.map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() =>
-                      setEditAsset({ ...editAsset, category: item as any })
-                    }
-                    className={`flex-1 rounded-lg py-2 ${
-                      editAsset.category === item
-                        ? "bg-emerald-500"
-                        : "bg-white/10"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center text-[11px] font-bold ${
-                        editAsset.category === item
-                          ? "text-white"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View className="flex-1">
+                <ChipGroup
+                  options={CATEGORIES.map((item) => ({
+                    value: item,
+                    label: item,
+                    icon: CATEGORY_ICON[item],
+                  }))}
+                  value={editAsset.category}
+                  onChange={(item) =>
+                    setEditAsset({ ...editAsset, category: item as any })
+                  }
+                />
               </View>
             }
             editOff={
               <View className="flex-1 flex-row items-center gap-2 flex-wrap pr-2">
-                <View className="bg-emerald-500/20 rounded-full px-3 py-1">
-                  <Text className="text-[11px] font-bold text-emerald-400">
-                    {category}
-                  </Text>
-                </View>
-                {platform && (
-                  <View className="bg-white/10 rounded-full px-3 py-1">
-                    <Text className="text-[10px] font-semibold text-slate-300">
-                      {platform}
-                    </Text>
-                  </View>
-                )}
-                {status && (
-                  <View className="bg-white/10 rounded-full px-3 py-1">
-                    <Text className="text-[10px] font-semibold text-slate-300">
-                      {status}
-                    </Text>
-                  </View>
-                )}
+                <Badge label={category} icon={CATEGORY_ICON[category]} emphasis />
+                {platform && <Badge label={platform} />}
+                {status && <Badge label={status} />}
                 {!is_calculate && (
-                  <View className="bg-amber-500/20 rounded-full px-3 py-1">
-                    <Text className="text-[10px] font-semibold text-amber-400">
-                      Excluded from Zakat
-                    </Text>
-                  </View>
+                  <Badge label="Excluded from Zakat" icon="eye-off-outline" />
                 )}
                 {platform_total !== null && (
-                  <View className="bg-sky-500/20 rounded-full px-3 py-1">
-                    <Text className="text-[10px] font-semibold text-sky-400">
-                      Auto-tracked balance
-                    </Text>
-                  </View>
+                  <Badge label="Auto-tracked balance" icon="sync-outline" />
                 )}
               </View>
             }
           />
 
           <View className="flex-row flex-shrink-0">
-            <TouchableOpacity
+            <IconButton
               onPress={() => setIsEdit(!isEdit)}
-              className={`ml-3 p-2.5 rounded-full ${
-                isEdit ? "bg-rose-500/20" : "bg-white/10"
-              }`}
-            >
-              <Ionicons
-                name={isEdit ? "close" : "pencil"}
-                size={18}
-                color={isEdit ? "#fb7185" : "#cbd5e1"}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
+              icon={isEdit ? "close-outline" : "pencil-outline"}
+              label={isEdit ? "Cancel editing" : "Edit asset"}
+              size={18}
+              className="ml-3"
+            />
+            <IconButton
               onPress={() => setShowDeleteConfirm(true)}
-              className={`ml-3 p-2.5 rounded-full ${
-                isEdit ? "bg-rose-500/20" : "bg-white/10"
-              }`}
-            >
-              <Ionicons name="trash-bin" size={18} color="#fb7185" />
-            </TouchableOpacity>
+              icon="trash-outline"
+              label="Delete asset"
+              size={18}
+              className="ml-3"
+            />
           </View>
         </View>
 
@@ -339,17 +296,15 @@ export function AssetCard(asset: AssetInterface) {
           <BooleanRenderer
             condition={isEdit}
             editOff={
-              <Text className="text-[18px] font-bold text-white">{name}</Text>
+              <Text className="font-sans text-[18px] font-bold text-white">{name}</Text>
             }
             editOn={
-              <TextInput
+              <TextField
                 value={editAsset.name}
                 onChangeText={(text) =>
                   setEditAsset({ ...editAsset, name: text })
                 }
                 placeholder="Asset Name"
-                placeholderTextColor="#94a3b8"
-                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
             }
           />
@@ -357,25 +312,21 @@ export function AssetCard(asset: AssetInterface) {
 
         {/* Platform */}
         <View className="mb-3">
-          <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-            Platform / Account
-          </Text>
+          <FieldLabel>Platform / Account</FieldLabel>
           <BooleanRenderer
             condition={isEdit}
             editOff={
-              <Text className="text-[13px] text-slate-200">
+              <Text className="font-sans text-[13px] text-mist">
                 {platform || "Not set"}
               </Text>
             }
             editOn={
-              <TextInput
+              <TextField
                 value={editAsset.platform ?? ""}
                 onChangeText={(text) =>
                   setEditAsset({ ...editAsset, platform: text || null })
                 }
                 placeholder="e.g., Maybank, Touch 'n Go, Luno"
-                placeholderTextColor="#94a3b8"
-                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
             }
           />
@@ -384,42 +335,43 @@ export function AssetCard(asset: AssetInterface) {
         {/* Display Value (Non-Edit Mode) */}
         {!isEdit && price !== null && (
           <View className="mb-4">
-            <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-              Current Value
-            </Text>
+            <FieldLabel>Current Value</FieldLabel>
             <View className="flex-row items-baseline gap-2">
-              <Text className="text-[20px] font-bold text-emerald-400">
+              <Text className="font-sans text-[20px] font-bold text-white">
                 {formatRM(price)}
               </Text>
               {profitPercent !== null && (
-                <Text
-                  className={`text-[13px] font-semibold ${
-                    profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                >
-                  {profitPercent >= 0 ? "+" : ""}
-                  {profitPercent.toFixed(1)}%
-                </Text>
+                <View className="flex-row items-center gap-0.5">
+                  <Ionicons
+                    name={profitPercent >= 0 ? "chevron-up-outline" : "chevron-down-outline"}
+                    size={11}
+                    color="#d1e4fa"
+                  />
+                  <Text className="font-sans text-[13px] font-semibold text-frost">
+                    {profitPercent >= 0 ? "+" : ""}
+                    {profitPercent.toFixed(1)}%
+                  </Text>
+                </View>
               )}
             </View>
             {quantity !== null && (
-              <Text className="text-[12px] text-slate-400 mt-1">
+              <Text className="font-sans text-[12px] text-fog mt-1">
                 {quantity} {unit}
               </Text>
             )}
             {platform_total !== null && (
-              <Text className="text-[11px] text-sky-400 mt-1">
+              <Text className="font-sans text-[11px] text-frost mt-1">
                 = {formatRM(platform_total)} platform total − other entries on{" "}
                 {platform}
               </Text>
             )}
             {isGrouped && cost_basis && cost_basis > 0 && (
-              <Text className="text-[11px] text-slate-400 mt-1">
+              <Text className="font-sans text-[11px] text-fog mt-1">
                 Profit % is shown combined on the platform card in the list
               </Text>
             )}
             {note && (
-              <Text className="text-[12px] text-slate-400 mt-2 italic">
+              <Text className="font-sans text-[12px] text-fog mt-2 italic">
                 {note}
               </Text>
             )}
@@ -429,59 +381,48 @@ export function AssetCard(asset: AssetInterface) {
         {/* Edit Mode - Value, Quantity, Unit, Cost Basis */}
         {isEdit && (
           <View className="mb-4 gap-3">
+            <SectionEyebrow label="Value" />
             <View>
-              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                Current Value (RM)
-              </Text>
+              <FieldLabel>Current Value (RM)</FieldLabel>
               {platformTotalText.trim() !== "" ? (
-                <View className="border border-white/10 rounded-lg py-2 px-2.5 bg-white/5">
-                  <Text className="text-[12px] text-slate-400">
+                <View className="border border-white/[0.06] rounded-input py-2 px-2.5 bg-white/5">
+                  <Text className="font-sans text-[12px] text-fog">
                     Auto-computed from platform total below
                   </Text>
                 </View>
               ) : editAsset.use_live_gold_price ? (
-                <View className="border border-white/10 rounded-lg py-2 px-2.5 bg-white/5">
-                  <Text className="text-[12px] text-slate-400">
+                <View className="border border-white/[0.06] rounded-input py-2 px-2.5 bg-white/5">
+                  <Text className="font-sans text-[12px] text-fog">
                     Auto-computed from live gold price × weight
                   </Text>
                 </View>
               ) : (
-                <TextInput
+                <TextField
                   value={priceText}
                   onChangeText={setPriceText}
                   placeholder="0.00"
-                  placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
-                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               )}
             </View>
             <View className="flex-row gap-2">
               <View className="flex-1">
-                <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Quantity (Optional)
-                </Text>
-                <TextInput
+                <FieldLabel>Quantity (Optional)</FieldLabel>
+                <TextField
                   value={quantityText}
                   onChangeText={setQuantityText}
                   placeholder="e.g., 15"
-                  placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
-                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Unit
-                </Text>
-                <TextInput
+                <FieldLabel>Unit</FieldLabel>
+                <TextField
                   value={editAsset.unit}
                   onChangeText={(text) =>
                     setEditAsset({ ...editAsset, unit: text })
                   }
                   placeholder="e.g., gram, BTC, shares"
-                  placeholderTextColor="#94a3b8"
-                  className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
                 />
               </View>
             </View>
@@ -499,17 +440,17 @@ export function AssetCard(asset: AssetInterface) {
                   })
                 }
                 disabled={!quantityText.trim()}
-                className={`flex-row items-center justify-between rounded-lg border px-3 py-2.5 ${
+                className={`flex-row items-center justify-between rounded-input border px-3 py-2.5 ${
                   editAsset.use_live_gold_price
-                    ? "border-emerald-500 bg-emerald-500/10"
-                    : "border-white/10 bg-white/5"
+                    ? "border-glass-edge bg-luminous-fill"
+                    : "border-white/[0.06] bg-white/5"
                 } ${!quantityText.trim() ? "opacity-50" : ""}`}
               >
                 <View className="flex-1 pr-3">
-                  <Text className="text-[12px] font-bold text-slate-200">
+                  <Text className="font-sans text-[12px] font-bold text-white">
                     Use Live Gold Price
                   </Text>
-                  <Text className="text-[10px] text-slate-400 mt-0.5">
+                  <Text className="font-sans text-[10px] text-fog mt-0.5">
                     {quantityText.trim()
                       ? "Value updates daily from Bank Negara Malaysia's gold price"
                       : "Set a quantity (grams) above first"}
@@ -525,65 +466,39 @@ export function AssetCard(asset: AssetInterface) {
                     })
                   }
                   disabled={!quantityText.trim()}
-                  trackColor={{ false: "#334155", true: "#34d399" }}
-                  thumbColor="#ffffff"
                 />
               </TouchableOpacity>
             )}
 
+            <SectionEyebrow label="Profit Tracking" className="mt-1" />
             <View>
-              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                Cost Basis (Optional)
-              </Text>
-              <TextInput
+              <FieldLabel>Cost Basis (Optional)</FieldLabel>
+              <TextField
                 value={costBasisText}
                 onChangeText={setCostBasisText}
                 placeholder="How much you paid in total (RM)"
-                placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
-                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
-              <Text className="text-[10px] text-slate-400 mt-1.5">
+              <Text className="font-sans text-[10px] text-fog mt-1.5">
                 {isGrouped
                   ? "This platform has other entries — profit % will show combined on the platform card instead of here."
                   : "Used to calculate your profit % — leave empty to skip"}
               </Text>
             </View>
             <View>
-              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                Platform Total (Optional)
-              </Text>
-              <TextInput
+              <FieldLabel>Platform Total (Optional)</FieldLabel>
+              <TextField
                 value={platformTotalText}
                 onChangeText={setPlatformTotalText}
                 placeholder="e.g., 433 — this platform's real balance"
-                placeholderTextColor="#94a3b8"
                 keyboardType="decimal-pad"
                 editable={!!editAsset.platform}
-                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
               />
-              <Text className="text-[10px] text-slate-400 mt-1.5">
+              <Text className="font-sans text-[10px] text-fog mt-1.5">
                 {editAsset.platform
                   ? "Marks this as the platform's real total — value becomes this total minus your other entries on the same platform."
                   : "Set a Platform above first"}
               </Text>
-            </View>
-            <View>
-              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                Note (Optional)
-              </Text>
-              <TextInput
-                value={editAsset.note ?? ""}
-                onChangeText={(text) =>
-                  setEditAsset({ ...editAsset, note: text || null })
-                }
-                placeholder="e.g., Holding for Ali, repay by Sept"
-                placeholderTextColor="#94a3b8"
-                multiline
-                numberOfLines={2}
-                className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
-                style={{ minHeight: 56, textAlignVertical: "top" }}
-              />
             </View>
           </View>
         )}
@@ -592,73 +507,79 @@ export function AssetCard(asset: AssetInterface) {
         {!isEdit && goal && goal > 0 && price !== null && (
           <View className="mt-2 mb-4">
             <View className="mb-2 flex-row justify-between">
-              <Text className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <Text className="font-mono text-[10px] font-semibold text-fog uppercase tracking-wider">
                 GOAL PROGRESS
               </Text>
-              <Text className="text-[11px] font-bold text-emerald-400">
+              <Text className="font-sans text-[11px] font-bold text-frost">
                 {Math.round(progress)}%
               </Text>
             </View>
             <View className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
               <Animated.View
-                className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
+                className="h-full rounded-full bg-frost"
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </View>
-            <Text className="mt-2 text-[10px] text-slate-400">
+            <Text className="mt-2 font-sans text-[10px] text-fog">
               {formatRM(price)} / {formatRM(goal)}
             </Text>
           </View>
         )}
 
-        {/* Goal Edit Mode */}
+        {/* Additional Details (Edit Mode) - Note, Goal, Zakat toggle */}
         {isEdit && (
-          <View className="mb-4">
-            <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-              GOAL AMOUNT (Optional)
-            </Text>
-            <TextInput
-              value={goalText}
-              onChangeText={setGoalText}
-              placeholder="Target amount"
-              placeholderTextColor="#94a3b8"
-              keyboardType="decimal-pad"
-              className="border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
-            />
-          </View>
-        )}
-
-        {/* Include in Zakat Calculation (Edit Mode) */}
-        {isEdit && (
-          <View className="mb-5 flex-row items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-3">
-            <View className="flex-1 pr-3">
-              <Text className="text-[12px] font-bold text-slate-200">
-                Include in Zakat Calculation
-              </Text>
-              <Text className="text-[10px] text-slate-400 mt-0.5">
-                Turn off if this is money you're holding for someone else
-              </Text>
+          <View className="mb-4 gap-3">
+            <SectionEyebrow label="Additional Details" />
+            <View>
+              <FieldLabel>Note (Optional)</FieldLabel>
+              <TextField
+                value={editAsset.note ?? ""}
+                onChangeText={(text) =>
+                  setEditAsset({ ...editAsset, note: text || null })
+                }
+                placeholder="e.g., Holding for Ali, repay by Sept"
+                multiline
+                numberOfLines={2}
+                style={{ minHeight: 56, textAlignVertical: "top" }}
+              />
             </View>
-            <Switch
-              value={editAsset.is_calculate}
-              onValueChange={(value) =>
-                setEditAsset({ ...editAsset, is_calculate: value })
-              }
-              trackColor={{ false: "#334155", true: "#34d399" }}
-              thumbColor="#ffffff"
-            />
+            <View>
+              <FieldLabel>Goal Amount (Optional)</FieldLabel>
+              <TextField
+                value={goalText}
+                onChangeText={setGoalText}
+                placeholder="Target amount"
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View className="flex-row items-center justify-between rounded-input border border-white/[0.06] bg-white/5 px-3 py-3">
+              <View className="flex-1 pr-3">
+                <Text className="font-sans text-[12px] font-bold text-white">
+                  Include in Zakat Calculation
+                </Text>
+                <Text className="font-sans text-[10px] text-fog mt-0.5">
+                  Turn off if this is money you&apos;re holding for someone else
+                </Text>
+              </View>
+              <Switch
+                value={editAsset.is_calculate}
+                onValueChange={(value) =>
+                  setEditAsset({ ...editAsset, is_calculate: value })
+                }
+              />
+            </View>
           </View>
         )}
 
         {/* Timestamps */}
         {!isEdit && (
-          <View className="mt-4 pt-4 border-t border-white/10">
+          <View className="mt-4 pt-4 border-t border-glass-edge">
             <View className="flex-row justify-between items-center">
-              <Text className="text-[10px] text-slate-400">
+              <Text className="font-sans text-[10px] text-fog">
                 Created: {new Date(asset.created_at).toLocaleDateString()}
               </Text>
               {asset.updated_at && (
-                <Text className="text-[10px] text-slate-400">
+                <Text className="font-sans text-[10px] text-fog">
                   Updated: {new Date(asset.updated_at).toLocaleDateString()}
                 </Text>
               )}
@@ -669,7 +590,10 @@ export function AssetCard(asset: AssetInterface) {
         {/* Edit Buttons */}
         {isEdit && (
           <View className="mt-5 flex-row gap-2.5">
-            <TouchableOpacity
+            <Button
+              label="Cancel"
+              variant="outline"
+              className="flex-1"
               onPress={() => {
                 setIsEdit(false);
                 setEditAsset({
@@ -693,20 +617,13 @@ export function AssetCard(asset: AssetInterface) {
                 setGoalText(goal?.toString() ?? "");
                 setPlatformTotalText(platform_total?.toString() ?? "");
               }}
-              className="flex-1 bg-white/5 rounded-lg py-3"
-            >
-              <Text className="text-center font-semibold text-slate-200 text-[13px]">
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            />
+            <Button
+              label="Save"
+              variant="primary"
+              className="flex-1"
               onPress={updateAsset}
-              className="flex-1 bg-emerald-500 rounded-lg py-3"
-            >
-              <Text className="text-center font-semibold text-emerald-950 text-[13px]">
-                Save
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         )}
       </View>

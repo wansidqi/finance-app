@@ -1,3 +1,8 @@
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { ZakatTrackerDto } from "@/interface/zakat";
 import { useGetZakatCategories, useUpdateZakatTracker } from "@/services/zakat";
@@ -22,13 +27,12 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Same palette + labels as the Dashboard's Nisab Status section, keyed by
-// AssetCategory so the progress bar reads as the same concept in both places.
-const CATEGORY_COLORS: Record<string, string> = {
-  CASH: "#34d399",
-  GOLD: "#fbbf24",
-  CRYPTO: "#a78bfa",
-  STOCK: "#38bdf8",
+// One glyph per category — identity is conveyed by icon shape now, not hue.
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  CASH: "wallet-outline",
+  GOLD: "diamond-outline",
+  CRYPTO: "logo-bitcoin",
+  STOCK: "trending-up-outline",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -36,6 +40,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   GOLD: "Gold",
   CRYPTO: "Crypto",
   STOCK: "Stock",
+};
+
+const STATUS_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  PENDING: "time-outline",
+  DUE: "alert-circle-outline",
+  OVERDUE: "alert-circle",
 };
 
 export function ZakatTrackerScreen() {
@@ -91,19 +101,6 @@ export function ZakatTrackerScreen() {
   const formatNisab = (nisab: number | null) =>
     nisab != null ? formatRM(nisab, { alwaysShow: true }) : "—";
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "#94a3b8";
-      case "DUE":
-        return "#fbbf24";
-      case "OVERDUE":
-        return "#fb7185";
-      default:
-        return "#94a3b8";
-    }
-  };
-
   /* ===========================
      Calculations
   ============================ */
@@ -135,16 +132,16 @@ export function ZakatTrackerScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-950">
-        <ActivityIndicator color="#34d399" />
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <ActivityIndicator color="#663af3" />
       </View>
     );
   }
 
   if (isError || !zakatData) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-950 px-6">
-        <Text className="text-slate-300 text-center">
+      <View className="flex-1 items-center justify-center bg-canvas px-6">
+        <Text className="font-sans text-mist text-center">
           Couldn&apos;t load your zakat categories.
         </Text>
       </View>
@@ -152,61 +149,53 @@ export function ZakatTrackerScreen() {
   }
 
   return (
-    <View className="flex-1 bg-slate-950">
-      {/* Header */}
-      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">Islamic Finance</Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            Zakat Tracker
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => setHideAmounts(!hideAmounts)}
-          className="p-2 rounded-full bg-white/5 active:opacity-70"
-        >
-          <Ionicons
-            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        eyebrow="Islamic Finance"
+        title="Zakat Tracker"
+        right={
+          <IconButton
+            onPress={() => setHideAmounts(!hideAmounts)}
+            icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            label={hideAmounts ? "Show amounts" : "Hide amounts"}
           />
-        </TouchableOpacity>
-      </View>
+        }
+      />
 
       <ScrollView
         className="px-6"
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
         showsVerticalScrollIndicator={false}
       >
         {/* ================= TOTALS ================= */}
-        <View className="mb-6 rounded-[24px] bg-white/[0.035] border border-white/10 px-5 py-5">
-          <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <Card className="mb-6">
+          <Text className="font-mono text-[11px] uppercase tracking-wider text-fog">
             Total Zakat Due
           </Text>
-          <Text className="text-[28px] font-extrabold text-white mt-1">
+          <Text className="font-display text-[28px] text-white mt-1">
             {formatRM(totalZakatDue, { decimals: true })}
           </Text>
-          <Text className="text-[11px] text-slate-500 mt-1">
+          <Text className="font-sans text-[11px] text-fog mt-1">
             Calculated at 2.5% of eligible assets
           </Text>
 
-          <View className="h-px bg-white/8 mt-5 mb-4" />
+          <View className="h-px bg-glass-edge mt-5 mb-4" />
 
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <Text className="font-mono text-[11px] uppercase tracking-wider text-fog">
                 Total Zakatable
               </Text>
-              <Text className="text-[10px] text-slate-500 mt-1">
+              <Text className="font-sans text-[10px] text-fog mt-1">
                 Across categories that have reached nisab, even before
                 their haul year is complete
               </Text>
             </View>
-            <Text className="text-[20px] font-extrabold text-emerald-400">
+            <Text className="font-display text-[20px] text-frost">
               {formatRM(totalZakatable, { decimals: true })}
             </Text>
           </View>
-        </View>
+        </Card>
 
         {/* ================= ZAKAT CARDS ================= */}
         {zakatData.map((category) => {
@@ -224,43 +213,30 @@ export function ZakatTrackerScreen() {
             : Math.min(nisabPercent, 99);
 
           return (
-            <View
-              key={category.category}
-              className="mb-4 rounded-2xl bg-white/[0.035] border border-white/10 px-5 py-4"
-              style={{
-                shadowColor:
-                  cardStatus === "DUE" || cardStatus === "OVERDUE"
-                    ? getStatusColor(cardStatus)
-                    : "transparent",
-                shadowOpacity: 0.12,
-                shadowRadius: 12,
-              }}
-            >
+            <Card key={category.category} padded={false} className="mb-4 px-5 py-4">
               {/* Header */}
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => toggleExpand(category.category)}
               >
                 <View className="flex-row justify-between items-center mb-2.5">
-                  <Text className="text-[15px] font-semibold text-white">
-                    {CATEGORY_LABELS[category.category] ?? category.category}
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons
+                      name={CATEGORY_ICONS[category.category] ?? "wallet-outline"}
+                      size={15}
+                      color="#d1e4fa"
+                    />
+                    <Text className="font-sans text-[15px] font-semibold text-white">
+                      {CATEGORY_LABELS[category.category] ?? category.category}
+                    </Text>
+                  </View>
 
                   <View className="flex-row items-center gap-2">
-                    <View
-                      className="rounded-full px-2.5 py-1"
-                      style={{
-                        backgroundColor: `${getStatusColor(cardStatus)}20`,
-                      }}
-                    >
-                      <Text
-                        className="text-[10px] font-bold uppercase tracking-wide"
-                        style={{ color: getStatusColor(cardStatus) }}
-                      >
-                        {cardStatus}
-                      </Text>
-                    </View>
-
+                    <Badge
+                      label={cardStatus}
+                      icon={STATUS_ICON[cardStatus]}
+                      emphasis={cardStatus === "OVERDUE"}
+                    />
                     <Ionicons
                       name={
                         expandedCategory === category.category
@@ -268,28 +244,24 @@ export function ZakatTrackerScreen() {
                           : "chevron-down"
                       }
                       size={16}
-                      color="#94a3b8"
+                      color="#9da7ba"
                     />
                   </View>
                 </View>
 
                 <View className="flex-row justify-between items-center mb-2">
-                  <Text className="text-[11px] text-slate-500">
+                  <Text className="font-sans text-[11px] text-fog">
                     {formatRM(category.value)} / {formatNisab(category.nisab)}
                   </Text>
-                  <Text className="text-[11px] font-semibold text-slate-400">
+                  <Text className="font-sans text-[11px] font-semibold text-mist">
                     {displayPercent.toFixed(0)}%
                   </Text>
                 </View>
 
-                <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                <View className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <View
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(nisabPercent, 100)}%`,
-                      backgroundColor:
-                        CATEGORY_COLORS[category.category] ?? "#34d399",
-                    }}
+                    className="h-full rounded-full bg-frost"
+                    style={{ width: `${Math.min(nisabPercent, 100)}%` }}
                   />
                 </View>
               </TouchableOpacity>
@@ -319,7 +291,6 @@ export function ZakatTrackerScreen() {
                           ? "YES"
                           : "NO"
                     }
-                    success={category.nisab_reached ?? undefined}
                   />
 
                   <DetailRow
@@ -355,19 +326,19 @@ export function ZakatTrackerScreen() {
                     <TouchableOpacity
                       onPress={() => payNow(category)}
                       disabled={updateTracker.isPending}
-                      className="mt-4 bg-emerald-500 rounded-xl py-4"
+                      className="mt-4 bg-violet rounded-button py-4"
                     >
-                      <Text className="text-center text-emerald-950 font-bold tracking-wide">
+                      <Text className="font-sans text-center text-white font-bold tracking-wide">
                         Pay Zakat Now
                       </Text>
-                      <Text className="text-center text-[11px] text-emerald-950/70 mt-0.5">
+                      <Text className="font-sans text-center text-[11px] text-white/70 mt-0.5">
                         Fulfill your obligation
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
               )}
-            </View>
+            </Card>
           );
         })}
       </ScrollView>
@@ -398,55 +369,50 @@ function InfoCard({
   highlight?: boolean;
 }) {
   return (
-    <View className="flex-1 bg-white/[0.03] rounded-xl px-4 py-3">
-      <Text className="text-[10px] text-slate-400 tracking-wider">
+    <Card padded={false} className="flex-1 px-4 py-3">
+      <Text className="font-sans text-[10px] text-mist tracking-wider">
         {label}
       </Text>
       <Text
-        className={`text-[16px] font-bold mt-1 ${
-          highlight ? "text-emerald-400" : "text-white"
+        className={`font-sans text-[16px] font-bold mt-1 ${
+          highlight ? "text-frost" : "text-white"
         }`}
       >
         {value}
       </Text>
-    </View>
+    </Card>
   );
 }
 
 function DetailRow({
   label,
   value,
-  success,
   onEdit,
 }: {
   label: string;
   value: string;
-  success?: boolean;
   onEdit?: () => void;
 }) {
   return (
-    <View className="bg-white/[0.03] rounded-xl px-4 py-3 flex-row justify-between items-start gap-3">
-      <Text className="text-[11px] text-slate-300 pt-0.5">
+    <Card padded={false} className="px-4 py-3 flex-row justify-between items-start gap-3">
+      <Text className="font-sans text-[11px] text-mist pt-0.5">
         {label}
       </Text>
       <View className="flex-1 flex-row justify-end items-start gap-2">
-        <Text
-          className={`text-[12px] font-semibold text-right flex-1 ${
-            success === undefined
-              ? "text-white"
-              : success
-              ? "text-emerald-400"
-              : "text-rose-400"
-          }`}
-        >
+        <Text className="font-sans text-[12px] font-semibold text-right flex-1 text-white">
           {value}
         </Text>
         {onEdit && (
-          <TouchableOpacity onPress={onEdit} hitSlop={8}>
-            <Ionicons name="pencil" size={13} color="#94a3b8" />
+          <TouchableOpacity
+            onPress={onEdit}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${label.toLowerCase()}`}
+          >
+            <Ionicons name="pencil-outline" size={13} color="#9da7ba" />
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </Card>
   );
 }

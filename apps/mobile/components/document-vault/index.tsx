@@ -1,11 +1,18 @@
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { IconAvatar } from "@/components/ui/icon-avatar";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { TextField } from "@/components/ui/text-field";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { VaultDocumentInterface } from "@/interface/document-vault";
 import { useDeleteVaultDocument, useGetVaultDocuments, getVaultDocumentData } from "@/services/vault";
 import { Ionicons } from "@expo/vector-icons";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { AddDocumentModal } from "./add-document-modal";
 import { EditDocumentModal } from "./edit-document-modal";
 import { DocumentPreviewModal } from "./preview-modal";
@@ -151,46 +158,28 @@ export function DocumentVault() {
   };
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">Overview</Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            Document Vault
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          className="rounded-full bg-teal-500 px-5 py-3 active:opacity-80"
-        >
-          <View className="flex-row items-center gap-1">
-            <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-semibold text-[14px]">Add</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        eyebrow="Overview"
+        title="Document Vault"
+        right={
+          <Button label="Add" icon="add" onPress={() => setModalVisible(true)} />
+        }
+      />
 
       <View className="px-6 mb-4">
-        <View className="flex-row items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2.5">
-          <Ionicons name="search" size={16} color="#64748b" />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search by name or note"
-            placeholderTextColor="#64748b"
-            className="flex-1 text-[13px] text-white"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color="#64748b" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <TextField
+          icon="search-outline"
+          value={query}
+          onChangeText={setQuery}
+          onClear={() => setQuery("")}
+          placeholder="Search by name or note"
+        />
       </View>
 
       <ScrollView
         className="px-6 flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -205,9 +194,9 @@ export function DocumentVault() {
                 <Ionicons
                   name={allFoldersCollapsed ? "chevron-expand-outline" : "chevron-collapse-outline"}
                   size={13}
-                  color="#2dd4bf"
+                  color="#d1e4fa"
                 />
-                <Text className="text-[11px] font-semibold text-teal-400">
+                <Text className="font-sans text-[11px] font-semibold text-frost">
                   {allFoldersCollapsed ? "Expand all" : "Collapse all"}
                 </Text>
               </TouchableOpacity>
@@ -225,13 +214,13 @@ export function DocumentVault() {
                     <Ionicons
                       name={isCollapsed ? "chevron-forward" : "chevron-down"}
                       size={14}
-                      color="#64748b"
+                      color="#9da7ba"
                     />
-                    <Ionicons name="folder" size={14} color="#2dd4bf" />
-                    <Text className="text-[12px] font-bold text-teal-400 uppercase tracking-wider">
+                    <Ionicons name="folder-outline" size={14} color="#d1e4fa" />
+                    <Text className="font-sans text-[12px] font-bold text-frost uppercase tracking-wider">
                       {group.folder}
                     </Text>
-                    <Text className="text-[11px] text-slate-500">
+                    <Text className="font-sans text-[11px] text-fog">
                       {group.docs.length} {group.docs.length === 1 ? "document" : "documents"}
                     </Text>
                   </TouchableOpacity>
@@ -254,7 +243,7 @@ export function DocumentVault() {
             {ungrouped.length > 0 && (
               <View className="gap-3">
                 {groups.length > 0 && (
-                  <Text className="text-[12px] font-bold text-slate-500 uppercase tracking-wider px-1">
+                  <Text className="font-sans text-[12px] font-bold text-fog uppercase tracking-wider px-1">
                     Unfiled
                   </Text>
                 )}
@@ -275,11 +264,11 @@ export function DocumentVault() {
         ) : (
           !isLoading && (
             <View className="mt-20 items-center justify-center">
-              <Ionicons name="lock-closed-outline" size={48} color="#64748b" />
-              <Text className="mt-4 text-[16px] font-medium text-slate-400">
+              <Ionicons name="lock-closed-outline" size={48} color="#9da7ba" />
+              <Text className="mt-4 font-sans text-[16px] font-medium text-mist">
                 {query ? "No matches" : "No documents yet"}
               </Text>
-              <Text className="mt-1 text-[13px] text-slate-500">
+              <Text className="mt-1 font-sans text-[13px] text-fog">
                 {query ? "" : "Add your IC, passport, or insurance policy to get started"}
               </Text>
             </View>
@@ -328,6 +317,7 @@ function DocumentListItem({
   const expiryDays = doc.expiry_date ? daysUntil(doc.expiry_date) : null;
   const isExpired = expiryDays !== null && expiryDays < 0;
   const isExpiringSoon = expiryDays !== null && expiryDays >= 0 && expiryDays <= 30;
+  const needsAttention = isExpired || isExpiringSoon;
 
   const expiryLabel = isExpired
     ? `Expired ${Math.abs(expiryDays!)}d ago`
@@ -339,45 +329,37 @@ function DocumentListItem({
         ? `Expires in ${expiryDays}d`
         : null;
 
-  const expiryBg = isExpired ? "bg-red-500/20" : isExpiringSoon ? "bg-teal-500/20" : "bg-white/10";
-  const expiryText = isExpired ? "text-red-300" : isExpiringSoon ? "text-teal-300" : "text-slate-300";
-
   return (
-    <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
+    <Card>
       <View className="flex-row items-start gap-2">
         <TouchableOpacity
           onPress={onPreview}
           disabled={isBusy}
           className="flex-1 flex-row items-center gap-3 active:opacity-70"
         >
-          <View className="h-10 w-10 rounded-full bg-teal-500/15 items-center justify-center">
-            <Ionicons
-              name={doc.mime_type.startsWith("image/") ? "image" : "document-text"}
-              size={18}
-              color="#2dd4bf"
-            />
-          </View>
+          <IconAvatar
+            name={doc.mime_type.startsWith("image/") ? "image-outline" : "document-text-outline"}
+            size={40}
+          />
           <View className="flex-1">
             {(doc.folder || expiryLabel) && (
               <View className="flex-row items-center gap-2 mb-1 flex-wrap">
-                {doc.folder && (
-                  <View className="rounded-full px-2.5 py-0.5 bg-white/10">
-                    <Text className="text-[10px] font-bold text-slate-300">{doc.folder}</Text>
-                  </View>
-                )}
+                {doc.folder && <Badge label={doc.folder} />}
                 {expiryLabel && (
-                  <View className={`rounded-full px-2.5 py-0.5 ${expiryBg}`}>
-                    <Text className={`text-[10px] font-bold ${expiryText}`}>{expiryLabel}</Text>
-                  </View>
+                  <Badge
+                    label={expiryLabel}
+                    icon={needsAttention ? "warning-outline" : undefined}
+                    emphasis={needsAttention}
+                  />
                 )}
               </View>
             )}
-            <Text className="text-[15px] font-semibold text-white" numberOfLines={1}>
+            <Text className="font-sans text-[15px] font-semibold text-white" numberOfLines={1}>
               {doc.name}
             </Text>
-            <Text className="text-[11px] text-slate-500 mt-0.5">{formatSize(doc.size_bytes)}</Text>
+            <Text className="font-sans text-[11px] text-fog mt-0.5">{formatSize(doc.size_bytes)}</Text>
             {!!doc.note && (
-              <Text className="text-[12px] text-slate-500 mt-1" numberOfLines={2}>
+              <Text className="font-sans text-[12px] text-fog mt-1" numberOfLines={2}>
                 {doc.note}
               </Text>
             )}
@@ -387,37 +369,38 @@ function DocumentListItem({
           onPress={onEdit}
           disabled={isBusy}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Edit document"
           className="p-1.5 -mt-1 -mr-1"
         >
-          <Ionicons name="pencil-outline" size={16} color="#cbd5e1" />
+          <Ionicons name="pencil-outline" size={16} color="#d1e4fa" />
         </TouchableOpacity>
       </View>
 
-      <View className="mt-3 pt-3 border-t border-white/10 flex-row gap-2">
-        <TouchableOpacity
+      <View className="mt-3 pt-3 border-t border-glass-edge flex-row gap-2">
+        <Button
+          label="Preview"
+          icon="eye-outline"
+          variant="outline"
           onPress={onPreview}
           disabled={isBusy}
-          className="flex-1 bg-teal-500/15 border border-teal-500/40 rounded-lg py-2.5 flex-row items-center justify-center gap-1.5"
-        >
-          <Ionicons name="eye-outline" size={15} color="#2dd4bf" />
-          <Text className="text-center font-semibold text-teal-400 text-[12px]">Preview</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          className="flex-1"
+        />
+        <Button
+          label="Download"
+          icon="download-outline"
+          variant="outline"
           onPress={onDownload}
           disabled={isBusy}
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg py-2.5 flex-row items-center justify-center gap-1.5"
-        >
-          <Ionicons name="download-outline" size={15} color="#cbd5e1" />
-          <Text className="text-center font-semibold text-slate-200 text-[12px]">Download</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+          className="flex-1"
+        />
+        <Button
+          icon="trash-outline"
+          variant="destructive"
           onPress={onDelete}
           disabled={isBusy}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 items-center justify-center"
-        >
-          <Ionicons name="trash-outline" size={16} color="#f87171" />
-        </TouchableOpacity>
+        />
       </View>
-    </View>
+    </Card>
   );
 }

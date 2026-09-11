@@ -3,6 +3,15 @@ import { calendarDateToIso, DateField, isoToCalendarDate, today } from "@/compon
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChipGroup } from "@/components/ui/chip-group";
+import { FieldLabel } from "@/components/ui/field-label";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { TextField } from "@/components/ui/text-field";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { LiabilityInterface } from "@/interface/liability";
 import {
@@ -17,7 +26,6 @@ import {
   Animated,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -35,46 +43,37 @@ export default function LiabilityDetailPage() {
 
   if (isLoading)
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <Text className="text-slate-300">Loading...</Text>
+      <View className="flex-1 bg-canvas items-center justify-center">
+        <Text className="font-sans text-mist">Loading...</Text>
       </View>
     );
 
   if (!liability)
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <Text className="text-slate-300">Liability not found</Text>
+      <View className="flex-1 bg-canvas items-center justify-center">
+        <Text className="font-sans text-mist">Liability not found</Text>
       </View>
     );
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-3 pt-20 pb-6">
-        <TouchableOpacity
-          onPress={() => router.navigate("/(tabs)/liability")}
-          className="p-2"
-        >
-          <Ionicons name="chevron-back" size={28} color="white" />
-        </TouchableOpacity>
-        <Text className="text-[18px] font-bold text-white flex-1 ml-2">
-          Liability Details
-        </Text>
-        <TouchableOpacity
-          onPress={() => setHideAmounts(!hideAmounts)}
-          className="p-2 rounded-full bg-white/5 active:opacity-70"
-        >
-          <Ionicons
-            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        variant="back"
+        title="Liability Details"
+        onBack={() => router.navigate("/(tabs)/liability")}
+        right={
+          <IconButton
+            onPress={() => setHideAmounts(!hideAmounts)}
+            icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            label={hideAmounts ? "Show amounts" : "Hide amounts"}
           />
-        </TouchableOpacity>
-      </View>
+        }
+      />
 
       <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView
           className="px-6"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -213,15 +212,7 @@ export function LiabilityCard(liability: LiabilityInterface) {
   };
 
   return (
-    <Animated.View
-      className="rounded-3xl overflow-hidden shadow-lg"
-      style={{
-        opacity: editAnimRef.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1],
-        }),
-      }}
-    >
+    <View>
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
       <ConfirmDeleteModal
         title="Delete Liability"
@@ -232,295 +223,222 @@ export function LiabilityCard(liability: LiabilityInterface) {
         isLoading={isDeleting}
       />
 
-      <View
-        className={`${
-          isEdit ? "bg-slate-800" : "bg-slate-900"
-        } px-6 py-6 border border-white/10`}
-      >
-        {/* Category + Edit/Delete Buttons */}
-        <View className="flex-row items-center justify-between mb-4">
-          <BooleanRenderer
-            condition={isEdit}
-            editOn={
-              <View className="flex-1 flex-row gap-2">
-                {CATEGORIES.map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() =>
-                      setEditLiability({
-                        ...editLiability,
-                        category: item as any,
-                      })
+      <Card padded={false}>
+        <View className="px-6 py-6">
+          {/* Category + Edit/Delete Buttons */}
+          <View className="flex-row items-center justify-between mb-4">
+            <BooleanRenderer
+              condition={isEdit}
+              editOn={
+                <View className="flex-1">
+                  <ChipGroup
+                    options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+                    value={(editLiability.category as string) ?? CATEGORIES[0]}
+                    onChange={(v) =>
+                      setEditLiability({ ...editLiability, category: v as any })
                     }
-                    className={`flex-1 rounded-lg py-2 ${
-                      editLiability.category === item
-                        ? "bg-rose-500"
-                        : "bg-white/10"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center text-[11px] font-bold capitalize ${
-                        editLiability.category === item
-                          ? "text-white"
-                          : "text-slate-300"
-                      }`}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            }
-            editOff={
-              <View className="flex-row items-center gap-2">
-                <View className="bg-rose-500/20 rounded-full px-3 py-1">
-                  <Text className="text-[11px] font-bold text-rose-400 capitalize">
-                    {category}
-                  </Text>
-                </View>
-              </View>
-            }
-          />
-
-          <View className="flex-row">
-            <TouchableOpacity
-              onPress={() => setIsEdit(!isEdit)}
-              className={`ml-3 p-2.5 rounded-full ${isEdit ? "bg-emerald-500/20" : "bg-white/10"}`}
-            >
-              <Ionicons
-                name={isEdit ? "checkmark" : "pencil"}
-                size={18}
-                color={isEdit ? "#34d399" : "#cbd5e1"}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowDeleteConfirm(true)}
-              className={`ml-3 p-2.5 rounded-full bg-white/10`}
-            >
-              <Ionicons name="trash-bin" size={18} color="#fb7185" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Name */}
-        <View className="mb-4">
-          <BooleanRenderer
-            condition={isEdit}
-            editOff={
-              <Text className="text-[18px] font-bold text-white">{name}</Text>
-            }
-            editOn={
-              <TextInput
-                value={editLiability.name || ""}
-                onChangeText={(text) =>
-                  setEditLiability({ ...editLiability, name: text })
-                }
-                className="text-[18px] font-bold text-white bg-white/5 px-3 py-2 rounded-lg border border-white/10"
-              />
-            }
-          />
-        </View>
-
-        {/* Total Balance & Monthly Payment */}
-        <View className="flex-row justify-between items-start mb-4 gap-2">
-          {!isCommitment && (
-            <View className="flex-1">
-              <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-                Total Balance
-              </Text>
-              <BooleanRenderer
-                condition={isEdit}
-                editOff={
-                  <Text className="text-[16px] font-bold text-rose-400">
-                    {formatRM(total_balance ?? 0)}
-                  </Text>
-                }
-                editOn={
-                  <TextInput
-                    value={totalBalanceText}
-                    onChangeText={setTotalBalanceText}
-                    keyboardType="decimal-pad"
-                    className="text-[16px] font-bold text-rose-400 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
                   />
-                }
+                </View>
+              }
+              editOff={<Badge label={String(category)} />}
+            />
+
+            <View className="flex-row">
+              <IconButton
+                onPress={() => setIsEdit(!isEdit)}
+                icon={isEdit ? "checkmark-outline" : "pencil-outline"}
+                label={isEdit ? "Save editing" : "Edit liability"}
+                size={18}
+                className="ml-3"
+              />
+              <IconButton
+                onPress={() => setShowDeleteConfirm(true)}
+                icon="trash-outline"
+                label="Delete liability"
+                size={18}
+                className="ml-3"
               />
             </View>
-          )}
-          <View className="flex-1">
-            <Text className="text-[10px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
-              Monthly Payment
-            </Text>
+          </View>
+
+          {/* Name */}
+          <View className="mb-4">
             <BooleanRenderer
               condition={isEdit}
               editOff={
-                <Text
-                  className={`text-[16px] font-bold ${isCommitment ? "text-rose-400" : "text-slate-100"}`}
-                >
-                  {formatRM(monthly_payment ?? 0)}
-                </Text>
+                <Text className="font-display text-[18px] text-white">{name}</Text>
               }
               editOn={
-                <TextInput
-                  value={monthlyPaymentText}
-                  onChangeText={setMonthlyPaymentText}
-                  keyboardType="decimal-pad"
-                  className="text-[16px] font-bold text-slate-100 bg-white/5 px-3 py-2 rounded-lg border border-white/10"
+                <TextField
+                  value={editLiability.name || ""}
+                  onChangeText={(text) =>
+                    setEditLiability({ ...editLiability, name: text })
+                  }
+                  className="font-display text-[18px]"
                 />
               }
             />
           </View>
-        </View>
 
-        {/* Remaining Months & Payment Commitment */}
-        {!isCommitment && remaining_month !== undefined && (
-          <View className="mb-4 gap-3">
-            <View className="bg-linear-to-r from-rose-500/15 to-rose-600/15 rounded-2xl px-4 py-3.5 flex-row items-center justify-between border border-rose-500/30">
+          {/* Total Balance & Monthly Payment */}
+          <View className="flex-row justify-between items-start mb-4 gap-2">
+            {!isCommitment && (
               <View className="flex-1">
-                <Text className="text-[10px] font-semibold text-rose-300 mb-1 uppercase tracking-widest">
-                  Payment Commitment
-                </Text>
-                <Text className="text-[20px] font-black text-rose-400">
-                  {remaining_month}
-                </Text>
-                <Text className="text-[11px] text-rose-300/80 mt-0.5">
-                  {remaining_month === 1 ? "Month Left" : "Months Left"}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Ionicons name="calendar-outline" size={28} color="#f43f5e" />
-                <Text className="text-[10px] text-rose-300/70 mt-1">
-                  {Math.round((remaining_month ?? 0) / 12)} yr
-                  {(remaining_month ?? 0) > 12 ? "s" : ""}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Payment Reminder (optional) */}
-        {(isEdit || reminder_due_date) && (
-        <View className="mb-4">
-          <BooleanRenderer
-            condition={isEdit}
-            editOff={
-              reminder_due_date ? (
-                <View className="flex-row items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2.5">
-                  <Ionicons name="notifications-outline" size={16} color="#818cf8" />
-                  <Text className="text-[12px] font-semibold text-indigo-300">
-                    Reminder due {new Date(reminder_due_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                    {reminder_status === "PAUSED" ? " (paused)" : ""}
-                  </Text>
-                </View>
-              ) : null
-            }
-            editOn={
-              <>
-                <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                  Payment Reminder
-                </Text>
-                <View className="flex-row gap-2 mb-2">
-                  {[
-                    { label: "No Reminder", value: false },
-                    { label: "Remind Me", value: true },
-                  ].map((opt) => (
-                    <TouchableOpacity
-                      key={opt.label}
-                      onPress={() => setReminderEnabled(opt.value)}
-                      className={`flex-1 rounded-lg py-2.5 items-center border-2 ${
-                        reminderEnabled === opt.value
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-white/10 bg-white/5"
-                      }`}
-                    >
-                      <Text
-                        className={`font-bold text-[12px] ${
-                          reminderEnabled === opt.value ? "text-indigo-400" : "text-slate-300"
-                        }`}
-                      >
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {reminderEnabled && (
-                  <DateField value={reminderDate} onChange={setReminderDate} accentColor="#6366f1" />
-                )}
-              </>
-            }
-          />
-        </View>
-        )}
-
-        {/* Make Payment */}
-        {!isEdit && !isCommitment && (
-          <>
-            <View className="mt-4">
-              <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                Make Payment
-              </Text>
-              <View className="flex-row gap-2.5">
-                <TextInput
-                  value={paymentAmount}
-                  onChangeText={setPaymentAmount}
-                  placeholder="Amount (RM)"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="decimal-pad"
-                  editable={!isPaying}
-                  className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
+                <FieldLabel>Total Balance</FieldLabel>
+                <BooleanRenderer
+                  condition={isEdit}
+                  editOff={
+                    <Text className="font-sans text-[16px] font-bold text-white">
+                      {formatRM(total_balance ?? 0)}
+                    </Text>
+                  }
+                  editOn={
+                    <TextField
+                      value={totalBalanceText}
+                      onChangeText={setTotalBalanceText}
+                      keyboardType="decimal-pad"
+                    />
+                  }
                 />
-                <TouchableOpacity
-                  onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
-                  disabled={isPaying}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
-                >
-                  <Text className="text-[11px] font-bold text-slate-300">
-                    Reset
-                  </Text>
-                </TouchableOpacity>
               </View>
+            )}
+            <View className="flex-1">
+              <FieldLabel>Monthly Payment</FieldLabel>
+              <BooleanRenderer
+                condition={isEdit}
+                editOff={
+                  <Text className="font-sans text-[16px] font-bold text-white">
+                    {formatRM(monthly_payment ?? 0)}
+                  </Text>
+                }
+                editOn={
+                  <TextField
+                    value={monthlyPaymentText}
+                    onChangeText={setMonthlyPaymentText}
+                    keyboardType="decimal-pad"
+                  />
+                }
+              />
             </View>
-
-            <TouchableOpacity
-              onPress={() => handlePay(Number(paymentAmount))}
-              disabled={isPaying || !Number(paymentAmount)}
-              className={`mt-4 bg-rose-500 rounded-lg py-3 ${
-                isPaying || !Number(paymentAmount) ? "opacity-50" : ""
-              }`}
-            >
-              <Text className="text-center font-semibold text-white text-[13px]">
-                {isPaying ? "Paying..." : "Pay Now"}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-        {}
-        {isEdit && (
-          <View className="mt-5 flex-row gap-2.5">
-            <TouchableOpacity
-              onPress={() => {
-                setIsEdit(false);
-              }}
-              className="flex-1 bg-white/5 rounded-lg py-3"
-            >
-              <Text className="text-center font-semibold text-slate-200 text-[13px]">
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSave}
-              className="flex-1 bg-emerald-500 rounded-lg py-3"
-            >
-              <Text className="text-center font-semibold text-emerald-950 text-[13px]">
-                Save
-              </Text>
-            </TouchableOpacity>
           </View>
-        )}
-      </View>
-    </Animated.View>
+
+          {/* Remaining Months & Payment Commitment */}
+          {!isCommitment && remaining_month !== undefined && (
+            <View className="mb-4 gap-3">
+              <Card padded={false}>
+                <View className="px-4 py-3.5 flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="font-mono text-[10px] font-semibold text-fog mb-1 uppercase tracking-widest">
+                      Payment Commitment
+                    </Text>
+                    <Text className="font-display text-[20px] text-white">
+                      {remaining_month}
+                    </Text>
+                    <Text className="font-sans text-[11px] text-mist mt-0.5">
+                      {remaining_month === 1 ? "Month Left" : "Months Left"}
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Ionicons name="calendar-outline" size={28} color="#d1e4fa" />
+                    <Text className="font-sans text-[10px] text-fog mt-1">
+                      {Math.round((remaining_month ?? 0) / 12)} yr
+                      {(remaining_month ?? 0) > 12 ? "s" : ""}
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+            </View>
+          )}
+
+          {/* Payment Reminder (optional) */}
+          {(isEdit || reminder_due_date) && (
+          <View className="mb-4">
+            <BooleanRenderer
+              condition={isEdit}
+              editOff={
+                reminder_due_date ? (
+                  <View className="flex-row items-center gap-2 bg-luminous-fill border border-glass-edge rounded-input px-3 py-2.5">
+                    <Ionicons name="notifications-outline" size={16} color="#d1e4fa" />
+                    <Text className="font-sans text-[12px] font-semibold text-frost">
+                      Reminder due {new Date(reminder_due_date).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                      {reminder_status === "PAUSED" ? " (paused)" : ""}
+                    </Text>
+                  </View>
+                ) : null
+              }
+              editOn={
+                <>
+                  <FieldLabel>Payment Reminder</FieldLabel>
+                  <ChipGroup
+                    className="mb-2"
+                    options={[
+                      { value: "off", label: "No Reminder" },
+                      { value: "on", label: "Remind Me" },
+                    ]}
+                    value={reminderEnabled ? "on" : "off"}
+                    onChange={(v) => setReminderEnabled(v === "on")}
+                  />
+                  {reminderEnabled && (
+                    <DateField value={reminderDate} onChange={setReminderDate} />
+                  )}
+                </>
+              }
+            />
+          </View>
+          )}
+
+          {/* Make Payment */}
+          {!isEdit && !isCommitment && (
+            <>
+              <View className="mt-4">
+                <FieldLabel>Make Payment</FieldLabel>
+                <View className="flex-row gap-2.5">
+                  <TextField
+                    value={paymentAmount}
+                    onChangeText={setPaymentAmount}
+                    placeholder="Amount (RM)"
+                    keyboardType="decimal-pad"
+                    editable={!isPaying}
+                    className="flex-1"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
+                    disabled={isPaying}
+                    className="bg-white/5 border border-glass-edge rounded-input px-3 py-2 justify-center"
+                  >
+                    <Text className="font-sans text-[11px] font-bold text-mist">
+                      Reset
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Button
+                label={isPaying ? "Paying..." : "Pay Now"}
+                onPress={() => handlePay(Number(paymentAmount))}
+                disabled={isPaying || !Number(paymentAmount)}
+                fullWidth
+                className="mt-4"
+              />
+            </>
+          )}
+          {isEdit && (
+            <View className="mt-5 flex-row gap-2.5">
+              <Button
+                label="Cancel"
+                variant="outline"
+                className="flex-1"
+                onPress={() => setIsEdit(false)}
+              />
+              <Button label="Save" className="flex-1" onPress={handleSave} />
+            </View>
+          )}
+        </View>
+      </Card>
+    </View>
   );
 }

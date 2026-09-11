@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useState } from "react";
@@ -31,11 +32,10 @@ type Props = {
   onChange: (date: Date) => void;
   minimumDate?: Date;
   maximumDate?: Date;
-  accentColor?: string;
 };
 
 /** Tappable field that opens the platform's native calendar picker. */
-export function DateField({ value, onChange, minimumDate, maximumDate, accentColor = "#f59e0b" }: Props) {
+export function DateField({ value, onChange, minimumDate, maximumDate }: Props) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [draftDate, setDraftDate] = useState<Date>(value ?? today());
 
@@ -62,15 +62,15 @@ export function DateField({ value, onChange, minimumDate, maximumDate, accentCol
       <TouchableOpacity
         onPress={openPicker}
         activeOpacity={0.7}
-        className="flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/30 px-3 py-3"
+        className="flex-row items-center justify-between rounded-input border border-glass-edge bg-white/5 px-3 py-3"
       >
         <View className="flex-row items-center gap-2.5">
-          <Ionicons name="calendar-outline" size={17} color={accentColor} />
-          <Text className={value ? "text-white text-[13px] font-medium" : "text-slate-500 text-[13px]"}>
+          <Ionicons name="calendar-outline" size={17} color="#d1e4fa" />
+          <Text className={`font-sans text-[13px] ${value ? "text-white font-medium" : "text-fog"}`}>
             {formatDisplay(value)}
           </Text>
         </View>
-        <Ionicons name="chevron-down" size={15} color="#64748b" />
+        <Ionicons name="chevron-down" size={15} color="#9da7ba" />
       </TouchableOpacity>
 
       {Platform.OS === "ios" && (
@@ -81,7 +81,7 @@ export function DateField({ value, onChange, minimumDate, maximumDate, accentCol
           onRequestClose={() => setIosPickerVisible(false)}
         >
           <View className="flex-1 bg-black/60 items-center justify-center px-6">
-            <View className="w-full rounded-2xl bg-slate-800 border border-slate-700 p-4">
+            <View className="w-full rounded-card bg-modal-surface border border-glass-edge shadow-modal p-4">
               <DateTimePicker
                 value={draftDate}
                 mode="date"
@@ -94,22 +94,21 @@ export function DateField({ value, onChange, minimumDate, maximumDate, accentCol
                 }}
               />
               <View className="flex-row gap-3 mt-3">
-                <TouchableOpacity
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  className="flex-1"
                   onPress={() => setIosPickerVisible(false)}
-                  className="flex-1 bg-slate-600/40 rounded-lg py-3"
-                >
-                  <Text className="text-center text-slate-200 font-semibold text-[13px]">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                />
+                <Button
+                  label="Done"
+                  variant="primary"
+                  className="flex-1"
                   onPress={() => {
                     onChange(draftDate);
                     setIosPickerVisible(false);
                   }}
-                  style={{ backgroundColor: accentColor }}
-                  className="flex-1 rounded-lg py-3"
-                >
-                  <Text className="text-center text-white font-semibold text-[13px]">Done</Text>
-                </TouchableOpacity>
+                />
               </View>
             </View>
           </View>

@@ -1,6 +1,12 @@
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChipGroup } from "@/components/ui/chip-group";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { ReminderInterface } from "@/interface/reminder";
 import { useDeleteReminder, useGetReminders } from "@/services/reminder";
 import { Ionicons } from "@expo/vector-icons";
@@ -91,33 +97,19 @@ export function Reminders() {
   const currentList = listForTab[tab];
 
   return (
-    <View className="flex-1 bg-slate-950">
+    <View className="flex-1 bg-canvas">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="p-2 -ml-2 rounded-full active:bg-white/5"
-          >
-            <Ionicons name="chevron-back" size={22} color="#cbd5e1" />
-          </TouchableOpacity>
-          <Text className="text-[22px] font-bold text-white">Reminders</Text>
-        </View>
-        <TouchableOpacity
-          onPress={openAdd}
-          className="rounded-full bg-indigo-500 px-5 py-3 active:opacity-80"
-        >
-          <View className="flex-row items-center gap-1">
-            <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-semibold text-[14px]">Add</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        variant="back"
+        title="Reminders"
+        onBack={() => router.back()}
+        right={<Button label="Add" icon="add" variant="primary" onPress={openAdd} />}
+      />
 
       <View className="px-6">
         {!isLoading && activeCount > 0 && (
-          <Text className="mb-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+          <Text className="mb-4 font-mono text-[11px] font-semibold text-fog uppercase tracking-wider">
             {activeCount} active {activeCount === 1 ? "reminder" : "reminders"}
           </Text>
         )}
@@ -125,34 +117,22 @@ export function Reminders() {
         <NotificationTimingCard />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ height: 44 }}
-        className="mb-4 flex-none"
-        contentContainerStyle={{ paddingHorizontal: 24, gap: 8, alignItems: "center" }}
-      >
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            onPress={() => setTab(t.key)}
-            className={`rounded-lg px-4 py-2 items-center ${
-              tab === t.key ? "bg-white/10 border border-white/20" : "bg-white/[0.035] border border-white/10"
-            }`}
-          >
-            <Text
-              className={`text-[12px] font-bold ${tab === t.key ? "text-white" : "text-slate-400"}`}
-            >
-              {t.label}
-              {counts[t.key] > 0 ? ` (${counts[t.key]})` : ""}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View className="mb-4">
+        <ChipGroup
+          scrollable
+          className="px-6"
+          options={TABS.map((t) => ({
+            value: t.key,
+            label: counts[t.key] > 0 ? `${t.label} (${counts[t.key]})` : t.label,
+          }))}
+          value={tab}
+          onChange={setTab}
+        />
+      </View>
 
       <ScrollView
         className="px-6 flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
         showsVerticalScrollIndicator={false}
       >
         {!isLoading && currentList.length > 0 ? (
@@ -169,9 +149,9 @@ export function Reminders() {
         ) : (
           !isLoading && (
             <View className="mt-20 items-center justify-center">
-              <Ionicons name="notifications-outline" size={48} color="#64748b" />
-              <Text className="mt-4 text-[16px] font-medium text-slate-400">Nothing here</Text>
-              <Text className="mt-1 text-[13px] text-slate-500">
+              <Ionicons name="notifications-outline" size={48} color="#9da7ba" />
+              <Text className="mt-4 font-sans text-[16px] font-medium text-mist">Nothing here</Text>
+              <Text className="mt-1 font-sans text-[13px] text-fog">
                 {tab === "upcoming" ? "Add your first reminder to get started" : ""}
               </Text>
             </View>
@@ -227,62 +207,53 @@ function ReminderListItem({
         ? "Due today"
         : `in ${days_until_due}d`;
 
-  const badgeBg = isPaused
-    ? "bg-slate-500/20"
+  const badgeIcon = isPaused
+    ? "pause-outline"
     : isOverdue
-      ? "bg-red-500/20"
+      ? "alert-circle-outline"
       : isDueToday
-        ? "bg-indigo-500/20"
-        : "bg-white/10";
-  const badgeText = isPaused
-    ? "text-slate-300"
-    : isOverdue
-      ? "text-red-300"
-      : isDueToday
-        ? "text-indigo-300"
-        : "text-slate-300";
+        ? "calendar-outline"
+        : "time-outline";
 
   return (
-    <View className={`bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4 ${isPaused ? "opacity-60" : ""}`}>
+    <Card className={isPaused ? "opacity-60" : ""}>
       <TouchableOpacity onPress={onPress} className="flex-row items-center justify-between active:opacity-70">
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
-            <View className={`rounded-full px-2.5 py-0.5 ${badgeBg}`}>
-              <Text className={`text-[10px] font-bold ${badgeText}`}>{badgeLabel}</Text>
-            </View>
+            <Badge label={badgeLabel} icon={badgeIcon} emphasis={isOverdue} />
             {recurrence !== "daily" && notification_mode === "custom" && (
-              <View className="bg-white/10 rounded-full px-2.5 py-0.5">
-                <Text className="text-[10px] font-bold text-slate-300">Custom timing</Text>
-              </View>
+              <Badge label="Custom timing" />
             )}
           </View>
-          <Text className="text-[16px] font-semibold text-white mb-1">{name}</Text>
-          <Text className="text-[12px] text-slate-400">
+          <Text className="font-sans text-[16px] font-semibold text-white mb-1">{name}</Text>
+          <Text className="font-sans text-[12px] text-mist">
             {REMINDER_RECURRENCE_LABELS[recurrence]} · Due {dueLabel}
           </Text>
           {!!note && (
-            <Text className="text-[12px] text-slate-500 mt-1" numberOfLines={2}>
+            <Text className="font-sans text-[12px] text-fog mt-1" numberOfLines={2}>
               {note}
             </Text>
           )}
         </View>
       </TouchableOpacity>
 
-      <View className="mt-3 pt-3 border-t border-white/10 flex-row gap-2">
+      <View className="mt-3 pt-3 border-t border-glass-edge flex-row gap-2">
         <TouchableOpacity
           onPress={onPress}
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg py-2.5 flex-row items-center justify-center gap-1"
+          className="flex-1 bg-white/5 border border-glass-edge rounded-input py-2.5 flex-row items-center justify-center gap-1"
         >
-          <Ionicons name="pencil-outline" size={14} color="#cbd5e1" />
-          <Text className="text-center font-semibold text-slate-200 text-[12px]">Edit</Text>
+          <Ionicons name="pencil-outline" size={14} color="#d1e4fa" />
+          <Text className="font-sans text-center font-semibold text-mist text-[12px]">Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onDelete}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Delete reminder"
+          className="bg-white/5 border border-glass-edge rounded-input px-3 py-2.5 items-center justify-center"
         >
-          <Ionicons name="trash-outline" size={16} color="#f87171" />
+          <Ionicons name="trash-outline" size={16} color="#d1e4fa" />
         </TouchableOpacity>
       </View>
-    </View>
+    </Card>
   );
 }

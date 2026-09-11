@@ -1,4 +1,5 @@
 import { ConfirmDeleteModal } from "@/components/modal/confirm-delete-modal";
+import { IconButton } from "@/components/ui/icon-button";
 import { ReceiptAttachmentInterface } from "@/interface/receipt";
 import { getReceiptData, useAddReceipt, useDeleteReceipt, useGetReceiptsByTransaction } from "@/services/receipt";
 import { Ionicons } from "@expo/vector-icons";
@@ -141,7 +142,7 @@ export function ReceiptsSection({ transactionId, onRequireTransactionId, hideUpl
 
   return (
     <View className="mb-6">
-      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+      <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
         Receipts
       </Text>
 
@@ -150,47 +151,47 @@ export function ReceiptsSection({ transactionId, onRequireTransactionId, hideUpl
           <TouchableOpacity
             onPress={handleTakePhoto}
             disabled={isBusy}
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-700/30 py-2.5"
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-input border border-glass-edge bg-white/5 py-2.5"
           >
-            <Ionicons name="camera-outline" size={16} color="#cbd5e1" />
-            <Text className="text-[11px] font-semibold text-slate-200">Camera</Text>
+            <Ionicons name="camera-outline" size={16} color="#d1e4fa" />
+            <Text className="font-sans text-[11px] font-semibold text-mist">Camera</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleChoosePhoto}
             disabled={isBusy}
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-700/30 py-2.5"
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-input border border-glass-edge bg-white/5 py-2.5"
           >
-            <Ionicons name="image-outline" size={16} color="#cbd5e1" />
-            <Text className="text-[11px] font-semibold text-slate-200">Photo</Text>
+            <Ionicons name="image-outline" size={16} color="#d1e4fa" />
+            <Text className="font-sans text-[11px] font-semibold text-mist">Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleChooseDocument}
             disabled={isBusy}
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-700/30 py-2.5"
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-input border border-glass-edge bg-white/5 py-2.5"
           >
-            <Ionicons name="document-attach-outline" size={16} color="#cbd5e1" />
-            <Text className="text-[11px] font-semibold text-slate-200">File</Text>
+            <Ionicons name="document-attach-outline" size={16} color="#d1e4fa" />
+            <Text className="font-sans text-[11px] font-semibold text-mist">File</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {isAdding && (
         <View className="flex-row items-center gap-2 mb-2">
-          <ActivityIndicator size="small" color="#38bdf8" />
-          <Text className="text-[11px] text-slate-400">Attaching...</Text>
+          <ActivityIndicator size="small" color="#d1e4fa" />
+          <Text className="font-sans text-[11px] text-mist">Attaching...</Text>
         </View>
       )}
 
       {isLoading ? (
-        <ActivityIndicator size="small" color="#38bdf8" />
+        <ActivityIndicator size="small" color="#d1e4fa" />
       ) : receipts.length === 0 ? (
-        <Text className="text-[11px] text-slate-500">No receipts attached yet.</Text>
+        <Text className="font-sans text-[11px] text-fog">No receipts attached yet.</Text>
       ) : (
         <View className="gap-2">
           {receipts.map((receipt) => (
             <View
               key={receipt.id}
-              className="flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/20 px-3 py-2.5"
+              className="flex-row items-center justify-between rounded-input border border-glass-edge bg-white/[0.03] px-3 py-2.5"
             >
               <TouchableOpacity
                 onPress={() => handleOpen(receipt)}
@@ -198,23 +199,28 @@ export function ReceiptsSection({ transactionId, onRequireTransactionId, hideUpl
                 className="flex-1 flex-row items-center gap-2.5 pr-2"
               >
                 {isOpeningId === receipt.id ? (
-                  <ActivityIndicator size="small" color="#38bdf8" />
+                  <ActivityIndicator size="small" color="#d1e4fa" />
                 ) : (
                   <Ionicons
-                    name={receipt.mime_type.startsWith("image/") ? "image" : "document-text"}
+                    name={receipt.mime_type.startsWith("image/") ? "image-outline" : "document-text-outline"}
                     size={18}
-                    color="#38bdf8"
+                    color="#d1e4fa"
                   />
                 )}
                 <View className="flex-1">
-                  <Text className="text-[12px] font-medium text-slate-200" numberOfLines={1}>
+                  <Text className="font-sans text-[12px] font-medium text-mist" numberOfLines={1}>
                     {receipt.file_name}
                   </Text>
-                  <Text className="text-[10px] text-slate-500">{formatSize(receipt.size_bytes)}</Text>
+                  <Text className="font-sans text-[10px] text-fog">{formatSize(receipt.size_bytes)}</Text>
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setDeletingId(receipt.id)} className="p-1.5">
-                <Ionicons name="trash-outline" size={16} color="#f87171" />
+              <TouchableOpacity
+                onPress={() => setDeletingId(receipt.id)}
+                accessibilityRole="button"
+                accessibilityLabel="Delete receipt"
+                className="p-1.5"
+              >
+                <Ionicons name="trash-outline" size={16} color="#d1e4fa" />
               </TouchableOpacity>
             </View>
           ))}
@@ -223,12 +229,13 @@ export function ReceiptsSection({ transactionId, onRequireTransactionId, hideUpl
 
       <Modal visible={!!viewing} transparent animationType="fade" onRequestClose={() => setViewing(null)}>
         <View className="flex-1 bg-black/95">
-          <TouchableOpacity
+          <IconButton
             onPress={() => setViewing(null)}
-            className="absolute top-14 right-6 z-10 p-2.5 rounded-full bg-white/10"
-          >
-            <Ionicons name="close" size={22} color="white" />
-          </TouchableOpacity>
+            icon="close"
+            label="Close"
+            size={22}
+            className="absolute top-14 right-6 z-10"
+          />
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}

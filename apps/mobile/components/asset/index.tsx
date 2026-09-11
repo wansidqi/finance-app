@@ -1,6 +1,16 @@
 import { AddAssetModal } from "@/components/asset/add-asset";
-import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { ErrorModal } from "@/components/modal/error-modal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
+import { IconAvatar } from "@/components/ui/icon-avatar";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { Switch } from "@/components/ui/switch";
+import { TextField } from "@/components/ui/text-field";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetCategory, AssetInterface } from "@/interface/asset";
 import {
@@ -11,15 +21,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Modal,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { AssetSkeletonLoader } from "./skeleton-loader";
 
 type PlatformGroup = {
@@ -42,18 +44,21 @@ type CategorySection = {
 };
 
 const CATEGORY_ICON: Record<AssetCategory, keyof typeof Ionicons.glyphMap> = {
-  CASH: "cash",
-  GOLD: "diamond",
+  CASH: "cash-outline",
+  GOLD: "diamond-outline",
   CRYPTO: "logo-bitcoin",
-  STOCK: "trending-up",
+  STOCK: "trending-up-outline",
 };
 
 const CATEGORY_DIST_ORDER: AssetCategory[] = ["CASH", "GOLD", "CRYPTO", "STOCK"];
-const CATEGORY_DIST_META: Record<AssetCategory, { label: string; color: string }> = {
-  CASH: { label: "Cash & Savings", color: "#34d399" },
-  GOLD: { label: "Gold", color: "#fbbf24" },
-  CRYPTO: { label: "Crypto", color: "#a78bfa" },
-  STOCK: { label: "Stock", color: "#38bdf8" },
+// Category identity is carried entirely by icon + label now (no hue). Bar
+// segments still need *some* visual separation, so each category gets a
+// step down in opacity instead of a different color.
+const CATEGORY_DIST_META: Record<AssetCategory, { label: string; opacity: number }> = {
+  CASH: { label: "Cash & Savings", opacity: 1 },
+  GOLD: { label: "Gold", opacity: 0.75 },
+  CRYPTO: { label: "Crypto", opacity: 0.5 },
+  STOCK: { label: "Stock", opacity: 0.3 },
 };
 
 // Groups a set of assets (already scoped to one category) into platform
@@ -212,75 +217,53 @@ export function Asset() {
     });
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">
-            Overview
-          </Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            My Assets
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setHideAmounts(!hideAmounts)}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons
-              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        eyebrow="Overview"
+        title="My Assets"
+        right={
+          <View className="flex-row items-center gap-2">
+            <IconButton
+              onPress={() => setHideAmounts(!hideAmounts)}
+              icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              label={hideAmounts ? "Show amounts" : "Hide amounts"}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => openAddModal()}
-            className="rounded-full bg-emerald-500 px-5 py-3 active:opacity-80"
-          >
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="add" size={20} color="#022c22" />
-              <Text className="text-emerald-950 font-semibold text-[14px]">
-                Add
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View className="flex-1 bg-slate-950">
+            <Button label="Add" icon="add" onPress={() => openAddModal()} />
+          </View>
+        }
+      />
+      <View className="flex-1 bg-canvas">
         <ScrollView
           className="px-6 flex-1"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
         >
           {isLoading ? (
             <AssetSkeletonLoader />
           ) : sections.length > 0 ? (
             <>
-              <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
-                    Total Assets
-                  </Text>
-                  <View className="h-8 w-8 rounded-full bg-emerald-500/15 items-center justify-center">
-                    <Ionicons name="wallet" size={15} color="#34d399" />
+              <Card className="mb-6" padded={false}>
+                <View className="px-6 pt-7 pb-6">
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-fog">
+                      Total Assets
+                    </Text>
+                    <IconAvatar name="wallet-outline" size={32} />
                   </View>
+                  <Text className="font-display text-[36px] text-white">
+                    {formatRM(totalZakatable, { decimals: true })}
+                  </Text>
+                  {totalExcluded > 0 && (
+                    <Text className="font-sans text-[11px] text-fog mt-1">
+                      +{formatRM(totalExcluded, { decimals: true })} excluded
+                    </Text>
+                  )}
                 </View>
-                <Text className="text-[36px] font-extrabold text-white tracking-tight">
-                  {formatRM(totalZakatable, { decimals: true })}
-                </Text>
-                {totalExcluded > 0 && (
-                  <Text className="text-[11px] text-slate-500 mt-1">
-                    +{formatRM(totalExcluded, { decimals: true })} excluded
-                  </Text>
-                )}
+              </Card>
 
-                <View className="h-px bg-white/8 mt-6 mb-5" />
-
-                {/* Asset Distribution — moved here from the Dashboard */}
-                <View>
-                  <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px] mb-4">
-                    Asset Distribution
-                  </Text>
+              <View className="mb-6">
+                <SectionEyebrow label="Asset Distribution" className="mb-4" />
+                <Card>
                   <View className="flex-row h-2 rounded-full overflow-hidden bg-white/8">
                     {CATEGORY_DIST_ORDER.map((category, index) => {
                       const percent =
@@ -291,9 +274,10 @@ export function Asset() {
                       return (
                         <View
                           key={category}
+                          className="bg-frost"
                           style={{
                             width: `${percent}%`,
-                            backgroundColor: CATEGORY_DIST_META[category].color,
+                            opacity: CATEGORY_DIST_META[category].opacity,
                             marginRight: index < CATEGORY_DIST_ORDER.length - 1 ? 2 : 0,
                           }}
                         />
@@ -310,51 +294,58 @@ export function Asset() {
                       return (
                         <View key={category} style={{ width: "50%" }} className="pr-2 mb-4">
                           <View className="flex-row items-center gap-2 mb-1">
-                            <View
-                              style={{ backgroundColor: meta.color }}
-                              className="h-2 w-2 rounded-full"
+                            <Ionicons
+                              name={CATEGORY_ICON[category]}
+                              size={12}
+                              color="#d1e4fa"
+                              style={{ opacity: meta.opacity }}
                             />
-                            <Text className="text-[11px] text-slate-400">
+                            <Text className="font-sans text-[11px] text-mist">
                               {meta.label} ({categoryEntryCounts[category]})
                             </Text>
                           </View>
-                          <Text className="text-[14px] font-bold text-white">
+                          <Text className="font-sans text-[14px] font-bold text-white">
                             {formatRM(value, { decimals: true })}
                           </Text>
-                          <Text className="text-[10px] text-slate-500 mt-0.5">
+                          <Text className="font-sans text-[10px] text-fog mt-0.5">
                             {percent.toFixed(1)}%
                           </Text>
                         </View>
                       );
                     })}
                   </View>
-                </View>
+                </Card>
               </View>
 
-              <Section title="Holdings">
+              <View className="mb-5">
+                <SectionEyebrow
+                  label="Holdings"
+                  className="mb-4"
+                  action={
+                    sections.length > 1 ? (
+                      <TouchableOpacity
+                        onPress={toggleAllCategories}
+                        className="flex-row items-center gap-1.5"
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name={
+                            allCategoriesCollapsed
+                              ? "chevron-expand-outline"
+                              : "chevron-collapse-outline"
+                          }
+                          size={13}
+                          color="#d1e4fa"
+                        />
+                        <Text className="font-sans text-[11px] font-semibold text-frost">
+                          {allCategoriesCollapsed ? "Expand all" : "Collapse all"}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : undefined
+                  }
+                />
                 <View className="gap-4">
-                  {sections.length > 1 && (
-                    <TouchableOpacity
-                      onPress={toggleAllCategories}
-                      className="self-end flex-row items-center gap-1.5 px-1 -mb-2"
-                      hitSlop={8}
-                    >
-                      <Ionicons
-                        name={
-                          allCategoriesCollapsed
-                            ? "chevron-expand-outline"
-                            : "chevron-collapse-outline"
-                        }
-                        size={13}
-                        color="#34d399"
-                      />
-                      <Text className="text-[11px] font-semibold text-emerald-400">
-                        {allCategoriesCollapsed ? "Expand all" : "Collapse all"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                   {sections.map((section) => {
-                    const categoryColor = CATEGORY_DIST_META[section.category].color;
                     const isCollapsed = collapsedCategories.has(section.category);
                     return (
                       <View key={section.category} className="gap-2.5">
@@ -370,7 +361,6 @@ export function Asset() {
                                 <PlatformGroupCard
                                   key={`group-${item.group.platform}`}
                                   group={item.group}
-                                  color={categoryColor}
                                   onToggle={toggleCalculate}
                                   onPressEntry={goToDetail}
                                   onAdd={() => openAddModal(item.group.platform)}
@@ -384,7 +374,6 @@ export function Asset() {
                                 <StandaloneAssetCard
                                   key={`single-${item.asset.id}`}
                                   asset={item.asset}
-                                  color={categoryColor}
                                   onToggle={() => toggleCalculate(item.asset)}
                                   onPress={() => goToDetail(item.asset.id)}
                                   onAdd={() =>
@@ -399,15 +388,15 @@ export function Asset() {
                     );
                   })}
                 </View>
-              </Section>
+              </View>
             </>
           ) : (
             <View className="mt-20 items-center justify-center">
-              <Ionicons name="wallet-outline" size={48} color="#64748b" />
-              <Text className="mt-4 text-[16px] font-medium text-slate-400">
+              <Ionicons name="wallet-outline" size={48} color="#9da7ba" />
+              <Text className="mt-4 font-sans text-[16px] font-medium text-mist">
                 No assets yet
               </Text>
-              <Text className="mt-1 text-[13px] text-slate-500">
+              <Text className="mt-1 font-sans text-[13px] text-fog">
                 Add your first asset to get started
               </Text>
             </View>
@@ -427,17 +416,6 @@ export function Asset() {
         group={balanceGroup}
         onClose={() => setBalanceGroup(null)}
       />
-    </View>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View className="mb-5">
-      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
-        {title}
-      </Text>
-      {children}
     </View>
   );
 }
@@ -496,57 +474,34 @@ function UpdateBalanceModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <>
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
-      <View className="flex-1 items-center justify-center bg-black/60 px-6">
-        <View className="w-full rounded-2xl bg-slate-900 border border-white/10 p-5">
-          <Text className="text-[16px] font-bold text-white mb-1">
-            Update {group.platform} Balance
-          </Text>
-          <Text className="text-[11px] text-slate-400 mb-4">
-            Enter this platform's real total (e.g., what the app shows
-            today). The difference from your other entries here is tracked
-            automatically — no need to edit them by hand.
-          </Text>
-          <TextInput
-            value={totalInput}
-            onChangeText={setTotalInput}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            placeholderTextColor="#64748b"
-            autoFocus
-            className="rounded-lg border border-white/10 px-3 py-2 text-[14px] text-white bg-white/5 mb-4"
-          />
-          <View className="flex-row gap-2.5">
-            <TouchableOpacity
-              onPress={onClose}
-              className="flex-1 rounded-lg bg-white/5 py-2.5 border border-white/10"
-            >
-              <Text className="text-center font-semibold text-slate-200 text-[13px]">
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              disabled={isSaving || !totalInput}
-              onPress={handleSave}
-              className={`flex-1 rounded-lg py-2.5 ${
-                isSaving || !totalInput
-                  ? "bg-white/5 opacity-50"
-                  : "bg-emerald-500"
-              }`}
-            >
-              <Text
-                className={`text-center font-semibold text-[13px] ${
-                  isSaving || !totalInput ? "text-slate-400" : "text-emerald-950"
-                }`}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
+      <Dialog
+        visible={visible}
+        onRequestClose={onClose}
+        icon="sync-outline"
+        title={`Update ${group.platform} Balance`}
+        description="Enter this platform's real total (e.g., what the app shows today). The difference from your other entries here is tracked automatically — no need to edit them by hand."
+        actions={[
+          { label: "Cancel", onPress: onClose, variant: "outline", disabled: isSaving },
+          {
+            label: isSaving ? "Saving..." : "Save",
+            onPress: handleSave,
+            variant: "primary",
+            loading: isSaving,
+            disabled: !totalInput,
+          },
+        ]}
+      >
+        <TextField
+          value={totalInput}
+          onChangeText={setTotalInput}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+          autoFocus
+        />
+      </Dialog>
+    </>
   );
 }
 
@@ -561,7 +516,6 @@ function CategorySectionHeader({
 }) {
   const { formatRM } = useFormatRM();
   const hasExcluded = section.zakatableTotal !== section.total;
-  const meta = CATEGORY_DIST_META[section.category];
 
   return (
     <TouchableOpacity
@@ -573,28 +527,25 @@ function CategorySectionHeader({
         <Ionicons
           name={isCollapsed ? "chevron-forward" : "chevron-down"}
           size={14}
-          color="#64748b"
+          color="#9da7ba"
         />
-        <View className="p-1.5 rounded-full" style={{ backgroundColor: `${meta.color}26` }}>
+        <View className="p-1.5 rounded-icon bg-luminous-fill">
           <Ionicons
             name={CATEGORY_ICON[section.category]}
             size={14}
-            color={meta.color}
+            color="#d1e4fa"
           />
         </View>
-        <Text
-          className="text-[13px] font-bold uppercase tracking-wider"
-          style={{ color: meta.color }}
-        >
+        <Text className="font-sans text-[13px] font-bold uppercase tracking-wider text-white">
           {section.category}
         </Text>
       </View>
       <View className="items-end">
-        <Text className="text-[14px] font-bold text-white">
+        <Text className="font-sans text-[14px] font-bold text-white">
           {formatRM(section.zakatableTotal)}
         </Text>
         {hasExcluded && (
-          <Text className="text-[10px] font-semibold text-slate-500">
+          <Text className="font-sans text-[10px] font-semibold text-fog">
             +{formatRM(section.total - section.zakatableTotal)} excluded
           </Text>
         )}
@@ -605,14 +556,12 @@ function CategorySectionHeader({
 
 function PlatformGroupCard({
   group,
-  color,
   onToggle,
   onPressEntry,
   onAdd,
   onUpdateBalance,
 }: {
   group: PlatformGroup;
-  color: string;
   onToggle: (asset: AssetInterface) => void;
   onPressEntry: (id: number) => void;
   onAdd: () => void;
@@ -622,63 +571,51 @@ function PlatformGroupCard({
   const hasExcluded = group.zakatableTotal !== group.walletTotal;
 
   return (
-    <View
-      className="rounded-2xl bg-white/[0.035] overflow-hidden"
-      style={{
-        borderWidth: 1,
-        borderColor: `${color}33`,
-        borderLeftWidth: 3,
-        borderLeftColor: color,
-      }}
-    >
+    <View className="rounded-card bg-glass-surface border border-glass-edge overflow-hidden">
       {/* Group header */}
-      <View className="px-4 py-3 bg-white/5 border-b border-white/10">
+      <View className="px-4 py-3 bg-white/5 border-b border-glass-edge">
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-2">
-            <Text className="text-[14px] font-bold text-white">
+            <Text className="font-sans text-[14px] font-bold text-white">
               {group.platform}
             </Text>
-            <Text className="text-[10px] text-slate-400 mt-0.5">
+            <Text className="font-sans text-[10px] text-fog mt-0.5">
               {group.entries.length}{" "}
               {group.entries.length > 1 ? "entries" : "entry"}
             </Text>
           </View>
-          {onUpdateBalance && (
-            <TouchableOpacity
-              onPress={onUpdateBalance}
-              hitSlop={8}
-              className="p-1.5 mr-2 rounded-full bg-white/10"
-            >
-              <Ionicons name="sync" size={16} color="#38bdf8" />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={onAdd}
-            hitSlop={8}
-            className="p-1.5 mr-2 rounded-full bg-white/10"
-          >
-            <Ionicons name="add" size={16} color={color} />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-1.5 mr-3">
+            {onUpdateBalance && (
+              <IconButton
+                onPress={onUpdateBalance}
+                icon="sync-outline"
+                label="Update platform balance"
+                size={14}
+              />
+            )}
+            <IconButton onPress={onAdd} icon="add" label="Add asset to this platform" size={14} />
+          </View>
           <View className="items-end">
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-[16px] font-bold" style={{ color }}>
+              <Text className="font-sans text-[16px] font-bold text-white">
                 {formatRM(group.zakatableTotal)}
               </Text>
               {group.profitPercent !== null && (
-                <Text
-                  className={`text-[11px] font-semibold ${
-                    group.profitPercent >= 0
-                      ? "text-emerald-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {group.profitPercent >= 0 ? "+" : ""}
-                  {group.profitPercent.toFixed(1)}%
-                </Text>
+                <View className="flex-row items-center gap-0.5">
+                  <Ionicons
+                    name={group.profitPercent >= 0 ? "chevron-up-outline" : "chevron-down-outline"}
+                    size={10}
+                    color="#d1e4fa"
+                  />
+                  <Text className="font-sans text-[11px] font-semibold text-frost">
+                    {group.profitPercent >= 0 ? "+" : ""}
+                    {group.profitPercent.toFixed(1)}%
+                  </Text>
+                </View>
               )}
             </View>
             {hasExcluded && (
-              <Text className="text-[10px] font-semibold text-slate-500 mt-0.5">
+              <Text className="font-sans text-[10px] font-semibold text-fog mt-0.5">
                 +{formatRM(group.walletTotal - group.zakatableTotal)} excluded
               </Text>
             )}
@@ -692,7 +629,6 @@ function PlatformGroupCard({
           <AssetRow
             key={asset.id}
             asset={asset}
-            color={color}
             isLast={idx === group.entries.length - 1}
             onToggle={() => onToggle(asset)}
             onPress={() => onPressEntry(asset.id)}
@@ -706,30 +642,19 @@ function PlatformGroupCard({
 
 function StandaloneAssetCard({
   asset,
-  color,
   onToggle,
   onPress,
   onAdd,
 }: {
   asset: AssetInterface;
-  color: string;
   onToggle: () => void;
   onPress: () => void;
   onAdd: () => void;
 }) {
   return (
-    <View
-      className="rounded-2xl bg-white/[0.035] overflow-hidden"
-      style={{
-        borderWidth: 1,
-        borderColor: `${color}33`,
-        borderLeftWidth: 3,
-        borderLeftColor: color,
-      }}
-    >
+    <View className="rounded-card bg-glass-surface border border-glass-edge overflow-hidden">
       <AssetRow
         asset={asset}
-        color={color}
         isLast
         onToggle={onToggle}
         onPress={onPress}
@@ -741,7 +666,6 @@ function StandaloneAssetCard({
 
 function AssetRow({
   asset,
-  color,
   isLast,
   onToggle,
   onPress,
@@ -749,7 +673,6 @@ function AssetRow({
   showProfit = true,
 }: {
   asset: AssetInterface;
-  color: string;
   isLast: boolean;
   onToggle: () => void;
   onPress: () => void;
@@ -782,7 +705,7 @@ function AssetRow({
   return (
     <View
       className={`px-4 py-3 ${
-        !isLast ? "border-b border-white/8" : ""
+        !isLast ? "border-b border-glass-edge" : ""
       } ${!is_calculate ? "opacity-60" : ""}`}
     >
       <View className="flex-row items-center">
@@ -793,21 +716,21 @@ function AssetRow({
         >
           <View className="flex-1 pr-2">
             {quantity !== null && (
-              <Text className="text-[10px] text-slate-400 mb-1">
+              <Text className="font-sans text-[10px] text-fog mb-1">
                 {quantity} {unit}
               </Text>
             )}
             <View className="flex-row items-center gap-1">
-              <Text className="text-[13px] font-semibold text-white">
+              <Text className="font-sans text-[13px] font-semibold text-white">
                 {name}
               </Text>
               {platform_total !== null && (
-                <Ionicons name="sync" size={11} color="#38bdf8" />
+                <Ionicons name="sync-outline" size={11} color="#d1e4fa" />
               )}
             </View>
             {note && (
               <Text
-                className="text-[10px] text-slate-400 mt-0.5 italic"
+                className="font-sans text-[10px] text-fog mt-0.5 italic"
                 numberOfLines={1}
               >
                 {note}
@@ -815,18 +738,21 @@ function AssetRow({
             )}
           </View>
           <View className="items-end">
-            <Text className="text-[14px] font-bold" style={{ color }}>
+            <Text className="font-sans text-[14px] font-bold text-white">
               {price !== null ? formatRM(price) : "N/A"}
             </Text>
             {profitPercent !== null && (
-              <Text
-                className={`text-[10px] font-semibold mt-0.5 ${
-                  profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
-                {profitPercent >= 0 ? "+" : ""}
-                {profitPercent.toFixed(1)}%
-              </Text>
+              <View className="flex-row items-center gap-0.5 mt-0.5">
+                <Ionicons
+                  name={profitPercent >= 0 ? "chevron-up-outline" : "chevron-down-outline"}
+                  size={9}
+                  color="#d1e4fa"
+                />
+                <Text className="font-sans text-[10px] font-semibold text-frost">
+                  {profitPercent >= 0 ? "+" : ""}
+                  {profitPercent.toFixed(1)}%
+                </Text>
+              </View>
             )}
           </View>
         </TouchableOpacity>
@@ -835,9 +761,11 @@ function AssetRow({
           <TouchableOpacity
             onPress={onAdd}
             hitSlop={8}
-            className="p-1.5 mr-3 rounded-full bg-white/10"
+            accessibilityRole="button"
+            accessibilityLabel="Add sibling asset entry"
+            className="p-1.5 mr-3 rounded-icon bg-luminous-fill"
           >
-            <Ionicons name="add" size={16} color={color} />
+            <Ionicons name="add" size={16} color="#d1e4fa" />
           </TouchableOpacity>
         )}
 
@@ -845,24 +773,22 @@ function AssetRow({
           key={`${asset.id}-${is_calculate}`}
           value={is_calculate}
           onValueChange={onToggle}
-          trackColor={{ false: "#334155", true: color }}
-          thumbColor="#ffffff"
         />
       </View>
 
       {goalPercent !== null && (
         <View className="mt-2.5">
           <View className="flex-row justify-between mb-1">
-            <Text className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
+            <Text className="font-sans text-[9px] font-semibold text-fog uppercase tracking-wider">
               Goal {formatRM(goal!)}
             </Text>
-            <Text className="text-[9px] font-bold text-emerald-400">
+            <Text className="font-sans text-[9px] font-bold text-frost">
               {Math.round(goalPercent)}%
             </Text>
           </View>
           <View className="h-1 rounded-full bg-white/10 overflow-hidden">
             <View
-              className="h-full rounded-full bg-emerald-500"
+              className="h-full rounded-full bg-frost"
               style={{ width: `${Math.min(goalPercent, 100)}%` }}
             />
           </View>

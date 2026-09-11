@@ -3,19 +3,16 @@ import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { ReceiptsSection } from "@/components/transactions/receipts-section";
 import { TaxReliefPicker } from "@/components/transactions/tax-relief-picker";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
+import { Button } from "@/components/ui/button";
+import { ChipGroup } from "@/components/ui/chip-group";
+import { TextField } from "@/components/ui/text-field";
 import { TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { useCreateTransaction, useDeleteTransaction, useUpdateTransaction } from "@/services/transaction";
-import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
 import { TRANSACTION_TYPE_LABELS, TRANSACTION_TYPES } from "./category";
-
-// Matches the floating tab bar height in app/(tabs)/_layout.tsx, so the
-// sheet's bottom row of buttons doesn't sit underneath it.
-const TAB_BAR_BASE_HEIGHT = 52;
 
 type Props = {
   visible: boolean;
@@ -41,7 +38,6 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   const { mutateAsync: updateTransaction, isPending: isUpdating } = useUpdateTransaction();
   const { mutateAsync: deleteTransaction } = useDeleteTransaction();
   const { error, isVisible, hideError, showError } = useErrorModal();
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!visible) return;
@@ -130,148 +126,96 @@ export function AddTransactionModal({ visible, onClose, transaction }: Props) {
   const isComplete = !!amount && Number(amount) > 0 && !!isoPreview;
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <>
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
-      <KeyboardAvoidingView behavior="padding" className="flex-1">
-        <View className="flex-1 justify-end bg-black/50" style={{ paddingTop: insets.top + 24 }}>
-          <View
-            className="rounded-t-3xl bg-linear-to-b from-slate-800 to-slate-900 pt-4 pb-4"
-            style={{ marginTop: "60%" }}
-          >
-            <View className="flex-row items-center justify-between px-6 mb-4">
-              <Text className="text-[20px] font-bold text-white">
-                {isEditing ? "Edit Transaction" : "Add Transaction"}
-              </Text>
-              <TouchableOpacity onPress={handleClose} className="p-2 rounded-full bg-slate-700/50">
-                <Ionicons name="close" size={20} color="#cbd5e1" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              className="px-6"
-              keyboardShouldPersistTaps="handled"
-            >
-              {isEditing ? (
-                <ReceiptsSection transactionId={transaction.id} hideUploadButtons />
-              ) : (
-                <ReceiptsSection transactionId={draftTransactionId} onRequireTransactionId={ensureDraftTransaction} />
-              )}
-
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Type
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {TRANSACTION_TYPES.map((t) => (
-                    <TouchableOpacity
-                      key={t}
-                      onPress={() => setType(t)}
-                      className={`rounded-lg px-3 py-2 border-2 ${
-                        type === t ? "border-sky-500 bg-sky-500/10" : "border-slate-600 bg-slate-700/30"
-                      }`}
-                    >
-                      <Text
-                        className={`font-bold text-[12px] ${
-                          type === t ? "text-sky-400" : "text-slate-300"
-                        }`}
-                      >
-                        {TRANSACTION_TYPE_LABELS[t]}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Amount (RM)
-                </Text>
-                <View className="flex-row items-center border border-slate-600 rounded-lg bg-slate-700/30 px-3 py-3">
-                  <Text className="mr-2 font-bold text-slate-300">RM</Text>
-                  <TextInput
-                    placeholder="0.00"
-                    keyboardType="decimal-pad"
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholderTextColor="#64748b"
-                    className="flex-1 text-[13px] text-white"
-                  />
-                </View>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Date
-                </Text>
-                <DateField value={occurredDate} onChange={setOccurredDate} accentColor="#0ea5e9" />
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Description (optional)
-                </Text>
-                <TextInput
-                  placeholder="e.g., Salary, Groceries"
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
-                />
-              </View>
-
-              <View className="mb-6">
-                <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
-                  Note (optional)
-                </Text>
-                <TextInput
-                  placeholder="Any extra detail"
-                  value={note}
-                  onChangeText={setNote}
-                  placeholderTextColor="#64748b"
-                  className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
-                />
-              </View>
-
-              {type === "expense" && (
-                <TaxReliefPicker
-                  categoryKey={taxReliefCategory}
-                  assessmentYear={assessmentYear}
-                  onChangeCategory={(key) => {
-                    setTaxReliefCategory(key);
-                    if (key && !assessmentYear) setAssessmentYear(String(new Date().getFullYear()));
-                  }}
-                  onChangeAssessmentYear={setAssessmentYear}
-                />
-              )}
-
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={handleClose}
-                  className="flex-1 rounded-lg bg-slate-700/50 py-3 border border-slate-600"
-                >
-                  <Text className="text-center font-semibold text-slate-200 text-[14px]">Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  disabled={!isComplete || isSaving}
-                  onPress={handleSave}
-                  className={`flex-1 rounded-lg py-3 ${
-                    isComplete && !isSaving
-                      ? "bg-linear-to-r from-sky-500 to-sky-600"
-                      : "bg-slate-600/30 opacity-50"
-                  }`}
-                >
-                  <Text className="text-center font-semibold text-white text-[14px]">
-                    {isSaving ? "Saving..." : isEditing ? "Save Changes" : "Add Transaction"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+      <BottomSheetModal
+        visible={visible}
+        onClose={handleClose}
+        title={isEditing ? "Edit Transaction" : "Add Transaction"}
+        footer={
+          <View className="flex-row gap-3">
+            <Button label="Cancel" variant="outline" className="flex-1" onPress={handleClose} />
+            <Button
+              label={isSaving ? "Saving..." : isEditing ? "Save Changes" : "Add Transaction"}
+              variant="primary"
+              className="flex-1"
+              disabled={!isComplete || isSaving}
+              onPress={handleSave}
+            />
           </View>
+        }
+      >
+        {isEditing ? (
+          <ReceiptsSection transactionId={transaction.id} hideUploadButtons />
+        ) : (
+          <ReceiptsSection transactionId={draftTransactionId} onRequireTransactionId={ensureDraftTransaction} />
+        )}
+
+        <View className="mb-4">
+          <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
+            Type
+          </Text>
+          <ChipGroup
+            options={TRANSACTION_TYPES.map((t) => ({ value: t, label: TRANSACTION_TYPE_LABELS[t] }))}
+            value={type}
+            onChange={setType}
+          />
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <View className="mb-4">
+          <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
+            Amount (RM)
+          </Text>
+          <TextField
+            prefix="RM"
+            placeholder="0.00"
+            keyboardType="decimal-pad"
+            value={amount}
+            onChangeText={setAmount}
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
+            Date
+          </Text>
+          <DateField value={occurredDate} onChange={setOccurredDate} />
+        </View>
+
+        <View className="mb-4">
+          <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
+            Description (optional)
+          </Text>
+          <TextField
+            placeholder="e.g., Salary, Groceries"
+            value={description}
+            onChangeText={setDescription}
+          />
+        </View>
+
+        <View className="mb-6">
+          <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
+            Note (optional)
+          </Text>
+          <TextField
+            placeholder="Any extra detail"
+            value={note}
+            onChangeText={setNote}
+          />
+        </View>
+
+        {type === "expense" && (
+          <TaxReliefPicker
+            categoryKey={taxReliefCategory}
+            assessmentYear={assessmentYear}
+            onChangeCategory={(key) => {
+              setTaxReliefCategory(key);
+              if (key && !assessmentYear) setAssessmentYear(String(new Date().getFullYear()));
+            }}
+            onChangeAssessmentYear={setAssessmentYear}
+          />
+        )}
+      </BottomSheetModal>
+    </>
   );
 }

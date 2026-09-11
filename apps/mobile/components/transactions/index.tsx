@@ -3,6 +3,14 @@ import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
 import { AddTransactionModal } from "@/components/transactions/add-transaction-modal";
 import { TRANSACTION_TYPE_LABELS } from "@/components/transactions/category";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { IconAvatar } from "@/components/ui/icon-avatar";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { TransactionInterface, TransactionType } from "@/interface/transaction";
 import { useDeleteTransaction, useGetTransactions } from "@/services/transaction";
@@ -58,93 +66,81 @@ export function Transactions() {
   };
 
   return (
-    <View className="flex-1 bg-slate-950">
+    <View className="flex-1 bg-canvas">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">
-            Overview
-          </Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            Transactions
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setHideAmounts(!hideAmounts)}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons
-              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color="#cbd5e1"
+      <ScreenHeader
+        eyebrow="Overview"
+        title="Transactions"
+        right={
+          <View className="flex-row items-center gap-2">
+            <IconButton
+              onPress={() => setHideAmounts(!hideAmounts)}
+              icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              label={hideAmounts ? "Show amounts" : "Hide amounts"}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/tax-relief")}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons name="document-text-outline" size={20} color="#cbd5e1" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              setEditingTxn(null);
-              setAddVisible(true);
-            }}
-            className="rounded-full bg-sky-500 px-5 py-3 active:opacity-80"
-          >
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="add" size={20} color="white" />
-              <Text className="text-white font-semibold text-[14px]">Add</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <IconButton
+              onPress={() => router.push("/tax-relief")}
+              icon="document-text-outline"
+              label="Tax relief"
+            />
+            <Button
+              label="Add"
+              icon="add"
+              onPress={() => {
+                setEditingTxn(null);
+                setAddVisible(true);
+              }}
+            />
+          </View>
+        }
+      />
 
       <ScrollView
         className="px-6"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
         showsVerticalScrollIndicator={false}
       >
         {!isLoading && transactions.length > 0 && (
-          <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
-                Net Flow
-              </Text>
-              <View className="h-8 w-8 rounded-full bg-sky-500/15 items-center justify-center">
-                <Ionicons name="swap-vertical" size={15} color="#38bdf8" />
+          <Card className="mb-6" padded={false}>
+            <View className="px-6 pt-7 pb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-fog">
+                  Net Flow
+                </Text>
+                <IconAvatar name="swap-vertical-outline" size={32} />
+              </View>
+              <View className="flex-row items-center gap-2">
+                <Text className="font-display text-[36px] text-white">
+                  {netFlow < 0 && !hideAmounts ? "-" : ""}
+                  {formatRM(Math.abs(netFlow), { decimals: true })}
+                </Text>
+                {netFlow < 0 && !hideAmounts && (
+                  <Ionicons name="trending-down-outline" size={20} color="#9da7ba" />
+                )}
+              </View>
+
+              <View className="h-px bg-glass-edge mt-6 mb-5" />
+
+              <View className="flex-row justify-between mb-4">
+                <HeroStat label="Total In" value={formatRM(totalIn, { decimals: true })} />
+                <HeroStat
+                  label="Total Out"
+                  value={formatRM(totalOut, { decimals: true })}
+                  align="right"
+                />
+              </View>
+              <View className="flex-row justify-between">
+                <HeroStat label="Transactions" value={`${transactions.length}`} />
+                <HeroStat label="This Month" value={`${thisMonthCount}`} align="right" />
               </View>
             </View>
-            <Text
-              className={`text-[36px] font-extrabold tracking-tight ${
-                netFlow >= 0 || hideAmounts ? "text-white" : "text-rose-400"
-              }`}
-            >
-              {netFlow < 0 && !hideAmounts ? "-" : ""}
-              {formatRM(Math.abs(netFlow), { decimals: true })}
-            </Text>
-
-            <View className="h-px bg-white/8 mt-6 mb-5" />
-
-            <View className="flex-row justify-between mb-4">
-              <HeroStat label="Total In" value={formatRM(totalIn, { decimals: true })} />
-              <HeroStat
-                label="Total Out"
-                value={formatRM(totalOut, { decimals: true })}
-                align="right"
-              />
-            </View>
-            <View className="flex-row justify-between">
-              <HeroStat label="Transactions" value={`${transactions.length}`} />
-              <HeroStat label="This Month" value={`${thisMonthCount}`} align="right" />
-            </View>
-          </View>
+          </Card>
         )}
 
         {!isLoading && transactions.length > 0 ? (
-          <Section title="All Transactions">
+          <View className="mb-5">
+            <SectionEyebrow label="All Transactions" className="mb-4" />
             <View className="gap-3">
               {transactions.map((txn) => (
                 <TransactionListItem
@@ -158,12 +154,12 @@ export function Transactions() {
                 />
               ))}
             </View>
-          </Section>
+          </View>
         ) : (
           !isLoading && (
             <View className="mt-16 items-center justify-center">
-              <Ionicons name="receipt-outline" size={40} color="#64748b" />
-              <Text className="mt-3 text-[14px] font-medium text-slate-400">No transactions yet</Text>
+              <Ionicons name="receipt-outline" size={40} color="#9da7ba" />
+              <Text className="mt-3 font-sans text-[14px] font-medium text-mist">No transactions yet</Text>
             </View>
           )
         )}
@@ -187,17 +183,6 @@ export function Transactions() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View className="mb-5">
-      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
 function HeroStat({
   label,
   value,
@@ -209,10 +194,10 @@ function HeroStat({
 }) {
   return (
     <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
-      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+      <Text className="font-mono text-[10px] uppercase tracking-wide text-fog">
         {label}
       </Text>
-      <Text className="text-[15px] font-bold text-white mt-0.5">{value}</Text>
+      <Text className="font-sans text-[15px] font-bold text-white mt-0.5">{value}</Text>
     </View>
   );
 }
@@ -236,31 +221,29 @@ function TransactionListItem({
   });
 
   return (
-    <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
+    <Card>
       <TouchableOpacity onPress={onPress} className="active:opacity-70">
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
-            <View className="flex-row items-center gap-2 mb-1">
-              <View className="bg-sky-500/20 rounded-full px-2.5 py-0.5">
-                <Text className="text-[10px] font-bold text-sky-400">{TRANSACTION_TYPE_LABELS[type]}</Text>
-              </View>
-            </View>
-            <Text className="text-[15px] font-semibold text-white mb-1">{label}</Text>
-            <Text className="text-[12px] text-slate-400">{dateLabel}</Text>
-            {note && <Text className="text-[11px] text-slate-500 mt-1">{note}</Text>}
+            <Badge label={TRANSACTION_TYPE_LABELS[type]} className="mb-1" />
+            <Text className="font-sans text-[15px] font-semibold text-white mb-1">{label}</Text>
+            <Text className="font-sans text-[12px] text-mist">{dateLabel}</Text>
+            {note && <Text className="font-sans text-[11px] text-fog mt-1">{note}</Text>}
           </View>
-          <Text className="text-[16px] font-bold ml-4 text-white">{formatRM(amount)}</Text>
+          <Text className="font-sans text-[16px] font-bold ml-4 text-white">{formatRM(amount)}</Text>
         </View>
       </TouchableOpacity>
 
-      <View className="mt-3 pt-3 border-t border-white/10 flex-row justify-end">
+      <View className="mt-3 pt-3 border-t border-glass-edge flex-row justify-end">
         <TouchableOpacity
           onPress={onDelete}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Delete transaction"
+          className="bg-white/5 border border-glass-edge rounded-input px-3 py-2 items-center justify-center"
         >
-          <Ionicons name="trash-outline" size={16} color="#f87171" />
+          <Ionicons name="trash-outline" size={16} color="#d1e4fa" />
         </TouchableOpacity>
       </View>
-    </View>
+    </Card>
   );
 }

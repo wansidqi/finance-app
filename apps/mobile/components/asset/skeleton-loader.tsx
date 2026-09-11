@@ -40,7 +40,7 @@ export function AssetCardSkeleton() {
   return (
     <Animated.View
       style={{ opacity }}
-      className="w-80 rounded-3xl bg-white/[0.035] p-6 mr-4 border border-white/10"
+      className="w-80 rounded-card bg-glass-surface p-6 mr-4 border border-glass-edge"
     >
       <View className="mb-4">
         <View className="h-6 bg-white/10 rounded-md mb-2 w-24" />
@@ -66,8 +66,8 @@ export function AssetCardSkeleton() {
       <View className="h-2 bg-white/10 rounded-full mb-3" />
 
       <View className="flex-row gap-2">
-        <View className="flex-1 h-10 bg-white/10 rounded-lg" />
-        <View className="h-10 bg-white/10 rounded-lg w-16" />
+        <View className="flex-1 h-10 bg-white/10 rounded-button" />
+        <View className="h-10 bg-white/10 rounded-button w-16" />
       </View>
     </Animated.View>
   );

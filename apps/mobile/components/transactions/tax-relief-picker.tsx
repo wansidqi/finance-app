@@ -1,6 +1,7 @@
+import { TextField } from "@/components/ui/text-field";
 import { TAX_RELIEF_CATEGORIES, TAX_RELIEF_CATEGORY_LABELS, TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { useEffect, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 type Props = {
   categoryKey: TaxReliefCategoryKey | null;
@@ -33,17 +34,17 @@ export function TaxReliefPicker({
 
   return (
     <View className="mb-4">
-      <Text className="text-[12px] font-bold text-slate-300 mb-2 uppercase tracking-wider">
+      <Text className="font-mono text-[12px] text-fog mb-2 uppercase tracking-wider">
         Tax Relief (optional)
       </Text>
       <View className="flex-row flex-wrap gap-2">
         <TouchableOpacity
           onPress={() => onChangeCategory(null)}
-          className={`rounded-lg px-3 py-2 border-2 ${
-            categoryKey === null ? "border-sky-500 bg-sky-500/10" : "border-slate-600 bg-slate-700/30"
+          className={`rounded-button px-3 py-2 border ${
+            categoryKey === null ? "border-glass-edge bg-luminous-fill" : "border-white/[0.06] bg-transparent"
           }`}
         >
-          <Text className={`font-bold text-[12px] ${categoryKey === null ? "text-sky-400" : "text-slate-300"}`}>
+          <Text className={`font-sans font-medium text-[12px] ${categoryKey === null ? "text-white" : "text-mist"}`}>
             None
           </Text>
         </TouchableOpacity>
@@ -51,11 +52,11 @@ export function TaxReliefPicker({
           <TouchableOpacity
             key={key}
             onPress={() => onChangeCategory(key)}
-            className={`rounded-lg px-3 py-2 border-2 ${
-              categoryKey === key ? "border-sky-500 bg-sky-500/10" : "border-slate-600 bg-slate-700/30"
+            className={`rounded-button px-3 py-2 border ${
+              categoryKey === key ? "border-glass-edge bg-luminous-fill" : "border-white/[0.06] bg-transparent"
             }`}
           >
-            <Text className={`font-bold text-[12px] ${categoryKey === key ? "text-sky-400" : "text-slate-300"}`}>
+            <Text className={`font-sans font-medium text-[12px] ${categoryKey === key ? "text-white" : "text-mist"}`}>
               {TAX_RELIEF_CATEGORY_LABELS[key]}
             </Text>
           </TouchableOpacity>
@@ -63,9 +64,9 @@ export function TaxReliefPicker({
         {!expanded && (
           <TouchableOpacity
             onPress={() => setExpanded(true)}
-            className="rounded-lg px-3 py-2 border-2 border-dashed border-slate-500 bg-slate-700/10"
+            className="rounded-button px-3 py-2 border border-dashed border-white/[0.1] bg-transparent"
           >
-            <Text className="font-bold text-[12px] text-slate-400">
+            <Text className="font-sans font-medium text-[12px] text-fog">
               More ({TAX_RELIEF_CATEGORIES.length - COLLAPSED_COUNT})
             </Text>
           </TouchableOpacity>
@@ -74,15 +75,13 @@ export function TaxReliefPicker({
 
       {categoryKey !== null && (
         <View className="mt-3">
-          <Text className="text-[11px] text-slate-400 mb-1.5">Assessment Year (YA)</Text>
-          <TextInput
+          <Text className="font-sans text-[11px] text-mist mb-1.5">Assessment Year (YA)</Text>
+          <TextField
             placeholder={String(new Date().getFullYear())}
             keyboardType="number-pad"
             maxLength={4}
             value={assessmentYear}
             onChangeText={onChangeAssessmentYear}
-            placeholderTextColor="#64748b"
-            className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30"
           />
         </View>
       )}

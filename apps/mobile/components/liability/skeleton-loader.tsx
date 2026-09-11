@@ -40,12 +40,12 @@ export function LiabilityCardSkeleton() {
   return (
     <Animated.View
       style={{ opacity }}
-      className="mb-5 rounded-3xl overflow-hidden"
+      className="mb-5 rounded-card overflow-hidden"
     >
-      <View className="bg-white/[0.035] px-6 py-6 border border-white/10">
+      <View className="bg-glass-surface px-6 py-6 border border-glass-edge">
         {/* Header */}
         <View className="flex-row items-center justify-between mb-4">
-          <View className="h-6 bg-white/10 rounded-full w-24" />
+          <View className="h-6 bg-white/10 rounded-badge w-24" />
         </View>
 
         {/* Name */}
@@ -66,7 +66,7 @@ export function LiabilityCardSkeleton() {
         </View>
 
         {/* Commitment Card */}
-        <View className="mb-4 bg-white/5 rounded-2xl px-4 py-3.5 flex-row items-center justify-between border border-white/10">
+        <View className="mb-4 bg-white/5 rounded-card px-4 py-3.5 flex-row items-center justify-between border border-glass-edge">
           <View className="flex-1">
             <View className="h-3 bg-white/10 rounded-md mb-2 w-24" />
             <View className="h-7 bg-white/10 rounded-md w-16" />
@@ -76,20 +76,20 @@ export function LiabilityCardSkeleton() {
 
         {/* Progress Bar */}
         <View className="mb-4">
-          <View className="h-2 rounded-full bg-white/10" />
+          <View className="h-2 rounded-button bg-white/10" />
         </View>
 
         {/* Payment Section */}
         <View className="mt-4">
           <View className="h-3 bg-white/10 rounded-md mb-2 w-24" />
           <View className="flex-row gap-2.5">
-            <View className="flex-1 h-10 bg-white/10 rounded-lg" />
-            <View className="h-10 bg-white/10 rounded-lg w-16" />
+            <View className="flex-1 h-10 bg-white/10 rounded-input" />
+            <View className="h-10 bg-white/10 rounded-input w-16" />
           </View>
         </View>
 
         {/* Pay Button */}
-        <View className="mt-4 h-12 bg-white/10 rounded-lg" />
+        <View className="mt-4 h-12 bg-white/10 rounded-button" />
       </View>
     </Animated.View>
   );

@@ -1,6 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
+import { IconButton } from "@/components/ui/icon-button";
 import { Image } from "expo-image";
-import { Modal, ScrollView, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, View } from "react-native";
 import Pdf from "react-native-pdf";
 import WebView from "react-native-webview";
 
@@ -19,9 +19,7 @@ export function DocumentPreviewModal({ visible, uri, mimeType, onClose }: Props)
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/95">
         <View className="flex-row justify-end items-center pt-14 pb-3 px-4 bg-black/95">
-          <TouchableOpacity onPress={onClose} className="p-2.5 rounded-full bg-white/10">
-            <Ionicons name="close" size={22} color="white" />
-          </TouchableOpacity>
+          <IconButton onPress={onClose} icon="close-outline" label="Close" size={22} />
         </View>
         {mimeType === "application/pdf" ? (
           <Pdf

@@ -1,3 +1,12 @@
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { TextField } from "@/components/ui/text-field";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { TAX_RELIEF_CATEGORY_LABELS, TaxReliefCategoryKey } from "@/interface/tax-relief";
 import { shouldRunScheduledCheck } from "@/local/lhdn-relief-sync-service";
@@ -15,7 +24,7 @@ import { useRouter } from "expo-router";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useEffect, useRef, useState } from "react";
-import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const EXPORT_DIR = new Directory(Paths.cache, "tax-relief-export");
 
@@ -140,102 +149,84 @@ export default function TaxReliefScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-center justify-between px-3 pt-20 pb-6">
-        <TouchableOpacity onPress={() => router.back()} className="p-2">
-          <Ionicons name="chevron-back" size={28} color="white" />
-        </TouchableOpacity>
-        <Text className="text-[18px] font-bold text-white flex-1 ml-2">Tax Relief</Text>
-        <TouchableOpacity
-          onPress={() => setHideAmounts(!hideAmounts)}
-          className="p-2 rounded-full bg-white/5 active:opacity-70"
-        >
-          <Ionicons
-            name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        variant="back"
+        title="Tax Relief"
+        onBack={() => router.back()}
+        right={
+          <IconButton
+            onPress={() => setHideAmounts(!hideAmounts)}
+            icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+            label={hideAmounts ? "Show amounts" : "Hide amounts"}
           />
-        </TouchableOpacity>
-      </View>
+        }
+      />
 
       <View className="flex-row items-center justify-center gap-6 mb-4">
-        <TouchableOpacity onPress={() => setYear((y) => y - 1)} className="p-2 rounded-full bg-white/5">
-          <Ionicons name="chevron-back" size={18} color="#cbd5e1" />
-        </TouchableOpacity>
-        <Text className="text-[16px] font-bold text-white">YA{year}</Text>
-        <TouchableOpacity onPress={() => setYear((y) => y + 1)} className="p-2 rounded-full bg-white/5">
-          <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
-        </TouchableOpacity>
+        <IconButton onPress={() => setYear((y) => y - 1)} icon="chevron-back" label="Previous assessment year" size={18} />
+        <Text className="font-display text-[16px] text-white">YA{year}</Text>
+        <IconButton onPress={() => setYear((y) => y + 1)} icon="chevron-forward" label="Next assessment year" size={18} />
       </View>
 
-      <ScrollView className="px-6" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        <View className="rounded-3xl overflow-hidden border border-white/10 bg-slate-900 px-6 py-6 mb-6">
-          <Text className="text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+      <ScrollView className="px-6" contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-6">
+          <Text className="font-mono text-[11px] uppercase tracking-wider text-fog mb-1.5">
             Total Claimed
           </Text>
-          <Text className="text-[26px] font-black text-sky-400">
+          <Text className="font-display text-[26px] text-white">
             {formatRM(totalClaimed, { decimals: true })}
           </Text>
-          <Text className="text-[12px] text-slate-500 mt-1">
+          <Text className="font-sans text-[12px] text-fog mt-1">
             of {formatRM(totalCap, { decimals: true })} across all categories
           </Text>
-        </View>
+        </Card>
 
         <TouchableOpacity
           onPress={handleExport}
           disabled={isExporting}
-          className="flex-row items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-800/50 py-3 mb-4 active:opacity-70"
+          className="flex-row items-center justify-center gap-2 rounded-card border border-glass-edge bg-glass-surface py-3 mb-4 active:opacity-70"
         >
-          <Ionicons name="share-outline" size={16} color="#38bdf8" />
-          <Text className="text-[13px] font-semibold text-sky-400">
+          <Ionicons name="share-outline" size={16} color="#d1e4fa" />
+          <Text className="font-sans text-[13px] font-semibold text-frost">
             {isExporting ? "Preparing export..." : "Export Evidence (CSV)"}
           </Text>
         </TouchableOpacity>
 
         {lastError ? (
-          <TouchableOpacity
+          <AlertBanner
             onPress={() => runLhdnSync()}
             disabled={isSyncing}
-            className="flex-row items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 mb-3 active:opacity-70"
-          >
-            <Ionicons name="cloud-offline-outline" size={18} color="#f87171" />
-            <Text className="flex-1 text-[12px] font-semibold text-red-300">
-              Couldn&apos;t check LHDN ({lastError}) — tap to retry
-            </Text>
-          </TouchableOpacity>
+            icon="alert-circle-outline"
+            message={`Couldn't check LHDN (${lastError}) — tap to retry`}
+          />
         ) : pendingDiffs.length > 0 ? (
-          <TouchableOpacity
+          <AlertBanner
             onPress={openSyncModal}
-            className="flex-row items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 mb-3 active:opacity-70"
-          >
-            <Ionicons name="alert-circle-outline" size={18} color="#fbbf24" />
-            <Text className="flex-1 text-[12px] font-semibold text-amber-300">
-              LHDN may have updated {pendingDiffs.length}{" "}
-              {pendingDiffs.length === 1 ? "relief category" : "relief categories"} — tap to review
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color="#fbbf24" />
-          </TouchableOpacity>
+            icon="time-outline"
+            showChevron
+            message={`LHDN may have updated ${pendingDiffs.length} ${
+              pendingDiffs.length === 1 ? "relief category" : "relief categories"
+            } — tap to review`}
+          />
         ) : unmatched.length > 0 ? (
-          <TouchableOpacity
+          <AlertBanner
             onPress={openSyncModal}
-            className="flex-row items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/40 px-4 py-3 mb-3 active:opacity-70"
-          >
-            <Ionicons name="help-circle-outline" size={18} color="#94a3b8" />
-            <Text className="flex-1 text-[12px] font-semibold text-slate-300">
-              Couldn&apos;t verify {unmatched.length} relief {unmatched.length === 1 ? "category" : "categories"} on
-              LHDN&apos;s page — tap to review
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
-          </TouchableOpacity>
+            icon="help-circle-outline"
+            showChevron
+            message={`Couldn't verify ${unmatched.length} relief ${
+              unmatched.length === 1 ? "category" : "categories"
+            } on LHDN's page — tap to review`}
+          />
         ) : null}
 
         <TouchableOpacity
           onPress={() => runLhdnSync()}
           disabled={isSyncing}
-          className="flex-row items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/30 py-2.5 mb-6 active:opacity-70"
+          className="flex-row items-center justify-center gap-2 rounded-card border border-white/[0.06] bg-white/5 py-2.5 mb-6 active:opacity-70"
         >
-          <Ionicons name="cloud-download-outline" size={14} color="#94a3b8" />
-          <Text className="text-[11px] font-semibold text-slate-400">
+          <Ionicons name="cloud-download-outline" size={14} color="#9da7ba" />
+          <Text className="font-sans text-[11px] font-semibold text-fog">
             {isSyncing
               ? "Checking hasil.gov.my..."
               : syncState?.lastCheckedAt
@@ -250,28 +241,24 @@ export default function TaxReliefScreen() {
               <TouchableOpacity
                 key={s.category_key}
                 onPress={() => openEditCap(s.category_key, s.cap)}
-                className="rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 active:opacity-80"
+                className="rounded-card border border-glass-edge bg-glass-surface px-5 py-4 active:opacity-80"
               >
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-[13px] font-semibold text-white flex-1 pr-2">{s.label}</Text>
-                  {s.over_cap && (
-                    <View className="bg-red-500/20 rounded-full px-2.5 py-1">
-                      <Text className="text-[10px] font-bold text-red-400 uppercase">Over Cap</Text>
-                    </View>
-                  )}
+                  <Text className="font-sans text-[13px] font-semibold text-white flex-1 pr-2">{s.label}</Text>
+                  {s.over_cap && <Badge label="Over Cap" icon="warning-outline" emphasis />}
                 </View>
                 <View className="flex-row justify-between items-center mb-2">
-                  <Text className="text-[11px] text-slate-500">
+                  <Text className="font-sans text-[11px] text-fog">
                     {formatRM(s.claimed, { decimals: true })} /{" "}
                     {formatRM(s.cap, { decimals: true })}
                   </Text>
-                  <Text className="text-[11px] font-semibold text-slate-400">
+                  <Text className="font-sans text-[11px] font-semibold text-mist">
                     {formatRM(s.remaining, { decimals: true })} left
                   </Text>
                 </View>
-                <View className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                <View className="h-1.5 rounded-full bg-luminous-fill overflow-hidden">
                   <View
-                    className={`h-full rounded-full ${s.over_cap ? "bg-red-500" : "bg-sky-500"}`}
+                    className="h-full rounded-full bg-frost"
                     style={{ width: `${Math.min((s.claimed / s.cap) * 100, 100)}%` }}
                   />
                 </View>
@@ -281,46 +268,29 @@ export default function TaxReliefScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={editingCategory != null} transparent animationType="fade" onRequestClose={() => setEditingCategory(null)}>
-        <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="w-full rounded-2xl bg-slate-800 border border-slate-700 p-6">
-            <Text className="text-white text-[15px] font-bold mb-1">Edit Cap</Text>
-            <Text className="text-slate-400 text-[11px] mb-4">
-              LHDN revises relief caps yearly — adjust this if YA{year}&apos;s published amount differs.
-            </Text>
-            <TextInput
-              keyboardType="decimal-pad"
-              value={capInput}
-              onChangeText={setCapInput}
-              placeholderTextColor="#64748b"
-              className="rounded-lg border border-slate-600 px-3 py-3 text-[13px] text-white bg-slate-700/30 mb-4"
-            />
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setEditingCategory(null)}
-                className="flex-1 bg-slate-600/40 rounded-lg py-3"
-              >
-                <Text className="text-center text-slate-200 font-semibold text-[13px]">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveCap}
-                disabled={isSavingCap}
-                className="flex-1 bg-sky-500 rounded-lg py-3"
-              >
-                <Text className="text-center text-white font-semibold text-[13px]">
-                  {isSavingCap ? "Saving..." : "Save"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <Dialog
+        visible={editingCategory != null}
+        onRequestClose={() => setEditingCategory(null)}
+        icon="pencil-outline"
+        title="Edit Cap"
+        description={`LHDN revises relief caps yearly — adjust this if YA${year}'s published amount differs.`}
+        actions={[
+          { label: "Cancel", onPress: () => setEditingCategory(null), variant: "outline", disabled: isSavingCap },
+          { label: isSavingCap ? "Saving..." : "Save", onPress: handleSaveCap, variant: "primary", loading: isSavingCap },
+        ]}
+      >
+        <TextField
+          keyboardType="decimal-pad"
+          value={capInput}
+          onChangeText={setCapInput}
+        />
+      </Dialog>
 
       <Modal visible={showSyncModal} transparent animationType="fade" onRequestClose={() => setShowSyncModal(false)}>
-        <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="w-full rounded-2xl bg-slate-800 border border-slate-700 p-6">
-            <Text className="text-white text-[15px] font-bold mb-1">LHDN Relief Check</Text>
-            <Text className="text-slate-400 text-[11px] mb-4">
+        <View className="flex-1 bg-black/70 items-center justify-center px-6">
+          <View className="w-full rounded-card bg-modal-surface border border-glass-edge shadow-modal p-6">
+            <Text className="font-display text-[16px] text-white mb-1">LHDN Relief Check</Text>
+            <Text className="font-sans text-[11px] text-fog mb-4">
               Scraped from hasil.gov.my — review each before applying. This changes YA{year}&apos;s caps.
             </Text>
             <ScrollView style={{ maxHeight: 320 }} className="mb-4">
@@ -332,20 +302,20 @@ export default function TaxReliefScreen() {
                       <TouchableOpacity
                         key={d.category_key}
                         onPress={() => toggleDiffSelected(d.category_key)}
-                        className={`flex-row items-center gap-3 rounded-xl border px-4 py-3 ${
-                          selected ? "border-sky-500 bg-sky-500/10" : "border-slate-600 bg-slate-700/30"
+                        className={`flex-row items-center gap-3 rounded-card border px-4 py-3 ${
+                          selected ? "border-glass-edge bg-luminous-fill" : "border-white/[0.06] bg-white/5"
                         }`}
                       >
                         <Ionicons
                           name={selected ? "checkbox" : "square-outline"}
                           size={18}
-                          color={selected ? "#38bdf8" : "#64748b"}
+                          color={selected ? "#d1e4fa" : "#9da7ba"}
                         />
                         <View className="flex-1">
-                          <Text className="text-[12px] font-semibold text-white">
+                          <Text className="font-sans text-[12px] font-semibold text-white">
                             {TAX_RELIEF_CATEGORY_LABELS[d.category_key]}
                           </Text>
-                          <Text className="text-[11px] text-slate-400 mt-0.5">
+                          <Text className="font-sans text-[11px] text-fog mt-0.5">
                             {formatRM(d.current_cap, { decimals: true })} →{" "}
                             {formatRM(d.scraped_amount, { decimals: true })}
                           </Text>
@@ -358,17 +328,17 @@ export default function TaxReliefScreen() {
 
               {unmatched.length > 0 && (
                 <View>
-                  <Text className="text-[11px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                  <Text className="font-mono text-[11px] uppercase tracking-wider text-fog mb-2">
                     Couldn&apos;t verify on LHDN&apos;s page
                   </Text>
                   <View className="gap-1.5">
                     {unmatched.map((key) => (
-                      <Text key={key} className="text-[11px] text-slate-500">
+                      <Text key={key} className="font-sans text-[11px] text-fog">
                         • {TAX_RELIEF_CATEGORY_LABELS[key]}
                       </Text>
                     ))}
                   </View>
-                  <Text className="text-[10px] text-slate-600 mt-2">
+                  <Text className="font-sans text-[10px] text-fog/70 mt-2">
                     LHDN&apos;s page wording may have changed for these — caps above weren&apos;t touched.
                   </Text>
                 </View>
@@ -376,23 +346,18 @@ export default function TaxReliefScreen() {
             </ScrollView>
             {pendingDiffs.length > 0 ? (
               <View className="flex-row gap-3">
-                <TouchableOpacity onPress={handleDismissDiffs} className="flex-1 bg-slate-600/40 rounded-lg py-3">
-                  <Text className="text-center text-slate-200 font-semibold text-[13px]">Dismiss All</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleApplySelectedDiffs}
+                <Button label="Dismiss All" variant="outline" className="flex-1" onPress={handleDismissDiffs} />
+                <Button
+                  label={isApplyingDiffs ? "Applying..." : `Apply (${selectedDiffs.size})`}
+                  variant="primary"
+                  className="flex-1"
                   disabled={isApplyingDiffs || selectedDiffs.size === 0}
-                  className="flex-1 bg-sky-500 rounded-lg py-3"
-                >
-                  <Text className="text-center text-white font-semibold text-[13px]">
-                    {isApplyingDiffs ? "Applying..." : `Apply (${selectedDiffs.size})`}
-                  </Text>
-                </TouchableOpacity>
+                  loading={isApplyingDiffs}
+                  onPress={handleApplySelectedDiffs}
+                />
               </View>
             ) : (
-              <TouchableOpacity onPress={() => setShowSyncModal(false)} className="bg-slate-600/40 rounded-lg py-3">
-                <Text className="text-center text-slate-200 font-semibold text-[13px]">Close</Text>
-              </TouchableOpacity>
+              <Button label="Close" variant="outline" onPress={() => setShowSyncModal(false)} />
             )}
           </View>
         </View>

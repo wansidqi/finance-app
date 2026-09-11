@@ -1,5 +1,11 @@
+import { Card } from "@/components/ui/card";
+import { IconAvatar } from "@/components/ui/icon-avatar";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { NisabSourceBanner } from "@/components/zakat/nisab-source-banner";
 import { StateNisabListModal } from "@/components/zakat/state-nisab-list-modal";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { AssetCategory } from "@/interface/asset";
 import { useGetAssets } from "@/services/asset";
@@ -12,6 +18,7 @@ import {
 import { useGetZakatCategories } from "@/services/zakat";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import type { ComponentProps } from "react";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -97,99 +104,113 @@ export default function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-slate-950">
-        <ActivityIndicator color="#34d399" />
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <ActivityIndicator color="#663af3" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-950">
-      <View className="flex-row items-start justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">
-            Overview
-          </Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            My Wealth
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setHideAmounts(!hideAmounts)}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons
-              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color="#cbd5e1"
+    <View className="flex-1 bg-canvas">
+      <ScreenHeader
+        eyebrow="Overview"
+        title="My Wealth"
+        right={
+          <View className="flex-row items-center gap-2">
+            <IconButton
+              onPress={() => setHideAmounts(!hideAmounts)}
+              icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              label={hideAmounts ? "Show amounts" : "Hide amounts"}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/reminders")}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons name="notifications-outline" size={20} color="#cbd5e1" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/backup")}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons name="settings-outline" size={20} color="#cbd5e1" />
-          </TouchableOpacity>
-        </View>
-      </View>
+            <IconButton
+              onPress={() => router.push("/reminders")}
+              icon="notifications-outline"
+              label="Reminders"
+            />
+            <IconButton
+              onPress={() => router.push("/backup")}
+              icon="settings-outline"
+              label="Settings"
+            />
+          </View>
+        }
+      />
 
       <ScrollView
         className="px-6"
-        contentContainerStyle={{ paddingBottom: 130 }}
+        contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
         showsVerticalScrollIndicator={false}
       >
         {/* Net Worth + at-a-glance stats, one hero card */}
-        <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
-              Net Worth
-            </Text>
-            <View className="h-8 w-8 rounded-full bg-emerald-500/15 items-center justify-center">
-              <Ionicons name="trending-up" size={15} color="#34d399" />
+        <Card className="mb-6" padded={false}>
+          <View className="px-6 pt-7 pb-6">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-fog">
+                Net Worth
+              </Text>
+              <IconAvatar name="trending-up-outline" size={32} />
             </View>
-          </View>
-          <Text className="text-[36px] font-extrabold text-white tracking-tight">
-            {formatRM(netWorth, { decimals: true })}
-          </Text>
+            <Text className="font-display text-[36px] text-white">
+              {formatRM(netWorth, { decimals: true })}
+            </Text>
 
-          <View className="h-px bg-white/8 mt-6 mb-5" />
+            <View className="h-px bg-glass-edge mt-6 mb-5" />
 
-          <View className="flex-row justify-between mb-4">
-            <HeroStat
-              label="Assets"
-              value={formatRM(totalAssets, { decimals: true })}
-              sub={
-                excludedTotal > 0
-                  ? `+${formatRM(excludedTotal, { decimals: true })} excluded`
-                  : undefined
-              }
-            />
-            <HeroStat
-              label="Debt"
-              value={formatRM(totalLiabilities, { decimals: true })}
-              align="right"
-            />
-          </View>
-          <View className="flex-row justify-between">
-            <HeroStat label="Debt ratio" value={`${debtRatio.toFixed(1)}%`} />
+            <View className="flex-row justify-between mb-5">
+              <HeroStat
+                label="Assets"
+                value={formatRM(totalAssets, { decimals: true })}
+                sub={
+                  excludedTotal > 0
+                    ? `+${formatRM(excludedTotal, { decimals: true })} excluded`
+                    : undefined
+                }
+              />
+              <HeroStat
+                label="Debt"
+                value={formatRM(totalLiabilities, { decimals: true })}
+                align="right"
+              />
+            </View>
+
+            <View className="mb-4">
+              <View className="flex-row justify-between items-center mb-1.5">
+                <Text className="font-mono text-[10px] uppercase tracking-wide text-fog">
+                  Debt Ratio
+                </Text>
+                <Text className="font-sans text-[11px] font-bold text-frost">
+                  {debtRatio.toFixed(1)}%
+                </Text>
+              </View>
+              <View className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <View
+                  className="h-full rounded-full bg-frost"
+                  style={{ width: `${Math.min(debtRatio, 100)}%` }}
+                />
+              </View>
+            </View>
+
             <HeroStat
               label="Avg commitment"
               value={formatRM(avgMonthlyCommitment, { decimals: true })}
-              align="right"
             />
+          </View>
+        </Card>
+
+        {/* Quick Actions */}
+        <View className="mb-6">
+          <SectionEyebrow label="Quick Actions" className="mb-4" />
+          <View className="flex-row flex-wrap gap-3">
+            {QUICK_ACTIONS.map((action) => (
+              <QuickActionButton key={action.label} {...action} />
+            ))}
           </View>
         </View>
 
         {/* Nisab Status */}
-        <Section title="Nisab Status">
-          <View className="rounded-3xl bg-white/[0.035] border border-white/10 p-5">
+        <View className="mb-4">
+          <SectionEyebrow label="Nisab Status" className="mb-4" />
+          <Card>
             <NisabSourceBanner
               source={zakatCategories?.[0]?.nisab_source}
               detectedLocation={detectedLocation ?? null}
@@ -198,32 +219,32 @@ export default function DashboardScreen() {
               onShowStateList={() => setShowStateList(true)}
             />
 
-            <View className="h-px bg-white/8 my-4" />
+            <View className="h-px bg-glass-edge my-4" />
 
             <View className="gap-3">
               <View className="flex-row justify-between items-center">
-                <Text className="text-[12px] text-slate-400">
+                <Text className="font-sans text-[12px] text-mist">
                   Nisab Threshold
                 </Text>
-                <Text className="text-[15px] font-bold text-white">
+                <Text className="font-sans text-[15px] font-bold text-white">
                   {zakatCategories?.[0]?.nisab != null
                     ? formatRM(zakatCategories[0].nisab, { decimals: true, alwaysShow: true })
                     : "—"}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">
-                <Text className="text-[12px] text-slate-400">
+                <Text className="font-sans text-[12px] text-mist">
                   Total Zakatable
                 </Text>
-                <Text className="text-[15px] font-bold text-emerald-400">
+                <Text className="font-sans text-[15px] font-bold text-frost">
                   {formatRM(totalZakatable, { decimals: true })}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">
-                <Text className="text-[12px] text-slate-400">
+                <Text className="font-sans text-[12px] text-mist">
                   Total Zakat Due
                 </Text>
-                <Text className="text-[15px] font-bold text-white">
+                <Text className="font-sans text-[15px] font-bold text-white">
                   {formatRM(totalZakatDue, { decimals: true })}
                 </Text>
               </View>
@@ -232,53 +253,14 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/zakat-tracker")}
               activeOpacity={0.7}
-              className="mt-4 pt-4 border-t border-white/8 flex-row items-center justify-center gap-1"
+              className="mt-4 pt-4 border-t border-glass-edge flex-row items-center justify-center gap-1"
             >
-              <Text className="text-[12px] font-semibold text-emerald-400">
+              <Text className="font-sans text-[12px] font-semibold text-frost">
                 View Details
               </Text>
-              <Ionicons name="arrow-forward" size={14} color="#34d399" />
+              <Ionicons name="arrow-forward-outline" size={14} color="#d1e4fa" />
             </TouchableOpacity>
-          </View>
-        </Section>
-
-        {/* Quick Actions */}
-        <View className="mb-4">
-          <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
-            Quick Actions
-          </Text>
-          <View className="flex-row flex-wrap gap-3">
-            <QuickActionButton
-              icon="list-outline"
-              label="Transactions"
-              tint="#38bdf8"
-            />
-            <QuickActionButton
-              icon="wallet-outline"
-              label="Assets"
-              tint="#34d399"
-            />
-            <QuickActionButton
-              icon="card-outline"
-              label="Liabilities"
-              tint="#fb7185"
-            />
-            <QuickActionButton
-              icon="moon-outline"
-              label="Zakat"
-              tint="#fbbf24"
-            />
-            <QuickActionButton
-              icon="receipt-outline"
-              label="Tax Relief"
-              tint="#a78bfa"
-            />
-            <QuickActionButton
-              icon="lock-closed-outline"
-              label="Vault"
-              tint="#2dd4bf"
-            />
-          </View>
+          </Card>
         </View>
       </ScrollView>
 
@@ -288,24 +270,6 @@ export default function DashboardScreen() {
         rates={stateNisabRates}
         isLoading={isLoadingStateRates}
       />
-    </View>
-  );
-}
-
-// Layout helpers
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View className="mb-5">
-      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
-        {title}
-      </Text>
-      {children}
     </View>
   );
 }
@@ -324,56 +288,48 @@ function HeroStat({
 }) {
   return (
     <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
-      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+      <Text className="font-mono text-[10px] uppercase tracking-wide text-fog">
         {label}
       </Text>
-      <Text className="text-[15px] font-bold text-white mt-0.5">
+      <Text className="font-sans text-[15px] font-bold text-white mt-0.5">
         {value}
       </Text>
       {sub && (
-        <Text className="text-[9px] text-slate-500 mt-0.5">{sub}</Text>
+        <Text className="font-sans text-[9px] text-fog mt-0.5">{sub}</Text>
       )}
     </View>
   );
 }
 
-function QuickActionButton({
-  icon,
-  label,
-  tint,
-}: {
-  icon: any;
+type QuickAction = {
+  icon: ComponentProps<typeof Ionicons>["name"];
   label: string;
-  tint: string;
-}) {
-  const router = useRouter();
+  route: Parameters<ReturnType<typeof useRouter>["push"]>[0];
+};
 
-  const handlePress = () => {
-    if (label === "Transactions") {
-      router.push("/(tabs)/transactions");
-    } else if (label === "Assets") {
-      router.push("/(tabs)/asset");
-    } else if (label === "Liabilities") {
-      router.push("/(tabs)/liability");
-    } else if (label === "Zakat") {
-      router.push("/(tabs)/zakat-tracker");
-    } else if (label === "Tax Relief") {
-      router.push("/tax-relief");
-    } else if (label === "Vault") {
-      router.push("/(tabs)/document-vault");
-    }
-  };
+const QUICK_ACTIONS: QuickAction[] = [
+  { icon: "list-outline", label: "Transactions", route: "/(tabs)/transactions" },
+  { icon: "wallet-outline", label: "Assets", route: "/(tabs)/asset" },
+  { icon: "card-outline", label: "Liabilities", route: "/(tabs)/liability" },
+  { icon: "moon-outline", label: "Zakat", route: "/(tabs)/zakat-tracker" },
+  { icon: "receipt-outline", label: "Tax Relief", route: "/tax-relief" },
+  { icon: "lock-closed-outline", label: "Vault", route: "/(tabs)/document-vault" },
+];
+
+function QuickActionButton({ icon, label, route }: QuickAction) {
+  const router = useRouter();
 
   return (
     <TouchableOpacity
-      onPress={handlePress}
+      onPress={() => router.push(route)}
       activeOpacity={0.7}
-      style={{ flexBasis: "31%" }}
-      className="items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] py-3.5"
+      // 3 columns with gap-3 (12px) between them — 31% leaves room for two
+      // gaps per row without wrapping to 2 columns.
+      className="basis-[31%] items-center gap-2 rounded-card border border-glass-edge bg-glass-surface py-3.5"
     >
-      <Ionicons name={icon} size={18} color={tint} />
+      <Ionicons name={icon} size={18} color="#d1e4fa" />
       <Text
-        className="text-[10px] font-semibold text-slate-300 text-center"
+        className="font-sans text-[10px] font-semibold text-mist text-center"
         numberOfLines={2}
       >
         {label}

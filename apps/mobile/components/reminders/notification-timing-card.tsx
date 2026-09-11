@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { TimeField } from "@/components/time-field";
 import { ReminderNotificationMode } from "@/interface/reminder";
 import {
@@ -62,18 +64,18 @@ export function NotificationTimingCard() {
   if (!settings) return null;
 
   return (
-    <View className="mb-4 rounded-3xl bg-linear-to-br from-indigo-500/25 via-indigo-600/10 to-transparent border border-indigo-500/20 px-6 pt-6 pb-5 overflow-hidden">
+    <Card className="mb-4">
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-[15px] font-bold text-white">Notification Timing</Text>
+        <Text className="font-display text-[15px] text-white">Notification Timing</Text>
         {!draft && (
           <TouchableOpacity onPress={startEditing}>
-            <Text className="text-indigo-400 text-[13px] font-semibold">Edit</Text>
+            <Text className="font-sans text-frost text-[13px] font-semibold">Edit</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {!draft ? (
-        <Text className="text-[13px] text-slate-300 leading-5">
+        <Text className="font-sans text-[13px] text-mist leading-5">
           {settings.mode === "default" ? "Default — " : "Custom — "}
           {describeOffsets(settings.offsets_days)} at {formatTime(settings.hour, settings.minute)}
         </Text>
@@ -84,15 +86,15 @@ export function NotificationTimingCard() {
               <TouchableOpacity
                 key={mode}
                 onPress={() => setDraft({ ...draft, mode })}
-                className={`flex-1 rounded-lg py-2 items-center border-2 ${
+                className={`flex-1 rounded-button py-2 items-center border ${
                   draft.mode === mode
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-slate-600 bg-slate-700/30"
+                    ? "border-glass-edge bg-luminous-fill"
+                    : "border-white/[0.06] bg-transparent"
                 }`}
               >
                 <Text
-                  className={`text-[11px] font-bold ${
-                    draft.mode === mode ? "text-indigo-400" : "text-slate-300"
+                  className={`font-sans text-[11px] font-bold ${
+                    draft.mode === mode ? "text-white" : "text-mist"
                   }`}
                 >
                   {mode === "default" ? "Default (7/3/1/0 @ 9:00 AM)" : "Custom"}
@@ -103,7 +105,7 @@ export function NotificationTimingCard() {
 
           {draft.mode === "custom" && (
             <>
-              <Text className="text-[10px] text-slate-400 mb-1.5 uppercase tracking-wider">
+              <Text className="font-mono text-[10px] text-fog mb-1.5 uppercase tracking-wider">
                 Notify this many days before due
               </Text>
               <View className="mb-3">
@@ -113,7 +115,7 @@ export function NotificationTimingCard() {
                 />
               </View>
 
-              <Text className="text-[10px] text-slate-400 mb-1 uppercase tracking-wider">
+              <Text className="font-mono text-[10px] text-fog mb-1 uppercase tracking-wider">
                 Time
               </Text>
               <View className="mb-3">
@@ -127,25 +129,23 @@ export function NotificationTimingCard() {
           )}
 
           <View className="flex-row gap-3">
-            <TouchableOpacity
+            <Button
+              label="Cancel"
+              variant="outline"
+              disabled={isPending}
               onPress={() => setDraft(null)}
+              className="flex-1"
+            />
+            <Button
+              label={isPending ? "Saving..." : "Save"}
+              variant="primary"
               disabled={isPending}
-              className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg py-2.5"
-            >
-              <Text className="text-center text-slate-200 font-semibold text-[12px]">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={handleSave}
-              disabled={isPending}
-              className="flex-1 bg-indigo-500 rounded-lg py-2.5"
-            >
-              <Text className="text-center text-white font-semibold text-[12px]">
-                {isPending ? "Saving..." : "Save"}
-              </Text>
-            </TouchableOpacity>
+              className="flex-1"
+            />
           </View>
         </View>
       )}
-    </View>
+    </Card>
   );
 }

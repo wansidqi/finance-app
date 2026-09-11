@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useState } from "react";
@@ -23,11 +24,10 @@ type Props = {
   hour: number;
   minute: number;
   onChange: (hour: number, minute: number) => void;
-  accentColor?: string;
 };
 
 /** Tappable field that opens the platform's native time picker — mirrors DateField's Android-dialog/iOS-modal split. */
-export function TimeField({ hour, minute, onChange, accentColor = "#6366f1" }: Props) {
+export function TimeField({ hour, minute, onChange }: Props) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [draftTime, setDraftTime] = useState<Date>(timeToDate(hour, minute));
 
@@ -55,13 +55,13 @@ export function TimeField({ hour, minute, onChange, accentColor = "#6366f1" }: P
       <TouchableOpacity
         onPress={openPicker}
         activeOpacity={0.7}
-        className="flex-row items-center justify-between rounded-lg border border-slate-600 bg-slate-700/30 px-3 py-3"
+        className="flex-row items-center justify-between rounded-input border border-glass-edge bg-white/5 px-3 py-3"
       >
         <View className="flex-row items-center gap-2.5">
-          <Ionicons name="time-outline" size={17} color={accentColor} />
-          <Text className="text-white text-[13px] font-medium">{formatTime(hour, minute)}</Text>
+          <Ionicons name="time-outline" size={17} color="#d1e4fa" />
+          <Text className="font-sans text-[13px] text-white font-medium">{formatTime(hour, minute)}</Text>
         </View>
-        <Ionicons name="chevron-down" size={15} color="#64748b" />
+        <Ionicons name="chevron-down" size={15} color="#9da7ba" />
       </TouchableOpacity>
 
       {Platform.OS === "ios" && (
@@ -72,7 +72,7 @@ export function TimeField({ hour, minute, onChange, accentColor = "#6366f1" }: P
           onRequestClose={() => setIosPickerVisible(false)}
         >
           <View className="flex-1 bg-black/60 items-center justify-center px-6">
-            <View className="w-full rounded-2xl bg-slate-800 border border-slate-700 p-4">
+            <View className="w-full rounded-card bg-modal-surface border border-glass-edge shadow-modal p-4">
               <DateTimePicker
                 value={draftTime}
                 mode="time"
@@ -83,22 +83,21 @@ export function TimeField({ hour, minute, onChange, accentColor = "#6366f1" }: P
                 }}
               />
               <View className="flex-row gap-3 mt-3">
-                <TouchableOpacity
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  className="flex-1"
                   onPress={() => setIosPickerVisible(false)}
-                  className="flex-1 bg-slate-600/40 rounded-lg py-3"
-                >
-                  <Text className="text-center text-slate-200 font-semibold text-[13px]">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                />
+                <Button
+                  label="Done"
+                  variant="primary"
+                  className="flex-1"
                   onPress={() => {
                     onChange(draftTime.getHours(), draftTime.getMinutes());
                     setIosPickerVisible(false);
                   }}
-                  style={{ backgroundColor: accentColor }}
-                  className="flex-1 rounded-lg py-3"
-                >
-                  <Text className="text-center text-white font-semibold text-[13px]">Done</Text>
-                </TouchableOpacity>
+                />
               </View>
             </View>
           </View>

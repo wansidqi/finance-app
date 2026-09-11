@@ -1,18 +1,22 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FieldLabel } from "@/components/ui/field-label";
+import { IconAvatar } from "@/components/ui/icon-avatar";
+import { IconButton } from "@/components/ui/icon-button";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { TextField } from "@/components/ui/text-field";
 import { ErrorModal } from "@/components/modal/error-modal";
 import { useErrorModal } from "@/components/modal/useErrorModal";
+import { SCREEN_SCROLL_BOTTOM_PADDING } from "@/constants/layout";
 import { useFormatRM } from "@/hooks/use-format-rm";
 import { LiabilityInterface } from "@/interface/liability";
 import { useGetLiabilities, useUpdateLiabilityById } from "@/services/liability";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { AddDebtModal } from "./add-liability";
 import { LiabilitySkeletonLoader } from "./skeleton-loader";
@@ -40,82 +44,66 @@ export function Liability() {
   );
 
   return (
-    <View className="flex-1 bg-slate-950">
+    <View className="flex-1 bg-canvas">
       <ErrorModal visible={isVisible} error={error} onClose={hideError} />
 
-      <View className="flex-row items-center justify-between px-6 pt-20 pb-6">
-        <View>
-          <Text className="text-[13px] font-medium text-slate-500">
-            Overview
-          </Text>
-          <Text className="text-[30px] font-bold text-white mt-1 tracking-tight">
-            My Liabilities
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setHideAmounts(!hideAmounts)}
-            className="p-2 rounded-full bg-white/5 active:opacity-70"
-          >
-            <Ionicons
-              name={hideAmounts ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color="#cbd5e1"
+      <ScreenHeader
+        eyebrow="Overview"
+        title="My Liabilities"
+        right={
+          <View className="flex-row items-center gap-2">
+            <IconButton
+              onPress={() => setHideAmounts(!hideAmounts)}
+              icon={hideAmounts ? "eye-off-outline" : "eye-outline"}
+              label={hideAmounts ? "Show amounts" : "Hide amounts"}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            className="rounded-full bg-red-700 px-5 py-3 active:opacity-80"
-          >
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="add" size={20} color="white" />
-              <Text className="text-white font-semibold text-[14px]">Add</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <Button label="Add" icon="add-outline" onPress={() => setModalVisible(true)} />
+          </View>
+        }
+      />
 
-      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-slate-950">
+      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-canvas">
         <ScrollView
           className="px-6 flex-1"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: SCREEN_SCROLL_BOTTOM_PADDING }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {!isLoading && data.length > 0 && (
-            <View className="mb-6 rounded-[28px] bg-white/[0.035] border border-white/10 px-6 pt-7 pb-6 overflow-hidden">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-[11px] font-bold text-slate-500 uppercase tracking-[1.5px]">
-                  Total Debt
+            <Card className="mb-6" padded={false}>
+              <View className="px-6 pt-7 pb-6">
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-fog">
+                    Total Debt
+                  </Text>
+                  <IconAvatar name="trending-down-outline" size={32} />
+                </View>
+                <Text className="font-display text-[36px] text-white">
+                  {formatRM(totalDebtBalance, { decimals: true })}
                 </Text>
-                <View className="h-8 w-8 rounded-full bg-red-950/60 items-center justify-center">
-                  <Ionicons name="trending-down" size={15} color="#b91c1c" />
+
+                <View className="h-px bg-glass-edge mt-6 mb-5" />
+
+                <View className="flex-row justify-between">
+                  <HeroStat
+                    label="Monthly Commitment"
+                    value={formatRM(totalAvgMonthlyCommitment, { decimals: true })}
+                  />
+                  <HeroStat
+                    label="Active"
+                    value={`${data.length}`}
+                    align="right"
+                  />
                 </View>
               </View>
-              <Text className="text-[36px] font-extrabold text-white tracking-tight">
-                {formatRM(totalDebtBalance, { decimals: true })}
-              </Text>
-
-              <View className="h-px bg-white/8 mt-6 mb-5" />
-
-              <View className="flex-row justify-between">
-                <HeroStat
-                  label="Monthly Commitment"
-                  value={formatRM(totalAvgMonthlyCommitment, { decimals: true })}
-                />
-                <HeroStat
-                  label="Active"
-                  value={`${data.length}`}
-                  align="right"
-                />
-              </View>
-            </View>
+            </Card>
           )}
 
           {isLoading ? (
             <LiabilitySkeletonLoader />
           ) : data && data.length > 0 ? (
-            <Section title="All Liabilities">
+            <View className="mb-5">
+              <SectionEyebrow label="All Liabilities" className="mb-4" />
               <View className="gap-3">
                 {data.map((liability) => (
                   <LiabilityListItem
@@ -131,14 +119,14 @@ export function Liability() {
                   />
                 ))}
               </View>
-            </Section>
+            </View>
           ) : (
             <View className="mt-20 items-center justify-center">
-              <Ionicons name="document-outline" size={48} color="#64748b" />
-              <Text className="mt-4 text-[16px] font-medium text-slate-400">
+              <Ionicons name="document-outline" size={48} color="#9da7ba" />
+              <Text className="mt-4 font-sans text-[16px] font-medium text-mist">
                 No liabilities yet
               </Text>
-              <Text className="mt-1 text-[13px] text-slate-500">
+              <Text className="mt-1 font-sans text-[13px] text-fog">
                 Add your first liability to get started
               </Text>
             </View>
@@ -155,17 +143,6 @@ export function Liability() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View className="mb-5">
-      <Text className="text-[13px] font-bold text-slate-300 mb-3 uppercase tracking-wide">
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
 function HeroStat({
   label,
   value,
@@ -177,10 +154,10 @@ function HeroStat({
 }) {
   return (
     <View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
-      <Text className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+      <Text className="font-mono text-[10px] uppercase tracking-wide text-fog">
         {label}
       </Text>
-      <Text className="text-[15px] font-bold text-white mt-0.5">{value}</Text>
+      <Text className="font-sans text-[15px] font-bold text-white mt-0.5">{value}</Text>
     </View>
   );
 }
@@ -242,26 +219,22 @@ function LiabilityListItem({
   };
 
   return (
-    <View className="bg-white/[0.035] border border-white/10 rounded-xl px-4 py-4">
+    <Card>
       <TouchableOpacity
         onPress={onPress}
         className="flex-row items-center justify-between active:opacity-70"
       >
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
-            <View className="bg-rose-500/20 rounded-full px-2.5 py-0.5">
-              <Text className="text-[10px] font-bold text-rose-400">
-                {category}
-              </Text>
-            </View>
+            <Badge label={String(category)} />
             {reminder_due_date && (
-              <Ionicons name="notifications" size={12} color="#818cf8" />
+              <Ionicons name="notifications-outline" size={12} color="#d1e4fa" />
             )}
           </View>
-          <Text className="text-[16px] font-semibold text-white mb-1">
+          <Text className="font-sans text-[16px] font-semibold text-white mb-1">
             {name}
           </Text>
-          <Text className="text-[12px] text-slate-400">
+          <Text className="font-sans text-[12px] text-mist">
             {isCommitment
               ? `${formatRM(monthly_payment ?? 0)}/month`
               : `${formatRM(monthly_payment ?? 0)}/month • ${remainingMonths} ${
@@ -270,59 +243,43 @@ function LiabilityListItem({
           </Text>
         </View>
         <View className="items-end gap-2 ml-4">
-          <Text className="text-[16px] font-bold text-rose-400">
+          <Text className="font-sans text-[16px] font-bold text-white">
             {isCommitment ? formatRM(monthly_payment ?? 0) : formatRM(total_balance ?? 0)}
           </Text>
           {!isCommitment && (
-            <View className="bg-rose-500/20 rounded-lg px-2 py-1">
-              <Text className="text-[11px] font-bold text-rose-300">
-                {remainingMonths > 0 ? `${remainingMonths}m` : "Due"}
-              </Text>
-            </View>
+            <Badge label={remainingMonths > 0 ? `${remainingMonths}m` : "Due"} />
           )}
         </View>
       </TouchableOpacity>
 
       {!isCommitment && remainingMonths > 0 && (
-        <View className="mt-3 pt-3 border-t border-white/10">
-          <Text className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-            Make Payment
-          </Text>
-          <View className="flex-row gap-2.5">
-            <TextInput
+        <View className="mt-3 pt-3 border-t border-glass-edge">
+          <FieldLabel>Make Payment</FieldLabel>
+          <View className="flex-row items-center gap-2">
+            <TextField
               value={paymentAmount}
               onChangeText={setPaymentAmount}
               placeholder="Amount (RM)"
-              placeholderTextColor="#64748b"
               keyboardType="decimal-pad"
               editable={!isPaying}
-              className="flex-1 border border-white/10 rounded-lg py-2 px-2.5 text-white bg-white/5 text-[12px]"
+              className="flex-1"
             />
-            <TouchableOpacity
-              onPress={() =>
-                setPaymentAmount(monthly_payment?.toString() || "0")
-              }
+            <IconButton
+              onPress={() => setPaymentAmount(monthly_payment?.toString() || "0")}
+              icon="refresh-outline"
+              label="Reset to monthly payment amount"
               disabled={isPaying}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 justify-center"
-            >
-              <Text className="text-[11px] font-bold text-slate-300">
-                Reset
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
-          <TouchableOpacity
+          <Button
+            label={isPaying ? "Paying..." : "Pay Now"}
             onPress={handlePay}
             disabled={isPaying || !Number(paymentAmount)}
-            className={`mt-2.5 bg-red-700 rounded-lg py-2.5 ${
-              isPaying || !Number(paymentAmount) ? "opacity-50" : ""
-            }`}
-          >
-            <Text className="text-center font-semibold text-white text-[13px]">
-              {isPaying ? "Paying..." : "Pay Now"}
-            </Text>
-          </TouchableOpacity>
+            fullWidth
+            className="mt-2.5"
+          />
         </View>
       )}
-    </View>
+    </Card>
   );
 }

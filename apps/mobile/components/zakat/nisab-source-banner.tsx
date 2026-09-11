@@ -14,15 +14,26 @@ function BannerActions({
 }) {
   return (
     <View className="flex-row items-center gap-3">
-      <TouchableOpacity onPress={onDetect} disabled={isDetecting} hitSlop={8}>
+      <TouchableOpacity
+        onPress={onDetect}
+        disabled={isDetecting}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Detect my location"
+      >
         {isDetecting ? (
-          <ActivityIndicator size="small" color="#34d399" />
+          <ActivityIndicator size="small" color="#d1e4fa" />
         ) : (
-          <Ionicons name="reload" size={16} color="#94a3b8" />
+          <Ionicons name="reload-outline" size={16} color="#9da7ba" />
         )}
       </TouchableOpacity>
-      <TouchableOpacity onPress={onShowStateList} hitSlop={8}>
-        <Ionicons name="list" size={17} color="#94a3b8" />
+      <TouchableOpacity
+        onPress={onShowStateList}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Show all state nisab rates"
+      >
+        <Ionicons name="list-outline" size={17} color="#9da7ba" />
       </TouchableOpacity>
     </View>
   );
@@ -56,10 +67,10 @@ export function NisabSourceBanner({
     return (
       <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-3">
-          <Text className="text-[11px] text-slate-300">
+          <Text className="font-sans text-[11px] text-mist">
             Nisab from {MALAYSIA_STATE_LABELS[source.state]}&apos;s zakat authority
           </Text>
-          <Text className="text-[10px] text-slate-500 mt-0.5">
+          <Text className="font-sans text-[10px] text-fog mt-0.5">
             Checked {asOf}
           </Text>
         </View>
@@ -81,10 +92,10 @@ export function NisabSourceBanner({
     return (
       <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-3">
-          <Text className="text-[11px] text-slate-300">
+          <Text className="font-sans text-[11px] text-mist">
             Nisab from an AI summary for {MALAYSIA_STATE_LABELS[source.state]}
           </Text>
-          <Text className="text-[10px] text-slate-500 mt-0.5">
+          <Text className="font-sans text-[10px] text-fog mt-0.5">
             Checked {asOf}
           </Text>
         </View>
@@ -109,10 +120,10 @@ export function NisabSourceBanner({
     return (
       <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-3">
-          <Text className="text-[11px] text-slate-300">
+          <Text className="font-sans text-[11px] text-mist">
             {detectedState} PPZ-MAIWP&apos;s published rate
           </Text>
-          <Text className="text-[10px] text-slate-500 mt-0.5">
+          <Text className="font-sans text-[10px] text-fog mt-0.5">
             Checked {asOf}
           </Text>
         </View>
@@ -151,8 +162,8 @@ export function NisabSourceBanner({
   return (
     <View className="flex-row items-center justify-between">
       <View className="flex-1 pr-3">
-        <Text className="text-[11px] text-slate-300">{title}</Text>
-        <Text className="text-[10px] text-slate-500 mt-0.5">{subtitle}</Text>
+        <Text className="font-sans text-[11px] text-mist">{title}</Text>
+        <Text className="font-sans text-[10px] text-fog mt-0.5">{subtitle}</Text>
       </View>
       <BannerActions
         onDetect={onDetect}

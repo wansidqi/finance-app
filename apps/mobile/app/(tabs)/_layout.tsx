@@ -3,8 +3,8 @@ import { Tabs } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#34d399";
-const INACTIVE = "#64748b";
+const ACCENT = "#663af3";
+const INACTIVE = "#9da7ba";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -24,9 +24,9 @@ export default function TabLayout() {
           height: barHeight,
           paddingTop: 10,
           paddingBottom: insets.bottom,
-          backgroundColor: "#020617",
+          backgroundColor: "#05060f",
           borderTopWidth: 1,
-          borderTopColor: "rgba(255, 255, 255, 0.08)",
+          borderTopColor: "rgba(186, 215, 247, 0.12)",
           elevation: 0,
         },
 
@@ -41,11 +41,7 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              icon="stats-chart-outline"
-              activeIcon="stats-chart"
-              focused={focused}
-            />
+            <TabIcon icon="stats-chart-outline" focused={focused} />
           ),
         }}
       />
@@ -54,7 +50,7 @@ export default function TabLayout() {
         name="asset"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="wallet-outline" activeIcon="wallet" focused={focused} />
+            <TabIcon icon="wallet-outline" focused={focused} />
           ),
         }}
       />
@@ -63,7 +59,7 @@ export default function TabLayout() {
         name="transactions"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="receipt-outline" activeIcon="receipt" focused={focused} />
+            <TabIcon icon="receipt-outline" focused={focused} />
           ),
         }}
       />
@@ -72,7 +68,7 @@ export default function TabLayout() {
         name="liability"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="card-outline" activeIcon="card" focused={focused} />
+            <TabIcon icon="card-outline" focused={focused} />
           ),
         }}
       />
@@ -81,11 +77,7 @@ export default function TabLayout() {
         name="document-vault"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              icon="lock-closed-outline"
-              activeIcon="lock-closed"
-              focused={focused}
-            />
+            <TabIcon icon="lock-closed-outline" focused={focused} />
           ),
         }}
       />
@@ -101,11 +93,9 @@ export default function TabLayout() {
 
 function TabIcon({
   icon,
-  activeIcon,
   focused,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
-  activeIcon: keyof typeof Ionicons.glyphMap;
   focused: boolean;
 }) {
   return (
@@ -117,11 +107,7 @@ function TabIcon({
         height: 42,
       }}
     >
-      <Ionicons
-        name={focused ? activeIcon : icon}
-        size={24}
-        color={focused ? ACCENT : INACTIVE}
-      />
+      <Ionicons name={icon} size={24} color={focused ? ACCENT : INACTIVE} />
     </View>
   );
 }
